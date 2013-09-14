@@ -1,0 +1,43 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.efx.services.navigation.IUxNavigationService;
+
+import mx.events.FlexEvent;
+import mx.resources.ResourceManager;
+[Bindable] private var response:XMLList;
+private function onComplete(event:RESTEvent):void
+{
+  viewBlock.updateProgress(100, "default");
+  response = new XMLList(event.response);
+  securityLevel.text     =  response[0].securityLevel;
+  passwordHardening.text  =  response[0].passwordHardening;
+  rootLogin.text      =  response[0].rootLogin;
+  securityDdatabase.text  =  response[0].securityDdatabase;
+  configTime.text      =  response[0].configTime;
+  passwordAging.text    =  response[0].passwordAging;
+  LDAPAuthentication.text  =  response[0].LDAPAuthentication;
+
+
+}
+protected function viewBlock_creationCompleteHandler(event:FlexEvent):void
+{
+
+  var xml:XML = <REQUEST/>;
+  xml.appendChild(<action>getArchiveSetting</action>);
+  RESTClient.sendPostRequest("/securitySettings.htm", xml, onComplete, viewBlock);
+}
+private function onCanel(event:MouseEvent):void
+{
+  var navService:IUxNavigationService =
+  UxExtensionManager.getInstance().getService(UxConstants.
+  NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}
+

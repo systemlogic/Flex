@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<t:DataGridPropertyTable xmlns:mx="http://www.adobe.com/2006/mxml"
+		xmlns:t="com.emc.ecuit.flex.components.table.*" >
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.messaging.management.Attribute;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;															
+			 
+			/**
+			 * Variable used to hold a row table object 
+		 	*/ 
+			[Bindable]
+			protected var _displayObjects:Array = null;
+			
+			/**
+			 * This property holds a row table object to be displayed in the property table
+			 * 
+			 * @param displayOject - Object
+			 */
+			public function set displayObjects(displayObjects:Array):void
+    		{   
+    			_displayObjects = new Array(displayObjects.length);
+    			for (var i:int = 0; i < displayObjects.length; i++) {
+    				_displayObjects[i] = displayObjects[i];
+    			}  			
+    			// update table	
+				updateTable();
+    		}	
+			
+    		
+			/**
+			 * This method is called by super.init() to create dataProvider. 
+			 * It converts a table row object to the dataProvider with a help of an array of table columns
+			 * 
+			 * @return ArrayCollection - dataProvider for the property table
+			 */
+			override protected function createDataProvider():ArrayCollection {
+				if (_displayObjects.length == 0 || _displayColumns == null) 
+					return null;
+								
+				var dataProvider:ArrayCollection = new ArrayCollection();
+				for (var i:int= 0; i < _displayColumns.length; i++) {
+					var column:AdvancedDataGridColumn = _displayColumns[i];	
+					var object:Object = { Name:column.headerText + ":"};
+					
+					//trace("i " + i + " column.dataField " + column.dataField );				
+					for (var y:int = 0; y < _displayObjects.length; y++) {
+						var field:String = "Value" + y;
+						var displayObject:Object = _displayObjects[y];
+						var value:Object = displayObject[column.dataField];
+						//trace("y " + y + " value " + value + " field " + field);	
+						object[field] = value;
+					}
+					dataProvider.addItem(object);								
+				}
+				return dataProvider;
+			}
+			
+			/**
+			 * This method creates and sets columns.
+			 */	
+			override protected function setColumns():void {
+				if (_displayObjects.length == 0) return;
+				
+				_tableColumns = new Array();
+				// create first column
+				var type:int = ECUITAdvancedDataGridColumn.NUMERIC;	
+				var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type);	
+				column.dataField = "Name";
+				column.itemRenderer = new ClassFactory(PropertyTableItemRenderer);;	
+				_tableColumns.push(column);	
+				// create all other columns	
+				type = ECUITAdvancedDataGridColumn.TEXT;				
+				for (var i:int = 0; i < _displayObjects.length; i++) {				
+					column = new ECUITAdvancedDataGridColumn(type);		 
+					column.dataField = "Value" + i;
+					if (i == 0)
+						column.itemRenderer = new ClassFactory(PropertyTableItemRenderer);
+					else 
+						column.itemRenderer = new ClassFactory(PropertyTableItemRenderer2);				
+					_tableColumns.push(column);
+				}
+				columns = _tableColumns;	
+			}
+				
+		]]>
+	</mx:Script>
+</t:DataGridPropertyTable>
+

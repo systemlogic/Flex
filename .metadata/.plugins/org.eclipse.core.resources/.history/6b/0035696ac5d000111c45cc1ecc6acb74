@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension-files>
+    <file name="config/service_def/UxFramework.xml" />
+    <file name="config/service_def/UxFxSpy.xml" />
+</extension-files>

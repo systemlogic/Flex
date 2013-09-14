@@ -1,0 +1,352 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.certificatevalidation {
+    import com.emc.efx.UxConstants;
+    import com.emc.efx.core.extensionmgr.UxDefaultService;
+    import com.emc.efx.core.extensionmgr.UxExtensionManager;
+    import com.emc.efx.core.extensionmgr.UxServiceInformation;
+    import com.emc.efx.core.loggingmgr.UxLoggingMgr;
+    import com.emc.efx.net.UxSocket;
+    import com.emc.efx.net.UxSocketPool;
+    import com.emc.efx.net.UxURL;
+    import com.emc.efx.services.rpc.UxParser;
+    import com.emc.efx.services.rpc.UxRpcClient;
+    import com.emc.efx.services.rpc.util.UxXMLRPCDataTypes;
+    import com.emc.efx.services.runtimeproperties.IUxRuntimePropertiesService;
+    
+    import flash.events.Event;
+    import flash.events.IOErrorEvent;
+    import flash.events.SecurityErrorEvent;
+
+    /**
+     * Service to manage SSL Certificates.
+     */
+    public class UxCertificateValidationService extends UxDefaultService
+        implements IUxCertificateValidationService {
+
+        /** Resource bundle constant. */
+        public static const CERTIFICATE_VALIDATION_SERVICE_RESOURCE_BUNDLE:String =
+            "certificatevalidation";
+
+        /** Java side Certificate Management Service Name. */
+        public static const JAVA_CERTIFICATE_MGMT_SERVICE:String =
+            "CertificateManagementService";
+        private var _certificateStore:UxCertificateStore =
+            new UxCertificateStore;
+
+        /** If certificate validation is enabled or not.*/
+        private var _validationEnabled:Boolean = true;
+    
+	    private static const CERTIFICATES_CHANGED:String= "certificatesChanged";
+
+        /**
+         * @inheritDoc
+         */
+        override public function start(serviceInformation:UxServiceInformation):void {
+            // Do rest of the default startup
+            super.start(serviceInformation);
+
+            // Add certificate Deserializer to UxParser.
+            UxParser.addCustomSerializer(new UxCertificateDeserializer());
+
+            var propService:IUxRuntimePropertiesService =
+                UxExtensionManager.getInstance().getService(UxConstants.
+                RUNTIME_PROPERTIES_SERVICE) as IUxRuntimePropertiesService;
+            _validationEnabled =
+                ((propService.getRuntimeProperty("enableCertificateValidation",
+                "true")) == "false" ? false : true);
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function stop():void {
+            clearCertificates();
+			// Do rest of the default stop
+			super.stop();
+        }
+
+        /**
+         * @inheritDoc
+         */
+        public function validate(url:UxURL, validationCompleteCallBack:Function,
+            validationFailedCallBack:Function,
+            promptForAcceptance:Boolean=true):void {
+            if (!_validationEnabled) {
+                validationCompleteCallBack(null);
+            } else {
+                UxSocketPool.getInstance().
+                    requestSocket(function(socket:UxSocket):void {
+                    onSocketAvailable(url, socket, promptForAcceptance,
+                        validationCompleteCallBack, validationFailedCallBack);
+                });
+            }
+        }
+
+        /**
+         *
+         * Make the socket connection once socket is available.
+         * @param url
+         * @param socket
+         *
+         */
+        private function onSocketAvailable(url:UxURL, socket:UxSocket,
+            promptForCertificateAcceptance:Boolean,
+            validationCompleteCallBack:Function,
+            validationFailedCallBack:Function):void {
+            socket.secure = true;
+            socket.promptForCertificateAcceptance =
+                promptForCertificateAcceptance;
+            // Set the default port if the port is not set
+            if (url.port == -1) {
+                if (url.scheme == "https") {
+                    url.port = 443;
+                } else {
+                    url.port = 80;
+                }
+            }
+            // Add listeners
+            socket.addEventListener(Event.CONNECT,
+                function valComplete(event:Event):void {
+                onValidationComplete(url, validationCompleteCallBack);
+                socket.close();
+            });
+
+            socket.addEventListener(SecurityErrorEvent.SECURITY_ERROR,
+                function valComplete(event:Event):void {
+                onValidationComplete(url, validationFailedCallBack);
+            });
+            socket.addEventListener(IOErrorEvent.IO_ERROR,
+                function valComplete(event:Event):void {
+                onValidationComplete(url, validationFailedCallBack);
+            });
+
+            // Open the connection
+            // If certificate is valid, then connection will be successful. Else SECURITY_ERROR will be thrown.
+            socket.connect(url.host, url.port);
+        }
+
+        /**
+         * Function to handle certificate validation complete
+         */
+        private function onValidationComplete(url:UxURL, callBack:Function):void {
+            var cert:UxCertificate = getCertificateByURL(url);
+            callBack(cert);
+        }
+
+        [Bindable(event = CERTIFICATES_CHANGED)]
+        /**
+         * Count of all certificates including accepted/rejected/not accepted.
+         */
+        public function get certificateCount():int {
+            return _certificateStore.certificateCount;
+        }
+        import com.emc.efx.services.certificatevalidation.UxX509Certificate;
+
+        [Bindable(event = CERTIFICATES_CHANGED)]
+        /**
+         * Count of UnAccepted Certificates.
+         */
+        public function get unacceptedCertificateCount():int {
+            var count:int = 0;
+            for each (var cert:UxCertificate in _certificateStore.certificates) {
+                if (!cert.isAccepted) {
+                    count++;
+                }
+            }
+            return count;
+        }
+
+        [Bindable(event = CERTIFICATES_CHANGED)]
+        /**
+         * All certificates including accepted/rejected/not accepted.
+         */
+        public function get certificates():Array {
+            return _certificateStore.certificates;
+        }
+
+        /**
+         * Clear all the stored certificates
+         */
+        public function clearCertificates():void {
+            _certificateStore = new UxCertificateStore;
+        }
+
+        /**
+         * All certificates including accepted/rejected/not accepted.
+         */
+        public function getCertificateByURL(url:UxURL):UxCertificate {
+            var cert:UxCertificate = null;
+            for each (var certificate:UxCertificate in certificates) {
+                if (certificate.url.toString() == url.toString()) {
+                    cert = certificate;
+                    break;
+                }
+            }
+            return cert;
+        }
+
+        /**
+         * Function to accept certificate for session.
+         * This function calls the corresponding method in Java CertificateManagement Service which
+         * after updating the status calls back certificateAcceptanceStateUpdated() method
+         */
+        public function acceptForSession(certificate:UxCertificate):void {
+            var rpcClient:UxRpcClient =
+                new UxRpcClient(JAVA_CERTIFICATE_MGMT_SERVICE +
+                ".acceptForSession");
+            rpcClient.addParam(certificate.uniqueIdentifier,
+                UxXMLRPCDataTypes.STRING);
+            rpcClient.call();
+        }
+
+        /**
+         * Function to accept certificate permanently.
+         * This function calls the corresponding method in Java CertificateManagement Service which
+         * after updating the status calls back certificateAcceptanceStateUpdated() method
+         */
+        public function acceptAlways(certificate:UxCertificate):void {
+            var rpcClient:UxRpcClient =
+                new UxRpcClient(JAVA_CERTIFICATE_MGMT_SERVICE +
+                ".acceptPermanently");
+            rpcClient.addParam(certificate.uniqueIdentifier,
+                UxXMLRPCDataTypes.STRING);
+            rpcClient.call();
+        }
+
+        /**
+         * Function to unaccept certificate.
+         * This function calls the corresponding method in Java CertificateManagement Service which
+         * after updating the status calls back certificateAcceptanceStateUpdated() method
+         */
+        public function unaccept(certificate:UxCertificate):void {
+            var rpcClient:UxRpcClient =
+                new UxRpcClient(JAVA_CERTIFICATE_MGMT_SERVICE +
+                ".unAcceptCertificate");
+            rpcClient.addParam(certificate.uniqueIdentifier,
+                UxXMLRPCDataTypes.STRING);
+            rpcClient.call();
+        }
+
+        /**
+         * Function to reject certificate.
+         * This function calls the corresponding method in Java CertificateManagement Service which
+         * after updating the status calls back certificateAcceptanceStateUpdated() method
+         */
+        public function reject(certificate:UxCertificate):void {
+            var rpcClient:UxRpcClient =
+                new UxRpcClient(JAVA_CERTIFICATE_MGMT_SERVICE + ".reject");
+            rpcClient.addParam(certificate.uniqueIdentifier,
+                UxXMLRPCDataTypes.STRING);
+            rpcClient.call();
+        }
+
+        /**
+         * Function that is called when certificate acceptance state changes on Java side.
+         * The Java CertificateManagement Service calls this function.
+         * The state of the certificate copy on the Flex side is changed here.
+         */
+        public function certificateAcceptanceStateUpdated(certificateUniqueId:String,
+            acceptanceState:String):void {
+            var cert:UxCertificate =
+                _certificateStore.getCertificateByUniqueId(certificateUniqueId);
+            if (cert != null) {
+                cert.acceptanceState =
+                    UxCertificateAcceptanceState.
+                    getAcceptanceState(acceptanceState);
+                // trigger update so that the certificate change is reflected in UI Components (Certificate Sticker, Certificate Mgmt Dialog, etc)
+                triggerUpdate();
+            } else {
+                UxLoggingMgr.getInstance().logWarn(this,
+                    "UxCertificateValidationService.certificateAcceptanceStateUpdated() - Certificate not found!");
+            }
+        }
+
+        /**
+         * Function to check if certificate is trusted.
+         * This function only checks the values of Validation State and Acceptance State.
+         * It does not perform the actual validation. Refer to function validateCertificate() for performing actual validation.
+         */
+        public function isCertificateTrusted(certificateUniqueIdentifier:String):Boolean {
+            var storedCertificate:UxCertificate =
+                _certificateStore.getCertificate(certificateUniqueIdentifier);
+            return (storedCertificate != null && storedCertificate.isValid &&
+                storedCertificate.isAccepted);
+        }
+
+
+        /**
+         * Function to perform validation of certificate.
+         * This function prompts the user for acceptance of certificate if promptForAcceptance parameter is true.
+         *
+         * If promptForAcceptance is false, then certificate is rejected if the validationState contains 'INVALID_DATE' or 'INVALID_SIGNATURE' or 'UNREACHABLE' or 'MALFORMED'.
+         *
+         * The evaluation of validationState of Certificate takes place in the Java CertificateManagement Service.
+         */
+        public function validateCertificate(certificate:UxCertificate,
+            promptForAcceptance:Boolean=true):void {
+
+            // Check if certificate already present.
+            var cert:UxCertificate =
+                _certificateStore.getCertificateByUniqueId(certificate.
+                uniqueIdentifier);
+            if (cert != null) {
+                // Certificate not already present
+                _certificateStore.addCertificate(certificate);
+            } else {
+                // Certificate already present. This means that the certificate contents have changed.
+                _certificateStore.addCertificate(certificate);
+            }
+
+            if (promptForAcceptance) {
+                // If promptForAcceptance is true, then prompt user if state is 'NOT_ACCEPTED' or 'REJECTED'
+                if (!certificate.isAccepted) {
+                    displayWarningDialog(certificate.url.host, certificate);
+                }
+            } else {
+                // If promptForAcceptance is false, then accept if allowAccept is true
+                if (certificate.allowAccept) {
+                    acceptForSession(certificate);
+                } else {
+                    reject(certificate);
+                }
+            }
+            triggerUpdate();
+        }
+
+        /**
+         * Display the certificate warning dialog.
+         * @param system
+         * @param certificate
+         */
+        private function displayWarningDialog(system:String,
+            certificate:UxCertificate):void {
+            var certificateWarningDialog:UxCertificateWarningDlg =
+                new UxCertificateWarningDlg(system, certificate);
+
+            var handleWarningDialogEvent:Function = function(event:Event):void {
+                certificateWarningDialog.close();
+            };
+
+            certificateWarningDialog.addEventListener(UxCertificateWarningDlg.
+                ACCEPTED_EVENT, handleWarningDialogEvent);
+            certificateWarningDialog.addEventListener(UxCertificateWarningDlg.
+                REJECTED_EVENT, handleWarningDialogEvent);
+
+			certificateWarningDialog.centerDialog();
+            certificateWarningDialog.show(null);
+        }
+
+        /**
+         * Trigger an update for any data binding and persist the updated cert store.
+         */
+        private function triggerUpdate():void {
+            dispatchEvent(new Event(CERTIFICATES_CHANGED));
+        }
+    }
+}

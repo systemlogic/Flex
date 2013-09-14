@@ -1,0 +1,20 @@
+package com.emc.fma.model.SchemaManager.vo
+{
+    
+	[Bindable]
+	public class AtmosVO
+	{
+		public var Name:String;
+		public var DNSName:String;
+		public var Port:String;
+		public var HttpProtocol:String;
+		public var UID:String ;
+		public var SharedSecret:String ;
+
+		public function AtmosVO()
+		{
+			
+		}
+		
+	}
+}

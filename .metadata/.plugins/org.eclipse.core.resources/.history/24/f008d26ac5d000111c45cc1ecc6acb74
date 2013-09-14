@@ -1,0 +1,8 @@
+package com.emc.efx.services.help
+{
+	public interface IUxHelpService
+	{
+		function showHelp(helpID:String):void;
+		function getSnippet(snippetID:String):String;
+	}
+}

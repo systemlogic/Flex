@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wiz:UxWizardStep xmlns:mx="library://ns.adobe.com/flex/mx"
+				  xmlns:wiz="com.emc.efx.guitoolkit.components.wizards.*"
+				  xmlns:s="library://ns.adobe.com/flex/spark"
+				  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				  width="400"
+				  height="200"
+				  backgroundColor="#EAF5FE" xmlns:Configuration="com.emc.fma.views.Configuration.*" xmlns:views="com.emc.efx.guitoolkit.components.views.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITDialog;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+			import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.views.Utility.Command;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.collections.HierarchicalData;
+			import mx.collections.XMLListCollection;
+			import mx.controls.Text;
+			import mx.events.FlexEvent;
+			import mx.events.IndexChangedEvent;
+			import mx.events.ItemClickEvent;
+			import mx.managers.PopUpManager;
+			import mx.resources.ResourceManager;
+			
+			private var _initialized:Boolean = false;	
+			private var Rule:int = 0;			
+			[Bindable]
+			private var CBDB_Retention:ArrayCollection = new ArrayCollection(["years","months","weeks","days"]); 
+			[Bindable]
+			private var policyList:XMLListCollection;			
+			[Bindable]
+			private var initDG:ArrayCollection = new ArrayCollection([{Rule: 'Rule 0',Action: 'Don\'t Archive', Attribute: 'size', Operator: '<', Value: '8', Unit: 'kilobyte(s)'},{Rule: 'Rule 1',Action: 'Archive', Attribute: 'size', Operator: '>=', Value: '8', Unit: 'kilobyte(s)'}]);
+			[Bindable]
+			public var PolicyRules:ArrayCollection = new ArrayCollection();			
+			[Bindable]
+			private var fileAttribute:ArrayCollection = new ArrayCollection(["last_accessed","last_modified","last_attr_changed","size","filename","dirname"]); 
+			[Bindable]
+			private var operators:ArrayCollection = new ArrayCollection([">",">=","<","<=","equals","matches regex","matches singlefile"]); 
+			[Bindable]
+			private var attributeValues:ArrayCollection = new ArrayCollection(["terabytes(s)","gigabyte(s)","megabyte(s)","kilobyte(s)","byte(s)"]); 
+			[Bindable]
+			private var action:ArrayCollection = new ArrayCollection(["Archive","Don't Archive"]);
+			
+			public var policyRulesXML:XML = <ExpressionList/>;			
+			public var policyRulesXMLList:XMLList;
+			public var StrToArray:Array
+			public var EditFlag:Boolean
+			public var Action:String
+			
+			private var _client:UxHttpClient;
+			private var response:XMLList ;
+			private var myWatcher:ChangeWatcher ;
+			private var nextFlag:Boolean = false;		
+			private var backFlag:Boolean = false;
+			
+			
+			override public function postDisplay(): void 
+			{
+				if (!_initialized) 
+				{
+					_initialized = true;
+					
+					if(getData(TaskType.ATTR_TASK_TYPE)=="Archive"){
+						policyNameTextInput.text="archiveSample"
+						dp.visible=true
+						rp.visible=true
+						sr.visible=true
+					}
+					else{
+						policyNameTextInput.text="migrateSample"
+						dp.visible=false
+						rp.visible=false
+						sr.visible=false
+					}	
+					
+					/* Add Default XML Here */	
+					
+					var Type:String = getData(TaskType.ATTR_SECONDARYTYPE).toString();
+					
+					if(Type == "Celerra" || Type == "DataDomain" || Type == "Isilon" || Type == "NetApp" || Type == "VNX" || Type == "VNXe" || Type == "Windows")
+					{
+						var type:String = "nas";
+						
+						if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+							var repository:String = "archive to \"Repository at \\\\" + getData(TaskType.ATTR_SECONDARYSERVER).toString() + "\\" + getData(TaskType.ATTR_SECONDARYFILESYSTEM).toString() + "\"";
+						else
+						{
+							type = "Migrate";
+							repository = "nothing";
+						}							
+					}
+					else
+					{
+						type = "";
+						repository = getData(TaskType.ATTR_SECONDARYSERVER).toString();
+					}
+					
+					var defaultXML1:XML = 
+						<Expression>
+						  <Rule>
+							<Keyword>last_accessed</Keyword>
+							<Operator>&lt;=</Operator>
+							<Value>3</Value>
+							<Unit>months</Unit>
+						  </Rule>
+						<Type>nothing</Type>
+						<repo>nothing</repo>
+						</Expression>; 
+					var defaultXML2:XML = 
+						<Expression>
+						  <Rule>
+							<Keyword>last_accessed</Keyword>
+							<Operator>&gt;</Operator>
+							<Value>3</Value>
+							<Unit>months</Unit>
+						  </Rule>
+						  <Type>{type}</Type>
+						  <repo>{repository}</repo>
+						</Expression>;
+					
+					policyRulesXML.appendChild(defaultXML1); 
+					policyRulesXML.appendChild(defaultXML2);
+					
+					
+					for each( var node:XML in policyRulesXML.elements() ) 
+					{
+						var expression:String = node.Rule.Keyword.toString() + " " + node.Rule.Operator.toString() + " " +
+							node.Rule.Value.toString() + " " + node.Rule.Unit.toString() ;
+						
+						var action:String;
+						
+						if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+							action = node.repo.toString();
+						else
+							if (node.Type.toString() == "")
+								action = "nothing";
+							else
+								action = "migrate_file"
+						
+						
+						PolicyRules.addItem({Expression: expression, Action: action});
+					}
+					
+					enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);	
+					
+				}
+					
+				else
+				{
+					enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+					if (backFlag)
+					{
+						savePolicyButton.enabled=false
+						enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+					}
+				}				
+			}
+			
+			override protected function save(): void
+			{				
+				if(!isCurrentStep())return;			
+				stepComplete = true; 				
+			}
+			
+			
+			override protected function validate(): Boolean
+			{
+				return true;
+			}			
+			
+			private function clickAdd():void {
+				var dialog:CreateRule = new CreateRule();
+				dialog.Task=getData(TaskType.ATTR_TASK_TYPE).toString();
+				dialog.Type=getData(TaskType.ATTR_SECONDARYTYPE).toString();
+				if(dialog.Type != "Centera" || dialog.Type != "Atmos" || dialog.Type != "Amazon")
+					if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+						dialog.Repository = "archive to \"Repository at \\\\" + getData(TaskType.ATTR_SECONDARYSERVER).toString() + "\\" + getData(TaskType.ATTR_SECONDARYFILESYSTEM).toString() + "\"";
+					else
+						dialog.Repository = "nothing";
+				dialog.ServerName=getData(TaskType.ATTR_SECONDARYSERVER).toString();
+				dialog.ref = this ;
+				dialog.modal = true;
+				dialog.show(this.parent); 
+				myWatcher = ChangeWatcher.watch(dialog, "policyRulesXML", watchPath);
+			}			
+			
+			private function watchPath(event:Event):void {
+				trace(policyRulesXML);
+				myWatcher.unwatch();
+			}	
+			
+			private function clickEdit():void {
+				if (ruleDataGrid.selectedIndex != -1) 
+				{
+					var dialog:CreateRule = new CreateRule();
+					dialog.Task=getData(TaskType.ATTR_TASK_TYPE).toString();
+					dialog.Type=getData(TaskType.ATTR_SECONDARYTYPE).toString();
+					if(dialog.Type != "Centera" || dialog.Type != "Atmos" || dialog.Type != "Amazon")
+						if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+							dialog.Repository = "archive to \"Repository at \\\\" + getData(TaskType.ATTR_SECONDARYSERVER).toString() + "\\" + getData(TaskType.ATTR_SECONDARYFILESYSTEM).toString() + "\"";
+						else
+							dialog.Repository = "nothing";
+					dialog.ServerName=getData(TaskType.ATTR_SECONDARYSERVER).toString();
+					EditFlag=true;					
+					dialog.ref = this ;
+					dialog.modal = true;
+					dialog.show(this.parent); 
+					myWatcher = ChangeWatcher.watch(dialog, "policyRulesXML", watchPath);
+				}					
+			}
+			
+			private function clickDelete():void 
+			{
+				if (ruleDataGrid.selectedIndex != -1) 
+				{	
+					var index:int = ruleDataGrid.selectedIndex
+						delete policyRulesXML.Expression[index];
+					PolicyRules.removeItemAt(ruleDataGrid.selectedIndex);				
+				}				
+			}
+			
+			private function clickSavePolicy():void
+			{
+				var policy:XML = <REQUEST/>;
+				
+				if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+				{
+					/* Default Archive policyRulesXML */
+					policy.appendChild(<action>savePolicy</action>);
+					policy.appendChild(<Name>{policyNameTextInput.text}</Name>);
+					policy.appendChild(<policyType>archive</policyType>);
+					policy.appendChild(<retentionPeriod>{retentionTime.text}</retentionPeriod>);
+					policy.appendChild(<retentionUnit>{retentionPeriod.selectedItem}</retentionUnit>);
+					policy.appendChild(<delayPeriod>{delayPeriod.text}</delayPeriod>);
+					policy.appendChild(<stubRetention>{stubRetention.selected}</stubRetention>);
+					policy.appendChild(<daysMissing>30</daysMissing>);
+					policy.appendChild(<daysMissingUnit>days</daysMissingUnit>);
+					policy.appendChild(<deleteAll>false</deleteAll>);
+				}
+				else
+				{
+					/* Default Migrate policyRulesXML */
+					policy.appendChild(<action>savePolicy</action>);					
+					policy.appendChild(<Name>{policyNameTextInput.text}</Name>);
+					policy.appendChild(<policyType>migrate_file</policyType>);
+					policy.appendChild(<retentionPeriod>0</retentionPeriod>);
+					policy.appendChild(<retentionUnit>years</retentionUnit>);
+					policy.appendChild(<delayPeriod>0</delayPeriod>);
+					policy.appendChild(<stubRetention>false</stubRetention>);
+					policy.appendChild(<daysMissing>30</daysMissing>);
+					policy.appendChild(<daysMissingUnit>days</daysMissingUnit>);
+					policy.appendChild(<deleteAll>false</deleteAll>);
+				}
+				
+				policy.appendChild(policyRulesXML);
+				_client = new UxHttpClient();
+				trace(policy);
+				_client.addEventListener(Event.COMPLETE, onSave);
+				var cmd:Command = new Command(_client,onSave,xml,false,"savePolicy.htm",viewBlock);
+				_client = cmd.sendCommand();
+				
+				if(PolicyTabNavigator.selectedIndex == 0)
+					setData(TaskType.ATTR_POLICYNAME, policyNameTextInput.text);
+				if(PolicyTabNavigator.selectedIndex == 1)
+					setData(TaskType.ATTR_POLICYNAME, policyNameComboBox.selectedItem);				
+			}
+			
+			private function onSave(event:Event):void{
+				var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+				dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+				
+			}
+			
+			private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+			{
+				if ((new XMLList(_client.response.body)).Result[0].toString() == "Policy commited")	
+				{
+					enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+					backFlag = true;
+				}
+				
+			}
+			
+			protected function changeHandler(event:IndexChangedEvent):void
+			{
+				if(PolicyTabNavigator.selectedIndex == 0)
+					enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				
+				if(PolicyTabNavigator.selectedIndex == 1)
+				{
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, onComplete);
+					var data:ByteArray = new ByteArray();
+					var xml:XML = <REQUEST/>; 
+					data.writeUTFBytes(xml);
+					var cmd:Command = new Command(_client,xxxCommand,xml,false,"getPolicyList.htm",viewBlock);
+					_client = cmd.sendCommand();
+				}				
+				
+				if (nextFlag && !_initialized)
+					enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				
+			}
+			
+			private function onComplete(event:Event):void {
+				
+				response = new XMLList(_client.response.body);
+				
+				if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+					policyList	= new XMLListCollection(response.Policy.(elements('type') == '0' ).name);
+				else
+					policyList	= new XMLListCollection(response.Policy.(elements('type') == '8' ).name);
+				
+				policyNameComboBox.dataProvider.refresh();					
+				
+				if (policyList != null)
+				{
+					enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+					nextFlag = true;
+				}										
+			}
+			
+			private function serialLabelFunction(item:Object, column:DataGridColumn):String
+			{
+				var index:int =ruleDataGrid.dataProvider.getItemIndex(item);
+				if (index > -1)
+					return (index + 1).toString();
+				
+				return "";
+			} 			
+			
+		]]>
+	</fx:Script>
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+		<mx:TabNavigator id="PolicyTabNavigator" backgroundColor="#EAF5FE"
+						 selectedIndex="0"  tabStyleName="Tab" lastTabStyleName="Tab"
+						 historyManagementEnabled="false"  firstTabStyleName="Tab"
+						 width="100%" height="100%" change="changeHandler(event)">
+			
+			<mx:Form id="newForm" label="New Policy" width="100%" height="100%">
+				
+				<mx:FormItem label="Policy Name" textAlign="left">
+					<mx:TextInput id="policyNameTextInput" />
+				</mx:FormItem>	
+				
+				<mx:FormItem  id="dp" label="Delay Period">
+					<mx:HBox>
+						<mx:TextInput id="delayPeriod" text="0" textAlign="left" width="60"/>
+						<mx:Label text="Days"/>
+					</mx:HBox>
+				</mx:FormItem>
+				
+				<mx:FormItem id="rp" label="Retention Period" textAlign="left" >
+					<mx:HBox>
+						<mx:TextInput id="retentionTime" text="0" width="60"/>
+						<mx:ComboBox id="retentionPeriod" dataProvider="{CBDB_Retention}" width="80" />
+					</mx:HBox>
+				</mx:FormItem>
+				
+				<mx:FormItem id="sr" label="Stub Retention" textAlign="left" paddingBottom="20">
+					<mx:CheckBox id="stubRetention"/>
+				</mx:FormItem>
+				
+				<mx:Label text="Policy Rules" fontWeight="bold"/>
+				
+				<mx:HBox>
+					<mx:DataGrid id="ruleDataGrid" dataProvider="{PolicyRules}" height="100" width="480" editable="false" 
+								 wordWrap="true" variableRowHeight="true" allowMultipleSelection="false">
+						<mx:columns>
+							<mx:DataGridColumn headerText="Rule" width="40" labelFunction="serialLabelFunction"/>
+							<mx:DataGridColumn headerText="Matching Expression" width="240" dataField="Expression"/>
+							<mx:DataGridColumn headerText="Action" width="200" dataField="Action"/>
+						</mx:columns>
+					</mx:DataGrid>
+					
+				</mx:HBox>
+				
+				<mx:HBox>
+					<mx:Button id="addButton" label="Add" width="80" click="clickAdd()" />
+					<mx:Button id="editButton" label="Edit" width="80" click="clickEdit()" />
+					<mx:Button id="deleteButton" label="Delete" width="80" click="clickDelete()" />
+					<mx:Button id="savePolicyButton" label="Save Policy" width="120" click="clickSavePolicy()" />
+				</mx:HBox>
+				
+			</mx:Form>
+			
+			
+			<mx:Form id="existingForm" label="Select Existing Policy" width="100%" height="100%">
+				
+				<mx:FormItem label="Policy Name" textAlign="left">
+					<mx:ComboBox id="policyNameComboBox" dataProvider="{policyList}"/>
+				</mx:FormItem>
+				
+			</mx:Form>
+			
+		</mx:TabNavigator>
+	</views:UxProgressCanvas>
+</wiz:UxWizardStep>

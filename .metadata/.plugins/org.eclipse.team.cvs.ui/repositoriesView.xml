@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<repositories-view>
+	<repository id=":pserver:arorah1@aleve.lss.emc.com:2403/cvs/rain/cvs_root">
+		<module path="FileManagementGUI" lastAcessTime="1350388201339">
+		</module>
+		<module path="3rdPartyPackages" lastAcessTime="1350388201339" type="defined">
+		</module>
+		<module path="RainStorageGUI" lastAcessTime="1350388201339" type="defined">
+		</module>
+		<module path="RainStorageGUI" lastAcessTime="1350388201339">
+		</module>
+		<module path="3rdPartyPackages" lastAcessTime="1350388201339">
+		</module>
+		<module path="FileManagementGUI" lastAcessTime="1350388201339" type="defined">
+		</module>
+	</repository>
+</repositories-view>

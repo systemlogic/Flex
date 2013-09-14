@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A BigButtonContainer -->
+<UxBigButtonContainer xmlns="com.emc.efx.services.layout.containers.*"
+            xmlns:mx="http://www.adobe.com/2006/mxml"
+            xmlns:section="com.emc.efx.services.layout.section.*"
+            xmlns:sample="com.emc.sample.*"
+            horizontalGap="0"
+            xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+            xmlns:Configuration="com.emc.fma.views.Configuration.*"
+            xmlns:NASRepository="com.emc.fma.views.Configuration.NASRepository.*"
+            xmlns:ArchivedReport="com.emc.fma.views.Configuration.ArchivedReport.*"
+            xmlns:FileMover="com.emc.fma.views.Configuration.FileMover.*"
+            xmlns:ImportProvider="com.emc.fma.views.Configuration.ImportProvider.*"
+            xmlns:views1="com.emc.ecuit.flex.components.views.*"
+            xmlns:FileServer="com.emc.fma.views.Configuration.FileServer.*"
+            xmlns:FileMigration="com.emc.fma.views.Configuration.FileMigration.*"
+            xmlns:NetAppFPolicy="com.emc.fma.views.Configuration.NetAppFPolicy.*"
+            xmlns:CallbackStatus="com.emc.fma.views.Configuration.CallbackStatus.*"
+            xmlns:BackupRecovery="com.emc.fma.views.Configuration.BackupRecovery.*"
+            xmlns:QualifiedDomain="com.emc.fma.views.Configuration.QualifiedDomain.*"
+            xmlns:FileEncryption="com.emc.fma.views.Configuration.FileEncryption.*"
+            xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*">
+    <sections>
+      <section:UxDefaultSection key="FILESERVER" sortOrder="1"
+                    headerText="@Resource(key='FILESERVER', bundle='fma')"
+                    description="@Resource(key='FILESERVER_DISC', bundle='fma')"
+                    iconSource="@Resource(key='FILE_SERVERS_56', bundle='fma')"
+                    smallIconSource="@Resource(key='FILE_SERVERS_56', bundle='fma')">
+        <section:contentView>
+          <FileServer:FileServerList/>
+        </section:contentView>
+      </section:UxDefaultSection>
+      <section:UxDefaultSection key="NASREPO" sortOrder="2"
+                    headerText="@Resource(key='NASREPO', bundle='fma')"
+                    description="@Resource(key='NASREPO_DISC', bundle='fma')"
+                    iconSource="@Resource(key='NAS_GROUP_56', bundle='fma')"
+                    smallIconSource="@Resource(key='NAS_GROUP_56', bundle='fma')">
+        <section:contentView>
+          <NASRepository:NASRepoAndGroup/>
+        </section:contentView>
+      </section:UxDefaultSection>
+
+      <section:UxLazyLoadSection key="FILEMOVER" sortOrder="3"
+                     headerText="@Resource(key='FILEMOVER', bundle='fma')"
+                     description="@Resource(key='FILEMOVER_DISC', bundle='fma')"
+                     iconSource="@Resource(key='FILE_MOVER_SETTING_56', bundle='fma')"
+                     smallIconSource="@Resource(key='FILE_MOVER_SETTING_56', bundle='fma')"
+                     contentClass="com.emc.fma.views.Configuration.FileMover.FileMoverSetting"/>
+
+      <section:UxDefaultSection key="IMPORTPROVIDERS" sortOrder="4"
+                    headerText="@Resource(key='IMPORTPROVIDERS', bundle='fma')"
+                    description="@Resource(key='IMPORTPROVIDERS_DISC', bundle='fma')"
+                    iconSource="@Resource(key='IMPORT_PROVIDER_56', bundle='fma')"
+                    smallIconSource="@Resource(key='IMPORT_PROVIDER_56', bundle='fma')">
+        <section:contentView>
+          <ImportProvider:ImportProviderList/>
+        </section:contentView>
+      </section:UxDefaultSection>
+      <section:UxDefaultSection key="FILEMIGRATION" sortOrder="5"
+                    headerText="@Resource(key='FILEMIGRATION', bundle='fma')"
+                    description="@Resource(key='FILEMIGRATION_DISC', bundle='fma')"
+                    iconSource="@Resource(key='FILE_MIGRATION_SETTING_56', bundle='fma')"
+                    smallIconSource="@Resource(key='FILE_MIGRATION_SETTING_56', bundle='fma')">
+        <section:contentView>
+          <FileMigration:FileMigrationSettings/>
+        </section:contentView>
+      </section:UxDefaultSection>
+
+      <section:UxLazyLoadSection key="ENCRYPTION" sortOrder="6"
+                    headerText="@Resource(key='ENCRYPTION', bundle='fma')"
+                    description="@Resource(key='ENCRYPTION_DISC', bundle='fma')"
+                    iconSource="@Resource(key='FILE_ENCRYPTION_KEY_56', bundle='fma')"
+                    smallIconSource="@Resource(key='FILE_ENCRYPTION_KEY_56', bundle='fma')"
+                    contentClass="com.emc.fma.views.Configuration.FileEncryption.FileEncryption"/>
+
+      <section:UxLazyLoadSection key="NETAPPFSC" sortOrder="7"
+                     headerText="@Resource(key='NETAPPFSC', bundle='fma')"
+                     description="@Resource(key='NETAPPFSC_DISC', bundle='fma')"
+                     iconSource="@Resource(key='NETAPP_FPOLICY_56', bundle='fma')"
+                     smallIconSource="@Resource(key='NETAPP_FPOLICY_56', bundle='fma')"
+                     contentClass="com.emc.fma.views.Configuration.NetAppFPolicy.NetAppFPolicySettings"/>
+
+      <section:UxLazyLoadSection key="CNACALLBACKST" sortOrder="8"
+                     headerText="@Resource(key='CNACALLBACKST', bundle='fma')"
+                     description="@Resource(key='CNACALLBACKST_DISC', bundle='fma')"
+                     iconSource="@Resource(key='CALLBACK_DAEMONS_56', bundle='fma')"
+                     smallIconSource="@Resource(key='CALLBACK_DAEMONS_56', bundle='fma')"
+                     contentClass="com.emc.fma.views.Configuration.CallbackStatus.CallbackStatusSettings"/>
+      <section:UxLazyLoadSection key="BMRSETTINGS" sortOrder="9"
+                     headerText="@Resource(key='BMRSETTINGS', bundle='fma')"
+                     description="@Resource(key='BMRSETTINGS_DISC', bundle='fma')"
+                     iconSource="@Resource(key='BACKUP_RECOVERY_56', bundle='fma')"
+                     smallIconSource="@Resource(key='BACKUP_RECOVERY_56', bundle='fma')"
+                     contentClass="com.emc.fma.views.Configuration.BackupRecovery.BackupRecoverySettings"/>
+
+      <section:UxLazyLoadSection key="FQD" sortOrder="10"
+                     headerText="@Resource(key='FQD', bundle='fma')"
+                     description="@Resource(key='FQD_DISC', bundle='fma')"
+                     iconSource="@Resource(key='FQDN_56', bundle='fma')"
+                     smallIconSource="@Resource(key='FQDN_56', bundle='fma')"
+                     contentClass="com.emc.fma.views.Configuration.QualifiedDomain.QualifiedDomain"/>
+
+    </sections>
+</UxBigButtonContainer>
+

@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ECUITDialog  xmlns="com.emc.ecuit.flex.components.dialogs.*" 
+			  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx" 
+			  title="Create File Server" 
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  creationComplete="init()" helpID="conf_fserv" allowClose="true" 
+			  allowMaximize="false" width="500" height="300"
+			  allowResize="false" allowMinimize="false" allowMove="false"
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+			  >
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.events.ECUITEvent;
+			import com.emc.ecuit.flex.services.rest.RestHTTPService;
+			import com.emc.efx.guitoolkit.components.buttons.UxButton;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.efx.net.http.UxHttpResponse;
+			import com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.AmazonS3WebService;
+			import com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Azure.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Atmos.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Centera.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.DataDomain.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard;
+			
+			import flash.sampler.NewObjectSample;
+			
+			import mx.events.CloseEvent;
+			import mx.events.ItemClickEvent;
+			import mx.managers.PopUpManager;
+			import mx.resources.ResourceManager;
+			[Bindable]private var serverSelected:String = "No Server selected" ;
+			
+			public var parentObject:Object ;
+			private function addButton():void{
+				var okButton:UxButton = new UxButton();
+				okButton.label = "OK";
+				okButton.addEventListener(MouseEvent.CLICK, onOK);
+				this.addButtonBarButton(okButton);
+				
+				var cancel_Button:UxButton = new UxButton();
+				cancel_Button.label = "Cancel";
+				cancel_Button.addEventListener(MouseEvent.CLICK, onCancel);
+				this.addButtonBarButton(cancel_Button);
+				this.addEventListener(ECUITEvent.CLOSE_WINDOW,onCancel);
+			}
+			private function onCancel(event:Event):void {
+				this.removeAllChildren();
+				this.close();
+			}
+			private function init():void{
+				addButton();
+				
+			}
+			private function titleWindow_close(evt:CloseEvent):void {
+				PopUpManager.removePopUp(this);
+			}
+			
+			private function onOK(event:MouseEvent):void {
+				if(serverSelected == "No Server selected"){
+					ECUITPopupDialog.showMessageDialog(this,serverSelected,ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+				}else{
+					var wizard:Object ;
+					
+					if(serverSelected == "AmazonS3"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.ServerWizard();
+					}else if(serverSelected == "Atmos"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Atmos.ServerWizard();
+					}else if(serverSelected == "Azure"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Azure.ServerWizard();
+					}else if(serverSelected == "Celerra"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard(ResourceManager.getInstance().getString('fma','CELERRA'));;
+					}else if(serverSelected == "Centera"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Centera.ServerWizard();
+					}else if(serverSelected == "Data Domain"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.DataDomain.ServerWizard();
+					}else if(serverSelected == "Isilon"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard()
+					}else if(serverSelected == "NetApp"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard();
+					}else if(serverSelected == "Windows"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard();
+					}else if(serverSelected == "VNX"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard(ResourceManager.getInstance().getString('fma','VNX'));
+					}else if(serverSelected == "VNXe"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard(ResourceManager.getInstance().getString('fma','VNXE'));
+					}
+					wizard.show(this);
+					
+				}
+			}
+			public function updateSelf(serverName:String):void{
+				(parentObject as FileServerList).updateSelf(serverName);
+				this.removeAllChildren();
+				this.close();
+			}
+			private function handleChange(event:ItemClickEvent):void{
+				serverSelected = event.currentTarget.selectedValue ;
+			}
+		]]>
+	</fx:Script>
+	<s:Label width="100%" height="100%" fontSize="12" text="Please Select the type to server you want to create" />
+	<mx:HBox>
+		<mx:VBox>
+			<s:Label  fontSize="12"  fontWeight="bold"  text="NAS File Server"/>
+			<mx:HBox>
+				<mx:RadioButton id="celerra" label="Celerra" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>	
+				<mx:RadioButton id="vnx" label="VNX" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+				<mx:RadioButton id="vnxe" label="VNXe" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+				<mx:RadioButton id="netApp" label="NetApp" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+			</mx:HBox>
+			<mx:HBox>
+				<mx:RadioButton id="dataDomain" label="Data Domain" groupName="Server" paddingLeft="15"/>
+				<mx:RadioButton id="isilon" label="Isilon" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+				<mx:RadioButton id="windows" label="Windows" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+			</mx:HBox>
+			<s:Label  fontSize="12"  text="Cloud File Server"/> 
+			<mx:HBox>
+				<mx:RadioButton id="amazons3" label="AmazonS3" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+				<mx:RadioButton id="atmos" label="Atmos" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+				<mx:RadioButton id="azure" label="Azure" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+			</mx:HBox>
+			<s:Label  fontSize="12"  text="CAS File Server"/> 
+			<mx:RadioButton id="centera" label="Centera" groupName="Server" paddingLeft="15" width="{dataDomain.width}"/>
+		</mx:VBox>
+	</mx:HBox>
+	<mx:RadioButtonGroup id="Server" itemClick="handleChange(event)"/>
+</ECUITDialog>

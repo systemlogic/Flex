@@ -1,0 +1,273 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.Optional;
+
+import mx.events.ItemClickEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+// Suggested step name for use in id field of wizard decriptor XML file
+public static const  ATTR_NAME          :String = "Celerra";
+public static const  ATTR_VDM          :String = "VDM";
+
+public static const STEP_CCD            :String = "CelerraCallbackAgent";
+public static const STEP_ACD            :String = "AtmosCallbackAgent";
+public static const STEP_DIR    :String = "DirectoryExclusion";
+
+
+public static const STEP_NAM       :String = "NameStep"    ;
+public static const STEP_AMZ      :String  = "AmazonS3WebService";
+public static const STEP_ATM      :String  = "AtmosWebService"  ;
+public static const STEP_AZU      :String  = "AzureS3WebService";
+public static const STEP_IPL      :String  = "IPAddressList";
+public static const STEP_CTR      :String = "CelerraControlStation" ;
+public static const STEP_NTA      :String = "NetAppVFilerHostIP";
+public static const STEP_CFS      :String = "CIFSSpecific";
+public static const STEP_NDM      :String  = "NDMPSpecific";
+public static const STEP_NTS      :String = "NetAppAsSource"           ;
+public static const STEP_NTL      :String = "NetAppLocalAdmin";
+public static const STEP_CLS      :String = "CelerraAsSource"           ;
+public static const STEP_CEA      :String  = "CenteraAuthentication"       ;
+public static const STEP_CEU      :String = "UserProfile"            ;
+public static const STEP_CEP      :String = "PEAFile"               ;
+
+
+[Bindable]
+public var _defaultEnterName:String = "";
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+[Bindable]
+public var _defaultMode:String = "";
+// Override as we have step specific display work to do
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    // Pull defaults from wizard data
+    var def:Object;
+    def = getData(ATTR_NAME);
+
+    if (def != null)
+    {
+      _defaultEnterName = String(def);
+    }
+
+    _initialized = true;
+  }
+
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+  updateButtons();
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+private function updateButtons():void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+}
+override protected function validate(): Boolean
+{
+  return true;
+}
+override protected function save(): void
+{
+  stepComplete = true;
+}
+protected function handle_itemClickHandler(event:ItemClickEvent):void
+{
+  var StepEnable:Boolean = true ;
+  parentWizard.enableStep(STEP_NAM, StepEnable);
+
+  if (atmos.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, !StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, !StepEnable);
+    parentWizard.enableStep(STEP_NDM, !StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (amazons3.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, !StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, !StepEnable);
+    parentWizard.enableStep(STEP_NDM, !StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (azure.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, StepEnable);
+    parentWizard.enableStep(STEP_IPL, !StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, !StepEnable);
+    parentWizard.enableStep(STEP_NDM, !StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (celerra.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, StepEnable);
+    parentWizard.enableStep(STEP_CTR, StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, StepEnable);
+    parentWizard.enableStep(STEP_NDM, StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, StepEnable);
+    parentWizard.enableStep(STEP_ACD, StepEnable);
+    parentWizard.enableStep(STEP_DIR, StepEnable);
+  }
+  else if (centera.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, !StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, !StepEnable);
+    parentWizard.enableStep(STEP_NDM, !StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (dataDomain.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, StepEnable);
+    parentWizard.enableStep(STEP_NDM, !StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (isilon.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, StepEnable);
+    parentWizard.enableStep(STEP_NDM, StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (netApp.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, StepEnable);
+    parentWizard.enableStep(STEP_CFS, StepEnable);
+    parentWizard.enableStep(STEP_NDM, StepEnable);
+    parentWizard.enableStep(STEP_NTS, StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (windows.selected)
+  {
+    parentWizard.enableStep(STEP_AMZ, !StepEnable);
+    parentWizard.enableStep(STEP_ATM, !StepEnable);
+    parentWizard.enableStep(STEP_AZU, !StepEnable);
+    parentWizard.enableStep(STEP_IPL, StepEnable);
+    parentWizard.enableStep(STEP_CTR, !StepEnable);
+    parentWizard.enableStep(STEP_NTA, !StepEnable);
+    parentWizard.enableStep(STEP_CFS, StepEnable);
+    parentWizard.enableStep(STEP_NDM, StepEnable);
+    parentWizard.enableStep(STEP_NTS, !StepEnable);
+    parentWizard.enableStep(STEP_NTL, !StepEnable);
+    parentWizard.enableStep(STEP_CLS, !StepEnable);
+    parentWizard.enableStep(STEP_CEA, !StepEnable);
+    parentWizard.enableStep(STEP_CEU, !StepEnable);
+    parentWizard.enableStep(STEP_CEP, !StepEnable);
+    parentWizard.enableStep(STEP_CCD, !StepEnable);
+    parentWizard.enableStep(STEP_ACD, !StepEnable);
+    parentWizard.enableStep(STEP_DIR, !StepEnable);
+  }
+  else if (vnx.selected)
+  {
+  }
+  else if (vnxe.selected)
+  {
+  }
+
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  refreshStepTitle();
+  stepComplete = true;
+
+}
+

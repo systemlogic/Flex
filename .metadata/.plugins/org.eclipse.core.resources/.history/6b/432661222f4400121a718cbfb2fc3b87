@@ -1,0 +1,103 @@
+package com.emc.fma.views.System.model
+{
+
+
+  import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+  import com.emc.efx.guitoolkit.components.table.UxTableModel;
+  import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+  import com.emc.fma.utils.Common;
+  import com.emc.fma.utils.RESTClient;
+  import com.emc.fma.utils.RESTEvent;
+  import flash.events.Event;
+  import flash.events.TimerEvent;
+  import flash.sampler.NewObjectSample;
+  import flash.utils.ByteArray;
+  import flash.utils.Timer;
+
+  import mx.collections.ArrayCollection;
+  import mx.containers.HBox;
+  import mx.controls.Image;
+  import mx.core.ClassFactory;
+  import mx.resources.ResourceManager;
+
+  /**
+   * Sample class showing implementation of a ColumnDataLoader
+   */
+
+  public class UserModel extends UxTableModel
+  {
+
+    [Bindable]public var Response:XML;
+    [Bindable]private var _rowsObject:Object = new Object();
+    private var _timer:Timer;
+
+
+    /**
+     * Constructor
+     */
+    public function UserModel()
+    {
+      super();
+    }
+
+    override protected function loadColumns():void
+    {
+      var col1:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','ADD_USR_USER_NAME'), "Column1");
+      var col2:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','ADD_USR_TYPE'), "Column2");
+      var col3:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','ADD_USR_ENABLEQ'), "Column3");
+      var col4:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','ADD_USR_GUID'), "Column4");
+      columnIdentifiers = new ArrayCollection([col1, col2, col3, col4]);
+
+    }
+    private function onTimer(e:TimerEvent):void
+    {
+
+      var xml:XML = <REQUEST/>;
+      RESTClient.sendPostRequest("/listUsers.htm", xml, onComplete, loadingHandler);
+    }
+    override protected function loadData():void
+    {
+      _timer = new Timer(0, 1);
+      _timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+      _timer.start();
+    }
+    private function onComplete(event:RESTEvent):void
+    {
+      trace(event.response);
+      Response = new XML(event.response);
+      _rowsObject = createRows4();
+      modelData = _rowsObject as ArrayCollection;
+      loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+      LOADING_COMPLETE));
+      _timer.stop();
+    }
+    private function createRows4():ArrayCollection
+    {
+      var count:int = 0;
+      var row:Array =  new Array();
+      var item:XML;
+
+      for each(item in Response.user)
+      {
+        ++count;
+        var guid:String = item.guid;
+        var name:String = item.name;
+        var type:String = item.type;
+        var enable:String = item.enable == "true" ? "yes":"no";
+        var obj:Object =
+        {Column1:name, Column2:type,Column3:enable,Column4:guid};
+        row.push(obj);
+      }
+
+      var rows:ArrayCollection = new ArrayCollection(row);
+      loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+                                   LOADING_COMPLETE));
+      return rows
+
+    }
+  }
+}

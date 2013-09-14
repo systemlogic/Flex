@@ -1,0 +1,78 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.views.ProgressCanvas;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.ecuit.flex.services.rest.RestHTTPService;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+import com.emc.efx.guitoolkit.events.UxViewEvent;
+import com.emc.efx.net.UxURL;
+import com.emc.efx.net.UxURLRequest;
+import com.emc.efx.net.http.UxHttpClient;
+import com.emc.efx.net.http.UxHttpResponse;
+import com.emc.efx.services.layout.section.UxLazyLoadSection;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.views.System.model.LogPattern;
+import com.emc.fma.views.System.model.UserModel;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import flash.sampler.NewObjectSample;
+
+import mx.collections.ArrayCollection;
+import mx.controls.AdvancedDataGrid;
+import mx.controls.Button;
+import mx.events.CloseEvent;
+import mx.events.FlexEvent;
+import mx.events.ItemClickEvent;
+import mx.managers.PopUpManager;
+import mx.resources.ResourceManager;
+
+private var _currentPayload:UxHashMap = null;
+[Bindable] private var action:String;
+override protected function initializeData():void
+{
+  super.initializeData();
+
+}
+[Bindable]
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+private var _section:UxLazyLoadSection ;
+protected function edit_clickHandler(event:Event):void
+{
+  _section = edit ;
+  var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+  var map:UxHashMap = new UxHashMap();
+  map.put(UtilityFunctionClass.INDEX,        patternList.selectedItem.Column0);
+  map.put(UtilityFunctionClass.PATTERN,       patternList.selectedItem.Column1);
+  map.put(UtilityFunctionClass.DESCRIPTION,     patternList.selectedItem.Column2);
+  map.put(UtilityFunctionClass.STATUS,       patternList.selectedItem.Column3);
+  map.put(UtilityFunctionClass.INCLUDE_SUMMARY,   patternList.selectedItem.Column4);
+  map.put(UtilityFunctionClass.DEFULT_THROTTLE,   patternList.selectedItem.Column5);
+  map.put(UtilityFunctionClass.CURRENT_THROTTLE,   patternList.selectedItem.Column6);
+
+
+  var location:Array = new Array;
+  _section.headerText = ResourceManager.getInstance().getString('fma','PTRNEDT');
+  location = navService.currentLocation;
+  location.push(edit.key)
+  navService.moveToChild(edit.key, map);
+
+}
+public function get workingPages():Array
+{
+  var workingPageArray:Array = new Array();
+  workingPageArray.push(edit);
+  return workingPageArray;
+}
+

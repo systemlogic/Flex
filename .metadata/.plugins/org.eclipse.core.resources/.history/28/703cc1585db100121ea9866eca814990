@@ -1,0 +1,114 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.views.Schedule.ScheduleVO;
+
+import flash.sampler.startSampling;
+
+import mx.events.FlexEvent;
+import mx.utils.StringUtil;
+
+private var _initialized:Boolean = false;
+[Bindable]public var scheduleVO:ScheduleVO = new ScheduleVO();
+private var map:Dictionary = new Dictionary();
+private var lastTaskType:String;
+
+
+protected function creationCompleteHandler(event:FlexEvent):void
+{
+  map["Archive"] = "Archive";
+  map["Multi Tier"] = "Multi Tier";
+  map["Multi Tier Stub"] = "Multi Tier Stub";
+  map["Delete Orphans"] = "Delete Orphan";
+  map["Delete Stubs"] = "Delete Stub";
+  map["Repository Migration"] = "Repository Migration";
+  map["File Migration"] = "File Migration";
+  map["Stub Scan"] = "Stub Scanner";
+  map["Backup"] = "Backup";
+  
+  setTimeCard();  
+  lastTaskType = getData(TaskType.ATTR_TASK_TYPE) as String;
+}
+
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    _initialized = true;    
+  }
+  
+  if (getData(TaskType.ATTR_TASK_TYPE) == "Archive" || getData(TaskType.ATTR_TASK_TYPE) == "Multi Tier" || getData(TaskType.ATTR_TASK_TYPE) == "Multi Tier Stub")
+  {
+    if(getData(TaskType.ATTR_IS_IMPORT))
+      this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_5_STATE_3_SNIPPET_ID";
+    else
+      this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_5_STATE_1_SNIPPET_ID";
+  }
+  else if (getData(TaskType.ATTR_TASK_TYPE) == "Delete Orphans" || getData(TaskType.ATTR_TASK_TYPE) == "Delete Stubs" || getData(TaskType.ATTR_TASK_TYPE) == "Repository Migration")
+    this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_5_STATE_2_SNIPPET_ID";
+  else if (getData(TaskType.ATTR_TASK_TYPE) == "Stub Scan" || getData(TaskType.ATTR_TASK_TYPE) == "Backup")
+    this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_5_STATE_3_SNIPPET_ID";
+  else if (getData(TaskType.ATTR_TASK_TYPE) == "File Migration")
+    this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_5_STATE_4_SNIPPET_ID";
+  
+  if( lastTaskType != getData(TaskType.ATTR_TASK_TYPE))
+  {
+    setTimeCard();
+    lastTaskType = getData(TaskType.ATTR_TASK_TYPE) as String;
+  }    
+  
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT); 
+}
+
+override protected function save(): void
+{
+  TimeCard.onChange();
+  setData(TaskType.ATTR_SCHEDULE, TimeCard.schedule.Message);
+  setData(TaskType.ATTR_SCHEDULE_CONDITION, TimeCard.schedule.Condition);  
+  
+  if (getData(TaskType.ATTR_TASK_TYPE) == "File Migration")
+  {
+    if (TimeCard.recursiveCheckBox.selected)
+    {
+      setData(TaskType.ATTR_RECURSIVEFLAG, "true");
+      setData(TaskType.ATTR_RECURSIVEVALUE, TimeCard.schedule.FileThreshold);
+    }
+    else
+    {
+      setData(TaskType.ATTR_RECURSIVEFLAG, "false");
+      setData(TaskType.ATTR_RECURSIVEVALUE, "0");
+    }
+  }
+}
+
+private function setTimeCard():void
+{
+  scheduleVO.State = "Time";
+  
+  if (getData(TaskType.ATTR_IS_IMPORT))
+    scheduleVO.Type = "Import Files";
+  else
+    scheduleVO.Type = map[getData(TaskType.ATTR_TASK_TYPE) as String];
+  
+  TimeCard.schedule = scheduleVO;
+  
+  if (_initialized)
+    TimeCard.updateLater();
+}
+
+public function validateNext():void
+{
+  if (TimeCard.scheduleGroup.selectedValue == "Time Based" && getData(TaskType.ATTR_TASK_TYPE) == "File Migration")
+  {
+    if (StringUtil.trim(TimeCard.recursiveLimit.text) != "")
+      enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else
+      enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else if (TimeCard.scheduleGroup.selectedValue == "Capacity Based")
+  {
+    if (StringUtil.trim(TimeCard.archiveThreshold.text) != "" && (parseInt(TimeCard.warningThreshold.text) < parseInt(TimeCard.archiveThreshold.text)))
+      enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else
+      enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+}

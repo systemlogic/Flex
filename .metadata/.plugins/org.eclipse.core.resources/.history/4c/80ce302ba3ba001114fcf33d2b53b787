@@ -1,0 +1,706 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ECUITDialog  xmlns="com.emc.ecuit.flex.components.dialogs.*"
+			  
+			  xmlns:mx="library://ns.adobe.com/flex/mx"
+			  title="Create/Edit Expression" 
+			  creationComplete="_creationCompleteHandler(event)"	  
+			  helpID="AddRuleProperties" 
+			  allowClose="true"  allowMaximize="false" 
+			  allowResize="false" allowMove="false" allowMinimize="false"
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+	
+	<!--xmlns:fx="http://ns.adobe.com/mxml/2009" 
+	xmlns:s="library://ns.adobe.com/flex/spark"-->
+	<states>
+		<mx:State name="logicalTimeCompaire"/>
+		<mx:State name="empty"/>
+		<mx:State name="logicalSizeCompaire"/>
+		<mx:State name="fileState"/>
+		<mx:State name="ruleState"/>
+		<mx:State name="active"/>
+		<mx:State name="inactive"/>
+	</states>
+	<mx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.events.ECUITEvent;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Button;
+			import mx.events.CloseEvent;
+			import mx.events.DropdownEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			import mx.utils.ArrayUtil;
+			[Bindable]private var _client:UxHttpClient;
+			[Bindable]private var fileAttributeArray:ArrayCollection = new ArrayCollection();
+			[Bindable]private var operatorArray:ArrayCollection = new ArrayCollection();
+			[Bindable]public var actionArray:ArrayCollection = new ArrayCollection();
+			[Bindable]public var cifsArray:ArrayCollection = new ArrayCollection();
+			[Bindable]public var nfsArray:ArrayCollection = new ArrayCollection();
+			[Bindable]public var repoContainerList:ArrayCollection = new ArrayCollection();
+			[Bindable]public var expArray:ArrayCollection ;
+			[Bindable]public var checkexpArray:ArrayCollection ;
+			[Bindable]public var NameValue:String ;
+			[Bindable]public var editMode:Boolean = false;
+			[Bindable]public var editExpr:String ;
+			[Bindable]public var editRepo:String ;
+			[Bindable]public var compressionType:String ;
+			[Bindable]public var encryption:String ;
+			[Bindable]public var returnArray:ArrayCollection;
+			[Bindable]public var xml:XML = <Request/>;
+			[Bindable] private var response:XMLList ;
+			[Bindable] private var expList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var repList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var grpList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var cenList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var atmList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var amzS3List:ArrayCollection = new ArrayCollection();
+			[Bindable] private var protocol:ArrayCollection = new ArrayCollection();
+			[Bindable] public var actionLabel:String ;
+			
+			private var responseResult:XMLList ;
+			
+			private function addButton():void{
+				var okButton:Button = new Button();
+				okButton.label = "OK";
+				okButton.addEventListener(MouseEvent.CLICK, onOK);
+				this.addButtonBarButton(okButton);
+				
+				var cancel_Button:Button = new Button();
+				cancel_Button.label = "Cancel";
+				cancel_Button.addEventListener(MouseEvent.CLICK, onCancel);
+				this.addButtonBarButton(cancel_Button);
+				this.addEventListener(ECUITEvent.CLOSE_WINDOW,onCancel);
+			}
+			
+			protected function _creationCompleteHandler(event:FlexEvent):void
+			{
+				addButton();
+				fileAttributeArray.addItem("last_accessed");
+				fileAttributeArray.addItem("last_modified");
+				fileAttributeArray.addItem("last_attr_changed");
+				fileAttributeArray.addItem("size");
+				fileAttributeArray.addItem("filename");
+				fileAttributeArray.addItem("dirname");
+				fileAttributeArray.addItem("rules");
+				
+				if(expArray == null){
+					expArray = new ArrayCollection()
+				}
+				if(checkexpArray == null){
+					checkexpArray = new ArrayCollection()
+				}
+				
+				_client = new UxHttpClient();
+				_client.addEventListener(Event.COMPLETE, onComplete);
+				var data:ByteArray = new ByteArray();
+				var xml:XML = <REQUEST/>; 
+				xml.appendChild(<action>getRuleExpGroup</action>);
+				data.writeUTFBytes(xml);
+				_client.sendPostRequest(new UxURL(resourceManager.getString('fma','ALLICATION_CONTEXT')+ "getRuleRepositoryGroup.htm"), data);
+				
+			}
+			private function onComplete(event:Event):void{
+				response = new XMLList(_client.response.body);
+				protocol.addItem("CIFS");
+				protocol.addItem("NFS");
+				for each (var temp : XML in response.rul ) {
+					expList.addItem(temp[0].toString());
+				}
+				for each (var temp : XML in response.rep ) {
+					repList.addItem(temp[0].toString());
+					
+					var myStr:String = temp[0].toString();
+					if( myStr.indexOf( "\\\\", 0 ) != -1 )
+					{
+						cifsArray.addItem(temp[0].toString())
+					}
+					else{
+						nfsArray.addItem(temp[0].toString())
+					}
+					
+				}
+				for each (var temp : XML in response.grp ) {
+					grpList.addItem(temp[0].toString());
+				}
+				for each (var temp : XML in response.cen ) {
+					cenList.addItem(temp[0].toString());
+				}
+				for each (var temp : XML in response.atm ) {
+					atmList.addItem(temp[0].toString());
+				}
+				for each (var temp : XML in response.amazonS3 ) {
+					amzS3List.addItem(temp[0].toString());
+				}
+				arcDes.selectedIndex = 0;
+				if(editMode == true){
+					var tempExpArray:Array = editExpr.split(" and ")  ;
+					for each (var num in tempExpArray){
+						this.expArray.addItem(num);
+						this.checkexpArray.addItem(num);
+					}
+					if(actionArray.getItemAt(0) == 'Archive'){
+						var splitElement:String = editRepo.split("\"")[1]  ;
+						var index:int = 0 ;
+						for each(var test:String in grpList){
+							if(test == splitElement){
+								arcDes.selectedIndex = 4 ;
+								arcVal.dropdown.dataProvider = arcVal.dataProvider = grpList ;
+								arcVal.selectedIndex = index ;
+								return ;
+							}
+							index++ ;
+						}
+						
+						splitElement = editRepo.split("\"")[1]  ;
+						index = 0 ;
+						for each(var test:String in amzS3List){
+							if(test == splitElement){
+								arcDes.selectedIndex = 0 ;
+								arcVal.dropdown.dataProvider = arcVal.dataProvider = amzS3List ;
+								arcVal.selectedIndex = 1 ;
+								compression.visible = true ;
+								encrypt.visible = true ;
+								if(compressionType == "None"){
+									compressionCombo.selectedIndex = 0;
+								}else if(compressionType == "Fast"){
+									compressionCombo.selectedIndex = 1;
+								}else if(compressionType == "Strong"){
+									compressionCombo.selectedIndex = 2;
+								}
+								if(encryption == "true"){
+									encryptCheck.selected = true ;
+								}else if(encryption == "false"){
+									encryptCheck.selected = false ;
+								}
+								
+								return ;
+							}
+							index++ ;
+						}
+						
+						
+						splitElement = editRepo.split("\"")[1]  ;
+						index = 0 ;
+						for each(var test:String in atmList){
+							if(test == splitElement){
+								arcDes.selectedIndex = 1 ;
+								arcVal.dropdown.dataProvider = arcVal.dataProvider = atmList ;
+								arcVal.selectedIndex = 1 ;
+								compression.visible = true ;
+								encrypt.visible = true ;
+								if(compressionType == "None"){
+									compressionCombo.selectedIndex = 0;
+								}else if(compressionType == "Fast"){
+									compressionCombo.selectedIndex = 1;
+								}else if(compressionType == "Strong"){
+									compressionCombo.selectedIndex = 2;
+								}
+								if(encryption == "true"){
+									encryptCheck.selected = true ;
+								}else if(encryption == "false"){
+									encryptCheck.selected = false ;
+								}
+								return ;
+							}
+							index++ ;
+						}
+						
+						splitElement = editRepo.split("\"")[1]  ;
+						index = 0 ;
+						for each(var test:String in cenList){
+							if(test == splitElement){
+								arcDes.selectedIndex = 2 ;
+								arcVal.dropdown.dataProvider = arcVal.dataProvider = cenList ;
+								arcVal.selectedIndex = index ;
+								return ;
+							}
+							index++ ;
+						}
+						
+						
+						splitElement= editRepo.replace(new RegExp(/archive to /gi),"").replace(new RegExp(/try /gi),"").replace(new RegExp(/"/gi),"");
+						var repoArray:Array = splitElement.split(" then ");
+						index = 0 ;
+						if(editRepo.indexOf("\\\\") > 0){
+							for each(var repository:String in repoArray){
+								for each(var cifs:String in cifsArray){
+									if(cifs == repository){
+										repoContainerList.addItem(repository);
+										cifsArray.removeItemAt(cifsArray.getItemIndex(cifs));
+									}
+								}
+							}
+							arcDes.selectedIndex = 3 ;
+							arcVal.dropdown.dataProvider = arcVal.dataProvider = protocol ;
+							arcVal.selectedIndex = 0 ;
+							repoFormItem.visible = true ;
+							repo.dataProvider = cifsArray ;
+							arcVal.enabled = false ;
+							return ;
+						}
+						if(editRepo.indexOf("/") > 0){
+							for each(var repository:String in repoArray){
+								for each(var nfs:String in nfsArray){
+									if(nfs == repository){
+										repoContainerList.addItem(repository);
+										nfsArray.removeItemAt(nfsArray.getItemIndex(nfs));
+									}
+								}
+							}
+							arcDes.selectedIndex = 3 ;
+							arcVal.dropdown.dataProvider = arcVal.dataProvider = protocol ;
+							arcVal.selectedIndex = 1 ;
+							repoFormItem.visible = true ;
+							repo.dataProvider = nfsArray ;
+							arcVal.enabled = false ;
+							return ;
+						}
+						
+						
+						action.selectedIndex = 1;
+						archDest.visible = false ;
+						archlist.visible = false ;
+					}else if(actionArray.contains('Delete')){
+						if(editRepo == actionArray.getItemAt(0)){
+							action.selectedIndex = 0 ;
+						}else{
+							action.selectedIndex = 1 ;
+						}
+					}else if(actionArray.contains('Migrate')){
+						if(editRepo == actionArray.getItemAt(0)){
+							action.selectedIndex = 0 ;
+						}else{
+							action.selectedIndex = 1 ;
+						}
+					}
+				} 
+			}
+			private function getList(event:Event):void{
+				
+			}
+			private function onCancel(event:Event):void {
+				this.removeAllChildren();
+				this.close();
+			}
+			
+			private function onOK(event:Event):void{
+				var tempxml:XML = <REQUEST/> ;
+				var tempA:Array;
+				var tempString:String = "";
+				var index:int = 0 ;
+				for each(var num in expArray){
+					tempString += num ;
+					index++;
+					if( index < expArray.length){
+						tempString += " and " ;
+					}
+				}
+				 
+				var rule:XML = <Rule/>;
+				tempxml.appendChild(rule);
+				rule.appendChild(<exp>{tempString}</exp>);
+				/* rule.appendChild(<action>{action.selectedLabel}</action>);
+				*/
+				
+				if(action.selectedLabel == 'Archive'){ 
+					if(expArray.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,"Atleat one Expression is required","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}  else if(arcVal.selectedLabel == ""){
+						ECUITPopupDialog.showMessageDialog(this,"Destination not selected","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					} 
+					if(arcDes.selectedLabel == "NAS Repository" ){
+						var temp:String =  "" ;
+						var index:int = 1;
+						if(repoContainerList.length == 0){
+							ECUITPopupDialog.showMessageDialog(this,"Atleat one repository is required","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+							return ;
+						}else if(repoContainerList.length == 1){
+							temp = "archive to " ;
+							var str:String = repoContainerList.getItemAt(0).toString() ;
+							str = str.replace("\\","\\\\");
+							temp += "\"" + str + "\"" ; 
+						}else if(repoContainerList.length > 1){
+							for each(var str:String in repoContainerList){
+								if(index == 1){
+									temp += "try archive to " ;
+								}else if(index == repoContainerList.length){
+									temp += " then archive to "
+								}else if(index < repoContainerList.length){
+									temp += " then try archive to "
+								}
+								index++;
+								str = str.replace("\\","\\\\");
+								temp += "\""+str+"\"" ;
+							}
+						}
+						//temp = temp.replace(new RegExp(/\\/gi),"\\\\");
+						rule.appendChild(<repo>{temp}</repo>);
+						
+					}else if(arcDes.selectedLabel == "NAS Group" ){
+						rule.appendChild(<repo>{"$\"" + arcVal.selectedLabel + "\""}</repo>);
+					}else if(arcDes.selectedLabel == "Centera" ){
+						rule.appendChild(<repo>{"archive to \"" + arcVal.selectedLabel + "\""}</repo>);
+					}else if(arcDes.selectedLabel == "Atmos" || arcDes.selectedLabel == "AmazonS3"){
+						rule.appendChild(<repo>{"archive to \"" + arcVal.selectedLabel + "\""}</repo>);
+						rule.appendChild(<comp>{compressionCombo.selectedIndex}</comp>);
+						rule.appendChild(<ency>{encryptCheck.selected}</ency>);
+					}
+				}else if(action.selectedLabel == "Don't Archive" || action.selectedLabel == "Don't Delete" || action.selectedLabel == "Don't Migrate"){
+					rule.appendChild(<repo>nothing</repo>);
+				} else if(action.selectedLabel == 'Delete' || action.selectedLabel == 'Migrate'){
+					rule.appendChild(<repo>{action.selectedLabel}</repo>);
+				} 
+				
+				if(action.selectedLabel == "Archive"){
+					rule.appendChild(<Type>{arcDes.selectedLabel.toLowerCase()}</Type>);
+				}else if(action.selectedLabel == "Don't Archive" || action.selectedLabel == "Don't Delete" || action.selectedLabel == "Don't Migrate"){
+					rule.appendChild(<Type>nothing</Type>);
+				}
+				else if(action.selectedLabel == 'Delete' || action.selectedLabel == 'Migrate' ){
+					rule.appendChild(<Type>{action.selectedLabel}</Type>);
+				}
+				xml = rule ;
+				this.removeAllChildren();
+				this.close();
+			}
+			private function save(event:Event):void{
+				responseResult = new XMLList(_client.response.body);
+				ECUITPopupDialog.showMessageDialog(this,responseResult.Result,"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+			}
+			protected function fAttribute_closeHandler(event:Event):void
+			{
+				if(fAttribute.selectedLabel == "last_accessed" ||
+					fAttribute.selectedLabel == "last_modified" ||
+					fAttribute.selectedLabel == "last_attr_changed"){
+					operatorArray = new ArrayCollection();
+					operatorArray.addItem(">");
+					operatorArray.addItem(">=");
+					operatorArray.addItem("<");
+					operatorArray.addItem("<=");
+					currentState = "empty" ;
+				}else if(fAttribute.selectedLabel == "size"){
+					operatorArray = new ArrayCollection();
+					operatorArray.addItem(">");
+					operatorArray.addItem(">=");
+					operatorArray.addItem("<");
+					operatorArray.addItem("<=");
+					currentState = "empty" ;
+				}else if(fAttribute.selectedLabel == "filename"){
+					operatorArray = new ArrayCollection();
+					operatorArray.addItem("equals");
+					operatorArray.addItem("matches regex");
+					currentState = "empty" ;
+				}else if(fAttribute.selectedLabel == "dirname"){
+					operatorArray = new ArrayCollection();
+					operatorArray.addItem("equals");
+					operatorArray.addItem("matches regex");
+					operatorArray.addItem("matches singlefile");
+					currentState = "empty" ;
+				}else if(fAttribute.selectedLabel == "rules"){
+					operatorArray = new ArrayCollection();
+					operatorArray = expList ;
+					currentState = "ruleState" ;
+				}
+			}
+			
+			
+			protected function operator_closeHandler(event:Event):void
+			{
+				if((fAttribute.selectedLabel == "last_accessed" ||
+					fAttribute.selectedLabel == "last_modified" ||
+					fAttribute.selectedLabel == "last_attr_changed") &&
+					(operator.selectedLabel == ">=" ||
+						operator.selectedLabel == ">" ||
+						operator.selectedLabel == "<=" ||
+						operator.selectedLabel == "<")){
+					currentState = "logicalTimeCompaire" ;					
+				}else if(fAttribute.selectedLabel == "size" &&
+					(operator.selectedLabel == ">=" ||
+						operator.selectedLabel == ">" ||
+						operator.selectedLabel == "<=" ||
+						operator.selectedLabel == "<")){
+					currentState = "logicalSizeCompaire" ;					
+				}else if(fAttribute.selectedLabel == "filename" &&
+					operator.selectedLabel == "equals" ||
+					operator.selectedLabel == "matches regex"){
+					currentState = "fileState" ;
+				}else if(fAttribute.selectedLabel == "dirname" &&
+					operator.selectedLabel == "equals" ||
+					operator.selectedLabel == "matches regex" ||
+					operator.selectedLabel == "matches singlefile"){
+					currentState = "fileState" ;
+				}
+			}
+			
+			
+			protected function addTime_clickHandler(event:MouseEvent):void
+			{
+				var temp:String ;
+				var timeString:String = "";
+				if(timeCombo.selectedLabel == "year(s)"){
+					timeString = "years";
+				}else if(timeCombo.selectedLabel == "month(s)"){
+					timeString = "months";
+				}else if(timeCombo.selectedLabel == "week(s)"){
+					timeString = "weeks";
+				}else if(timeCombo.selectedLabel == "day(s)"){
+					timeString = "days";
+				}
+				temp = fAttribute.selectedLabel + " "  + operator.selectedLabel + " " + timeAttribute.text + " " + timeString  ;
+				expArray.addItem(temp);
+				exp.dataProvider = expArray;
+			}
+			
+			
+			protected function addSize_clickHandler(event:MouseEvent):void
+			{
+				var temp:String ;
+				var sizeString:String = "";
+				if(sizeCombo.selectedLabel == "gigabyte(s)"){
+					sizeString = "gigabytes";
+				}else if(sizeCombo.selectedLabel == "megabyte(s)"){
+					sizeString = "megabytes";
+				}else if(sizeCombo.selectedLabel == "kilobyte(s)"){
+					sizeString = "kilobytes";
+				}else if(sizeCombo.selectedLabel == "byte(s)"){
+					sizeString = "bytes";
+					
+				}
+				temp = fAttribute.selectedLabel + " "  + operator.selectedLabel + " " + sizeAttribute.text + " " + sizeString  ;
+				expArray.addItem(temp);
+				exp.dataProvider = expArray;
+				
+			}
+			
+			protected function search_clickHandler(event:MouseEvent):void
+			{
+				var temp:String ;
+				var searchString:String = "";
+				if(operator.selectedLabel == "equals"){
+					temp = fAttribute.selectedLabel + " == " +  '"' + searchAttribute.text +  '"';
+				}else{
+					temp = fAttribute.selectedLabel + " " + operator.selectedLabel + " " +   '"' + searchAttribute.text  +   '"'  ;
+				}
+				expArray.addItem(temp);
+				exp.dataProvider = expArray;
+			}
+			
+			protected function rule_clickHandler(event:MouseEvent):void
+			{
+				var temp:String ;
+				var ruleString:String = "";
+				temp = "$" + '"' + operator.selectedLabel + '"';
+				expArray.addItem(temp);
+				exp.dataProvider = expArray;
+			}
+			
+			protected function del_clickHandler(event:MouseEvent):void
+			{
+				expArray.removeItemAt(exp.selectedIndex);
+			}
+			
+			
+			protected function arcDes_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+			
+			
+			protected function arcDes_changeHandler(event:ListEvent):void
+			{
+				repoFormItem.visible = false ;
+				arcVal.enabled = true ;
+				encrypt.visible = false ;
+				compression.visible = false ;
+				if(arcDes.selectedLabel == "Centera"){
+					arcVal.dropdown.dataProvider = arcVal.dataProvider = cenList ;
+				}else if(arcDes.selectedLabel == "Atmos"){
+					arcVal.dropdown.dataProvider = arcVal.dataProvider = atmList ;
+					encrypt.visible = true ;
+					compression.visible = true ;
+				}else if(arcDes.selectedLabel == "AmazonS3"){
+					arcVal.dropdown.dataProvider = arcVal.dataProvider = amzS3List ;
+					encrypt.visible = true ;
+					compression.visible = true ;
+				}else if(arcDes.selectedLabel == "NAS Repository"){
+					repoFormItem.visible = true ;
+					arcVal.dropdown.dataProvider = arcVal.dataProvider = protocol ;
+					if(repoContainerList.length > 0){
+						arcVal.enabled = false ;	
+					}
+				}else if(arcDes.selectedLabel == "NAS Group"){
+					arcVal.dropdown.dataProvider = arcVal.dataProvider = grpList ;
+				}
+				// TODO Auto-generated method stub
+			}
+			
+			
+			protected function arcVal_changeHandler(event:DropdownEvent):void
+			{
+				if(arcDes.selectedLabel == "NAS Repository" && arcVal.selectedLabel == "NFS"){
+					repo.dataProvider = nfsArray ;
+				}else if(arcDes.selectedLabel == "NAS Repository" && arcVal.selectedLabel == "CIFS"){
+					repo.dataProvider = cifsArray;
+				}
+				
+				// TODO Auto-generated method stub
+			}
+			
+			
+			protected function addsel_clickHandler(event:MouseEvent):void
+			{
+				if(repo.selectedItem != null){
+					repoContainerList.addItem(repo.selectedItem);
+					(repo.dataProvider as ArrayCollection).removeItemAt((repo.dataProvider as ArrayCollection).getItemIndex(repo.selectedItem));
+					arcVal.enabled = false ; 
+				}
+				// TODO Auto-generated method stub
+			}
+			
+			
+			protected function removeSel_clickHandler(event:MouseEvent):void
+			{
+				if(repoContainer.selectedItem != null){
+					var temp:ArrayCollection = repo.dataProvider as ArrayCollection;
+					temp.addItem(repoContainer.selectedItem);
+					repoContainerList.removeItemAt(repoContainerList.getItemIndex(repoContainer.selectedItem));
+					if(repoContainerList.length == 0){
+						arcVal.enabled = true ;
+					}
+				}
+				// TODO Auto-generated method stub
+			}
+			
+			
+			protected function action_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+			}
+			
+			
+			protected function action_changeHandler(event:ListEvent):void
+			{
+				if(action.selectedLabel == "Don't Archive"){
+					archDest.visible = false ;
+					archlist.visible = false ;
+				}
+				else if(action.selectedLabel == "Archive"){
+					archDest.visible = true ;
+					archlist.visible = true ;
+				}
+				// TODO Auto-generated method stub
+			}
+			
+		]]>
+	</mx:Script>
+	<mx:HBox>
+		<mx:Form id="expForm">
+			<mx:FormItem label="Expression">
+				<mx:HBox>
+					<mx:List id="exp" height="{timeAttribute.width/2}" dataProvider="{this.expArray}"  width="{timeAttribute.width}"/>
+					<mx:Button click="del_clickHandler(event)" label="Delete"/>
+				</mx:HBox>
+			</mx:FormItem>
+			<mx:FormItem label="File Attribute:">
+				<mx:ComboBox id="fAttribute"  width="{timeAttribute.width}" dataProvider="{fileAttributeArray}" change="fAttribute_closeHandler(event)" />
+			</mx:FormItem>
+			<mx:FormItem label="Operator:">
+				<mx:ComboBox id="operator" width="{timeAttribute.width}" dataProvider="{operatorArray}" change="operator_closeHandler(event)"/>
+			</mx:FormItem>
+			<mx:FormItem label="Time Period:" includeIn="logicalTimeCompaire">
+				<mx:VBox>
+					<mx:HBox>
+						<mx:TextInput id="timeAttribute" width="200" restrict="0-9"/>
+						<mx:ComboBox id="timeCombo" >
+							<mx:dataProvider>
+								<mx:Array>
+									<mx:String>year(s)</mx:String>
+									<mx:String>month(s)</mx:String>
+									<mx:String>week(s)</mx:String>
+									<mx:String>day(s)</mx:String>
+								</mx:Array>
+							</mx:dataProvider>
+						</mx:ComboBox>
+					</mx:HBox>
+					<mx:Button label="Add to Rule" click="addTime_clickHandler(event)" />
+				</mx:VBox>
+			</mx:FormItem>
+			<mx:FormItem label="Size:" includeIn="logicalSizeCompaire">
+				<mx:VBox>
+					<mx:HBox>
+						<mx:TextInput id="sizeAttribute" width="{timeAttribute.width}" restrict="0-9"/>
+						<mx:ComboBox id="sizeCombo">
+							<mx:dataProvider>
+								<mx:Array>
+									<mx:String>gigabyte(s)</mx:String>
+									<mx:String>megabyte(s)</mx:String>
+									<mx:String>kilobyte(s)</mx:String>
+									<mx:String>byte(s)</mx:String>
+								</mx:Array>
+							</mx:dataProvider>
+						</mx:ComboBox>
+					</mx:HBox>
+					<mx:Button label="Add to Rule" click="addSize_clickHandler(event)" />
+				</mx:VBox>
+			</mx:FormItem>
+			<mx:FormItem label="Search string:" includeIn="fileState">
+				<mx:VBox>
+					<mx:TextInput id="searchAttribute" width="{timeAttribute.width}" restrict="0-9,a-z,A-Z,/,." />
+					<mx:Button click="search_clickHandler(event)" label="Add to Rule"/>
+				</mx:VBox>
+			</mx:FormItem>
+			<mx:FormItem label="Rule List:" includeIn="ruleState">
+				<mx:Button click="rule_clickHandler(event)" label="Add to Rule"/>
+			</mx:FormItem>
+		</mx:Form>
+		
+		<mx:Form>
+			<mx:FormItem label="Action">
+				<!--<mx:CheckBox id="actionCheck" selected="true" />-->
+				<mx:ComboBox width="{timeAttribute.width}" id="action" dataProvider="{actionArray}" change="action_changeHandler(event)" click="action_clickHandler(event)" />
+			</mx:FormItem>
+			<mx:FormItem id="archDest" label="Archive Destination:" visible="{actionArray.getItemAt(0) == 'Archive' ? true : false}">
+				<mx:ComboBox id="arcDes" change="arcDes_changeHandler(event)" width="{timeAttribute.width}">
+					<mx:ArrayCollection>
+						<mx:String>AmazonS3</mx:String>
+						<mx:String>Atmos</mx:String>
+						<mx:String>Centera</mx:String>
+						<mx:String>NAS Repository</mx:String>
+						<mx:String>NAS Group</mx:String>
+					</mx:ArrayCollection>
+				</mx:ComboBox>
+			</mx:FormItem>
+			<mx:FormItem id="archlist" visible="{actionArray.getItemAt(0) == 'Archive' ? true : false}">
+				<mx:ComboBox id="arcVal" close="arcVal_changeHandler(event)" width="{timeAttribute.width}"/>
+			</mx:FormItem>
+			<mx:FormItem id="compression" label="Compression" visible="false">
+				<mx:ComboBox id="compressionCombo" width="{timeAttribute.width}">
+					<mx:ArrayCollection>
+						<mx:String>None</mx:String>
+						<mx:String>Fast</mx:String>
+						<mx:String>Strong</mx:String>
+					</mx:ArrayCollection>
+				</mx:ComboBox>
+			</mx:FormItem>
+			<mx:FormItem id="encrypt" visible="false" label="Encryption" >
+				<mx:CheckBox id="encryptCheck"  />
+			</mx:FormItem>
+			<mx:FormItem id="repoFormItem" visible="false">
+				<mx:VBox>
+					<mx:List id="repo" height="50" width="{timeAttribute.width}"/>
+					<mx:HBox>
+						<mx:Button id="addsel" click="addsel_clickHandler(event)" buttonMode="false" icon="@Resource(key='ARROWDOW_22', bundle='fma')"  disabledSkin="@Resource(key='ARROWDOW_22', bundle='fma')" overSkin="@Resource(key='ARROWDOW_32', bundle='fma')"/>
+						<mx:Button id="removeSel" click="removeSel_clickHandler(event)" buttonMode="false" icon="@Resource(key='ARROWUP_22', bundle='fma')" disabledSkin="@Resource(key='ARROWUP_22', bundle='fma')" overSkin="@Resource(key='ARROWUP_32', bundle='fma')"/>
+					</mx:HBox>
+				</mx:VBox>
+				<mx:List id="repoContainer" height="50" dataProvider="{repoContainerList}" width="{timeAttribute.width}"/>
+			</mx:FormItem>
+		</mx:Form>
+	</mx:HBox>
+</ECUITDialog>

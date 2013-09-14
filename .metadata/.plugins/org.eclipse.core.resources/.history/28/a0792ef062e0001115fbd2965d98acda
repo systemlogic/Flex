@@ -1,0 +1,43 @@
+/*
+* Copyright (c) 2012 EMC Corporation. All rights reserved.
+*/
+package com.emc.efx.guitoolkit.components.exDashboard.models {
+    import com.emc.efx.utilities.UxWeakRef;
+
+    /**
+     * Required functions for a dashboard model item.
+     */
+    public interface IUxExDashboardModelItem {
+        
+        /**
+         * Unique ID string.
+         */ 
+        function get id():String;
+
+        /**
+         * Current state of the model item.
+         */
+        function get state():UxExDashboardModelItemState;
+        function set state(i:UxExDashboardModelItemState):void;
+
+        /**
+         * Determines if the model item is in the minimized state.
+         * 
+         * @return True if minimized, false otherwise.
+         */
+        function isMinimized():Boolean;
+
+        /**
+         * Determines if the model item is in the maximized state.
+         * 
+         * @return True if maximized, false otherwise.
+         */
+        function isMaximized():Boolean;
+
+        /**
+         * Optional property; Weak reference to view block component.
+         */
+        function get viewBlockRef():UxWeakRef;
+        function set viewBlockRef(ref:UxWeakRef):void;
+    }
+}

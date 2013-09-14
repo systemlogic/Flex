@@ -1,0 +1,224 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.datetime.DateTimePicker;
+import com.emc.ecuit.flex.components.datetime.ECUITDateField;
+import com.emc.ecuit.flex.components.datetime.ECUITTimeChooser;
+import com.emc.ecuit.flex.components.views.ViewBlock;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import mx.collections.ArrayCollection;
+import mx.events.FlexEvent;
+import mx.events.ListEvent;
+
+[Bindable]
+private var runTaskArray:ArrayCollection = new ArrayCollection(["Run Now","Daily","Weekly","Monthly","Future"]);
+[Bindable]
+private var runTaskArrayDayOfWeek1:ArrayCollection = new ArrayCollection(["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]);
+[Bindable]
+private var runTaskArrayDayOfWeek2:ArrayCollection = new ArrayCollection(["1st","2nd","3rd","4th"]);
+[Bindable]
+private var runTaskArrayDayOfMonth1:ArrayCollection = new ArrayCollection(["1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th",
+    "11th","12th","13th","14th","15th","16th","17th","18th","19th","20th",
+    "21st","22nd","23rd","24th","25th","26th","27th","28th","29th","30th","31st"]);
+[Bindable]
+private var runTaskArrayDayOfMonth2:ArrayCollection = new ArrayCollection(["01","02","03","04","05","06","07","08","09","10","11","12"]);
+private var _initialized:Boolean = false;
+
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    _initialized = true;
+  }
+
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+
+  if (getData(TaskType.ATTR_TASK_TYPE)!="Archive")
+    capacityBasedRB.enabled = false;
+  else
+    capacityBasedRB.enabled = true;
+}
+
+override protected function save(): void
+{
+  var temp:String ;
+
+  if (scheduleGroup.selectedValue == "Simulation")
+  {
+    if (detailedCheckbox.selected == true)
+    {
+      setData(TaskType.ATTR_SCHEDULE, 'Run Task Simulation (Detailed)');
+      setData(TaskType.ATTR_SCHEDULE_CONDITION, "simulation:detailed");
+    }
+    else
+    {
+      setData(TaskType.ATTR_SCHEDULE, 'Run Task Simulation');
+      setData(TaskType.ATTR_SCHEDULE_CONDITION, "simulation:summary");
+    }
+  }
+
+  if (scheduleGroup.selectedValue == "Time Based")
+  {
+    if (scheduleType.selectedItem == 'Run Now')
+    {
+      setData(TaskType.ATTR_SCHEDULE, 'Run Task Now');
+      setData(TaskType.ATTR_SCHEDULE_CONDITION, "now");
+    }
+    else if (scheduleType.selectedItem == 'Daily')
+    {
+      setData(TaskType.ATTR_SCHEDULE, "Run Task Everyday at " + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + " hr " + timeChooser.minuteText.text + " min");
+      setData(TaskType.ATTR_SCHEDULE_CONDITION, "daily@" + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + ":" + UtilityFunctionClass.formatTime(timeChooser.minute)) ;
+    }
+    else if (scheduleType.selectedItem == 'Weekly')
+    {
+      setData(TaskType.ATTR_SCHEDULE, "Run Task Weekly on " + frequencyComboBox1.selectedItem + " at "
+              + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + " hr " + timeChooser.minuteText.text + " min"
+              + "\nEvery " + frequencyComboBox2.selectedItem + " Week" );
+
+      if (frequencyComboBox2.selectedItem == "1st")
+        setData(TaskType.ATTR_SCHEDULE_CONDITION, "weekly:" + frequencyComboBox1.selectedItem + "@" + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + ":" + UtilityFunctionClass.formatTime(timeChooser.minute));
+      else
+        setData(TaskType.ATTR_SCHEDULE_CONDITION, (frequencyComboBox2.selectedItem.toString()).replace(/[^0-9]/g,"") + "-weeks:" + frequencyComboBox1.selectedItem + "@" + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + ":" + UtilityFunctionClass.formatTime(timeChooser.minute));
+
+      trace(getData(TaskType.ATTR_SCHEDULE_CONDITION) as String);
+    }
+    else if (scheduleType.selectedItem == 'Monthly')
+    {
+      setData(TaskType.ATTR_SCHEDULE, "Run Task Monthly on " + frequencyComboBox1.selectedItem + " Day of the Month at "
+              + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + " hr " + timeChooser.minuteText.text + " min"
+              + "\nEvery " + frequencyComboBox2.selectedItem + " Month" );
+
+      if (frequencyComboBox2.selectedItem == 1)
+        setData(TaskType.ATTR_SCHEDULE_CONDITION, "monthly:" + UtilityFunctionClass.formatDate(parseInt((frequencyComboBox1.selectedItem.toString()).replace(/[^0-9]/g,""))) + "@" + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + ":" + UtilityFunctionClass.formatTime(timeChooser.minute));
+      else
+        setData(TaskType.ATTR_SCHEDULE_CONDITION, frequencyComboBox2.selectedItem + "-months:" + UtilityFunctionClass.formatDate(parseInt((frequencyComboBox1.selectedItem.toString()).replace(/[^0-9]/g,""))) + "@" + UtilityFunctionClass.formatTime(timeChooser.hoursIn24) + ":" + UtilityFunctionClass.formatTime(timeChooser.minute));
+
+      trace(getData(TaskType.ATTR_SCHEDULE_CONDITION) as String);
+    }
+    else if (scheduleType.selectedItem == 'Future')
+    {
+      temp = "once:" + dateTime.dateEntry.selectedDate.fullYear + "-" + UtilityFunctionClass.formatMonth(dateTime.dateEntry.selectedDate.month ) + "-" + UtilityFunctionClass.formatDate(dateTime.dateEntry.selectedDate.date) + "@" +
+             UtilityFunctionClass.formatTime(dateTime.timeEntry.hoursIn24) + ":" + UtilityFunctionClass.formatTime(dateTime.timeEntry.minute) ;
+      setData(TaskType.ATTR_SCHEDULE, "Run Task in future on " + dateTime.dateEntry.text + " at "
+              + UtilityFunctionClass.formatTime(dateTime.timeEntry.hoursIn24) + " hr " + dateTime.timeEntry.minuteText.text + " min");
+      setData(TaskType.ATTR_SCHEDULE_CONDITION, temp);
+    }
+  }
+
+  if (scheduleGroup.selectedValue == "Capacity Based")
+  {
+    setData(TaskType.ATTR_WARNINGTH, warningThreshold.text);
+    setData(TaskType.ATTR_ARCHIVETH, archiveThreshold.text);
+    setData(TaskType.ATTR_SCHEDULE, "Send warning message when primary reaches " + warningThreshold.text + "% of it's capacity."
+            + "\nRun task when primary reaches " + archiveThreshold.text + "% of it's capacity.");
+
+    if (warningThreshold.text == null)
+      setData(TaskType.ATTR_SCHEDULE_CONDITION, "archive@" + archiveThreshold.text);
+    else
+      setData(TaskType.ATTR_SCHEDULE_CONDITION, "archive@" + archiveThreshold.text + "%" + ":warning@" + warningThreshold.text + "%");
+  }
+}
+
+protected function scheduleGroup_changeHandler(event:Event):void
+{
+  if (scheduleGroup.selectedValue == "Simulation")
+    currentState = "Simulation" ;
+
+  if (scheduleGroup.selectedValue == "Time Based")
+    currentState = "Time";
+
+  if (scheduleGroup.selectedValue == "Capacity Based")
+    currentState = "Capacity";
+}
+
+
+private var frequencyString1:Label  =  new Label();
+private var frequencyString2:Label  =  new Label();
+private var frequencyString3:Label  =  new Label();
+private var frequencyComboBox1:ComboBox  =  new ComboBox();
+private var frequencyComboBox2:ComboBox  =  new ComboBox();
+private var timeChooser:ECUITTimeChooser = new ECUITTimeChooser();
+private var dateTime:DateTimePicker = new DateTimePicker();
+
+
+protected function scheduleType_changeHandler(event:ListEvent):void
+{
+
+  frequencyFormItem.removeAllChildren();
+  timeFormItem.removeAllChildren();
+
+  timeChooser.defaultHour = 00;
+  timeChooser.defaultMinute = 00;
+
+  dateTime.dateEntry = new ECUITDateField();
+  dateTime.timeEntry = new ECUITTimeChooser();
+  dateTime.dateEntry.text = "";
+  dateTime.timeEntry.defaultHour = 00;
+  dateTime.timeEntry.defaultMinute = 00;
+  dateTime.dateEntry.formatString = "YYYY-MM-DD";
+
+  if (scheduleType.selectedItem == "Run Now")
+  {
+    frequencyString1.text = "Once";
+    frequencyFormItem.addChild(frequencyString1);
+    frequencyString2.text = "Now";
+    timeFormItem.addChild(frequencyString2);
+  }
+
+  if (scheduleType.selectedItem == "Daily")
+  {
+    frequencyString1.text = "Everyday";
+    frequencyFormItem.addChild(frequencyString1);
+    timeFormItem.addChild(timeChooser);
+  }
+
+  if (scheduleType.selectedItem == "Weekly")
+  {
+    frequencyComboBox1.dataProvider = runTaskArrayDayOfWeek1;
+    frequencyComboBox1.width = 90;
+    frequencyString2.text = "Every";
+    frequencyComboBox2.dataProvider = runTaskArrayDayOfWeek2;
+    frequencyComboBox2.width = 60;
+    frequencyString3.text = "Week";
+    frequencyFormItem.addChild(frequencyComboBox1);
+    frequencyFormItem.addChild(frequencyString2);
+    frequencyFormItem.addChild(frequencyComboBox2);
+    frequencyFormItem.addChild(frequencyString3);
+    timeFormItem.addChild(timeChooser);
+  }
+
+  if (scheduleType.selectedItem == "Monthly")
+  {
+    frequencyComboBox1.dataProvider = runTaskArrayDayOfMonth1;
+    frequencyComboBox1.width = 90;
+    frequencyString2.text = "Day, Every";
+    frequencyComboBox2.dataProvider = runTaskArrayDayOfMonth2;
+    frequencyComboBox2.width = 60;
+    frequencyString3.text = " Month";
+    frequencyFormItem.addChild(frequencyComboBox1);
+    frequencyFormItem.addChild(frequencyString2);
+    frequencyFormItem.addChild(frequencyComboBox2);
+    frequencyFormItem.addChild(frequencyString3);
+    timeFormItem.addChild(timeChooser);
+  }
+
+  if (scheduleType.selectedItem == "Future")
+  {
+    frequencyString1.text = "Once";
+    frequencyFormItem.addChild(frequencyString1);
+    timeFormItem.addChild(dateTime);
+  }
+}
+
+
+protected function scheduleType_creationCompleteHandler(event:FlexEvent):void
+{
+  frequencyString1.text = "Once";
+  frequencyFormItem.addChild(frequencyString1);
+
+  frequencyString2.text = "Now";
+  timeFormItem.addChild(frequencyString2);
+}
+

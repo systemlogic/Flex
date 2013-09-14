@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250" creationComplete="_creationCompleteHandler(event)"
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*" 
+					  xmlns:lists="com.emc.ecuit.flex.components.lists.*" xmlns:views="com.emc.efx.guitoolkit.components.views.*">
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.views.Utility.Command;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.events.FlexMouseEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			private var _enableBackButton:Boolean = true;
+			private var _initialized:Boolean = false;
+			public static const ATTR_PRIMARYAGENT        :String = "PrimaryAgent";
+			public static const ATTR_SECONDRYAGENT       :String = "SecondryAgent";
+			
+			public var _defaultPrimaryAgent:ArrayCollection ;
+			public var _defaultSecondryAgent:ArrayCollection ;
+			public var _client:UxHttpClient ;
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					// Pull defaults from wizard data
+					var def:Object;
+					
+					def = getData(ATTR_PRIMARYAGENT);
+					if (def != null) 
+					{
+						_defaultPrimaryAgent = def as ArrayCollection;
+					}
+					def = getData(ATTR_SECONDRYAGENT);
+					if (def != null) 
+					{
+						_defaultSecondryAgent = def as ArrayCollection;
+					}
+					_initialized = true;
+				}
+				setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name)
+				updateButtons();
+				enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			}
+			private function updateButtons():void{
+				if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+				enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+			}
+			override protected function save(): void
+			{
+				setData(ATTR_SECONDRYAGENT,new ArrayCollection(commandTargetList));
+				setData(ATTR_PRIMARYAGENT,new ArrayCollection(commandSourceList));
+				/* setData(ATTR_userName,        StringUtil.trim(userName.text));
+				setData(ATTR_password,        StringUtil.trim(password.text));
+				setData(ATTR_port,        StringUtil.trim(port.text)); */
+				//enableStep(TvShowSelection.STEP_NAME, true);
+				stepComplete = true;
+			}
+			// Override as we have step specific validation
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			
+			private function getCommandTip(value:Object):String
+			{
+				return value.description; 
+			}	    
+			
+			private function getCommandImage(value:Object):Class
+			{
+				return value.image; 
+			}
+			
+			protected function _creationCompleteHandler(event:FlexEvent):void
+			{
+				callLater(updateLater);
+			}
+			private function updateLater():void{
+				var xml:XML = <REQUEST/>; 
+				var cmd:Command = new Command(_client,onComplete,xml,"getFPolicyList.htm",progress);
+				_client = cmd.sendCommand();
+			}
+			private var response:XMLList;
+			[Bindable] private var commandSourceList:Array = new Array();
+			[Bindable] private var defaultCommandSourceList:Array = new Array(); 
+			private function onComplete(event:Event):void{
+				progress.updateProgress(100, "default");
+				var commandArray:ArrayCollection = new ArrayCollection()
+				var defaultArray:ArrayCollection = new ArrayCollection();	
+				response = new XMLList(_client.response.body);
+				for each (var ip : XML in response..IP ) {
+					var obj:Object = new Object();
+					obj.name = ip.toString() ;
+					obj.description = ip.toString() ;
+					commandArray.addItem(obj);
+					defaultArray.addItem(obj);
+				}
+				commandSourceList = commandArray.source;
+				defaultCommandSourceList = defaultArray.source; 
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<fx:Array id="commandTargetList"/>
+		<fx:Array id="defaultCommandTargetList"/>
+	</fx:Declarations>
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+	<lists:ListMoverControl sourceListTitle="{ResourceManager.getInstance().getString('fma','FIL_SER_PRI_AGT')}"
+							sourceArray="{commandSourceList}" 
+							targetArray="{commandTargetList}" 
+							defaultSourceArray="{defaultCommandSourceList}"
+							defaultTargetArray="{defaultCommandTargetList}" 
+							sourceLabelField="name" 
+							sourceDataTipFunction="getCommandTip"
+							sourceIconFunction="getCommandImage"
+							addButtonTooltip="Add a toolbar button" 
+							removeButtonTooltip="Remove a toolbar button"
+							targetListTitle="{ResourceManager.getInstance().getString('fma','FIL_SER_SEC_AGT')}"
+							targetLabelField="name" 
+							targetDataTipFunction="getCommandTip" 
+							targetIconField="image"
+							paddingLeft="20" paddingTop="20" />
+	</views:UxProgressCanvas>
+</wizards:UxWizardStep>

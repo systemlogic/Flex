@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fxs="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+        xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+        xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+        implements="com.emc.efx.services.navigation.IUxHasPayload"
+        xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+        xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*"
+        xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*" >
+
+  <fxs:Script source="SaveUser.mxml.as" />
+
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+         xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+         width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false"
+         helpServiceID="FMAHelpService" helpID="User"
+         keyDown="page_keyDownHandler(event)"
+         xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+         xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+    <mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+         paddingBottom="10" paddingTop="10"
+         height="100%">
+      <UxExtendedClass:UxGroupBoxCta title="{groupBoxLabel}" width="50%">
+        <mx:Form>
+          <mx:FormItem label="{Common.getResource('ADD_USR_NAME')}">
+            <mx:TextInput id="usrName" text="{Name_text}" editable="{nameEditable}" width="{parseFloat(Common.getResource('CONTROL_WIDTH'))}"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('ADD_USR_ENABLE')}">
+            <mx:CheckBox id="usrEnable" selected="{enableCheck}"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('CHG_PWD_NEW_PASSWORD')}">
+            <mx:TextInput id="newPass" text="{dummy}" displayAsPassword="true" width="{parseFloat(Common.getResource('CONTROL_WIDTH'))}"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('CHG_PWD_CON_PASSWORD')}">
+            <mx:TextInput id="confPass" text="{dummy}" displayAsPassword="true" width="{parseFloat(Common.getResource('CONTROL_WIDTH'))}"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('ADD_USR_TYPEC')}">
+            <mx:HBox>
+              <mx:RadioButtonGroup id="usrType" itemClick="usrType_itemClickHandler(event)"/>
+              <mx:RadioButton id="SuperUser" label="Super User" groupName="usrType" paddingLeft="15"/>
+              <mx:RadioButton id="RegularUser" label="Regular User" groupName="usrType" paddingLeft="15" selected="true" />
+            </mx:HBox>
+          </mx:FormItem>
+        </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta>
+      <mx:HBox height="100%" />
+      <mx:HBox>
+        <buttons:UxButton id="commitChanges" label="{Common.getResource('BUTTON_COMMIT')}" click="OnCommit(event)" />
+        <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)" />
+      </mx:HBox>
+    </mx:Box>
+  </UxViewBlock>
+</UxVBoxWindow>

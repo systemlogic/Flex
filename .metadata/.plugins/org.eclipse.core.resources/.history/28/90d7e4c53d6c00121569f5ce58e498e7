@@ -1,0 +1,150 @@
+
+// Import
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Policies.Policy.PolicyWizard.PolicyWizard;
+
+import mx.binding.utils.ChangeWatcher;
+import mx.collections.ArrayCollection;
+import mx.collections.XMLListCollection;
+import mx.events.FlexEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+// Private Variables
+private var _initialized:Boolean = false;
+private var response:XMLList;
+private var setPolicyName:String;
+private var myWatcher:ChangeWatcher;
+private var taskTypeState:String;
+[Bindable]
+private var TaskPolicyMap:ArrayCollection = new ArrayCollection([
+{label:"Archive", data:"archive"},
+{label:"Multi Tier", data:"multi_tier"},
+{label:"Multi Tier Stub", data:"multi_tier_stub"},
+{label:"File Migration", data:"migrate_file"},
+{label:"Delete Orphans", data:"delete_orphans"},
+{label:"Delete Stubs", data:"delete_stubs"}]);
+
+// Public Variables
+[Bindable]public var policyList:XMLListCollection;
+
+[Embed(source="../../../../../../../resources/images/assets/Add_16.png")]
+[Bindable]public var add_22x22:Class;
+[Embed(source="../../../../../../../resources/images/assets/Edit_16.png")]
+[Bindable]public var edit_22x22:Class;
+
+protected function creationCompleteHandler():void
+{
+  taskTypeState = getData(TaskType.ATTR_TASK_TYPE).toString();
+}
+
+override public function postDisplay():void
+{
+  if (!_initialized)
+  {
+    _initialized = true;
+    callLater(updateLater);
+  }
+
+  if (taskTypeState != getData(TaskType.ATTR_TASK_TYPE.toString()))
+  {
+    creationCompleteHandler();
+    callLater(updateLater);
+  }
+
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  validateNext();
+
+}
+
+public function updateLater(policyName:String=""):void
+{
+
+  setPolicyName = policyName;
+  RESTClient.sendGetRequest("/api/policy", onComplete1, progress);
+}
+
+private function onComplete1(event:RESTEvent):void
+{
+  progress.updateProgress(100, "default");
+  response = new XMLList(event.response);
+
+  policyList = new XMLListCollection(response.PolicyList.Policy.(elements('Type') == findObjectByAttribute(TaskPolicyMap, "label", getData(TaskType.ATTR_TASK_TYPE).toString()).data).Name);
+
+  policyNameComboBox.dataProvider = policyList;
+
+  if (setPolicyName != "")
+  {
+    var index:Number = -1;
+
+    for ( var j:int = 0; j < policyList.source.length(); j++)
+      if (policyList.source[j].toString() == setPolicyName )
+      {
+        index = j;
+        break;
+      }
+
+    if (index != -1)
+      policyNameComboBox.selectedIndex = index;
+  }
+
+  validateNext();
+}
+
+private function findObjectByAttribute(arrayCollection:ArrayCollection, attributeName:String, value:String):Object
+{
+  for each (var object:Object in arrayCollection)
+  {
+    if (object[attributeName]==value)
+    {
+      return object;
+    }
+  }
+
+  return null;
+}
+
+private function validateNext():void
+{
+
+  if (policyList != null)
+    if (policyList.length != 0)
+      enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else
+      enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+}
+
+override protected function save():void
+{
+  if (!isCurrentStep())return;
+
+  setData(TaskType.ATTR_POLICYNAME, policyNameComboBox.selectedItem.toString());
+  stepComplete = true;
+}
+
+override protected function validate():Boolean
+{
+  return true;
+}
+
+protected function clickAdd():void
+{
+  var wizard:Object;
+  wizard = new PolicyWizard(this,getData(TaskType.ATTR_TASK_TYPE).toString().toLowerCase());
+  wizard.modal = true;
+  wizard.show(this);
+}
+
+protected function clickEdit():void
+{
+  var wizard:Object;
+  wizard = new PolicyWizard(this,getData(TaskType.ATTR_TASK_TYPE).toString().toLowerCase(),policyNameComboBox.selectedItem.toString());
+  wizard.modal = true;
+  wizard.show(this);
+}
+

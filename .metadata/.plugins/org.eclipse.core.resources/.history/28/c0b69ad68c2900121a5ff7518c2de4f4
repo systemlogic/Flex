@@ -1,0 +1,64 @@
+package com.emc.ecuit.flex.components.find
+{
+	import flash.events.Event;
+
+	/************************************************************************* 
+     * Event class which represents a find action.
+	 */
+	public class FindEvent extends Event
+	{
+		/** Event type used to indicate the start of a new find request */
+   	    public static const FIND_START:String  = "findStart";
+		/** Event type used to indicate the restart of a find request */
+   	    public static const FIND_RESTART:String  = "findRestart";
+		/** Event type used to go to the next search match */
+   	    public static const FIND_NEXT:String  = "findNext";
+		/** Event type used to go to the previous search match */
+   	    public static const FIND_PREVIOUS:String  = "findPrevious";
+		/** Event type used to go start searching again */
+   	    public static const FIND_WRAP:String  = "findWrap";
+		/** Event type used to go back to the last search hit */
+   	    public static const FIND_UNWRAP:String  = "findUnWrap";
+		/** Event type used to specify that the last hit is showing */
+		public static const FIND_WRAP_REQUEST:String = "findWrapRequest";
+		/** Event type used to request a repeat of the last search action */
+   	    public static const FIND_SEARCH_AGAIN:String  = "findSearchAgain";
+
+		/** Value for number of search hits is unknown */
+		public static const HITS_UNKNOWN:int = -1;
+
+		/** Text to search for */
+		protected var _searchText:String;
+
+		/*********************************************************************
+		 * Constructor of the event.
+	     * 
+	     * @param type, e.g. "findNext".
+	     * @param searchString Text to search for
+	     * @param bubbles signifies whether event should be displatched to the 
+	     * 			parents of the component
+	     * @param cancelable signifies whether event is cancelable
+		 */
+		public function FindEvent(type:String,
+									searchText:String=null,
+									bubbles:Boolean=false,
+									cancelable:Boolean=false)
+		{
+			super(type, bubbles, cancelable);
+
+			_searchText = searchText;
+		}
+
+		/*********************************************************************
+		 * The text being searched for.
+		 */
+		public function get searchText():String
+		{
+			return _searchText;			
+		}
+		public function set searchText(searchText:String):void
+		{
+			_searchText = searchText;
+		}
+	}
+}

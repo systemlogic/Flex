@@ -1,0 +1,96 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+import com.emc.efx.guitoolkit.dataloading.IUxLoader;
+import com.emc.efx.guitoolkit.dataloading.UxLoadingHandler;
+import com.emc.fma.model.SchemaManager.SchemaConverter;
+import com.emc.fma.model.SchemaManager.vo.AmazonS3VO;
+import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+      
+import flash.net.sendToURL;
+      
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+      
+private var _initialized:Boolean = false;
+private var next:Boolean = false;
+private var serverRoundTripNotHappen:Boolean = true;
+
+[Bindable] private var fsName:String;
+[Bindable] private var fsType:String;
+[Bindable] private var netAdd:String;
+
+override public function postDisplay():void 
+{
+  if ( !_initialized )
+    _initialized = true;
+
+  fsName = getData(NameStep.ATTR_NAME).toString();
+  fsType = ResourceManager.getInstance().getString('fma','AMAZONS3')
+  netAdd = getData(AmazonS3WebService.ATTR_URL).toString(); 
+  if ( serverRoundTripNotHappen )
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  }
+  if ( !serverRoundTripNotHappen )
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+    serverRoundTripNotHappen = false;
+  }
+}
+
+override public function doFinish():void
+{
+  var _amazons3Server:AmazonS3VO = new AmazonS3VO();
+  _amazons3Server.Name = getData(NameStep.ATTR_NAME).toString();
+  _amazons3Server.URL = getData(AmazonS3WebService.ATTR_URL).toString();
+  _amazons3Server.AccessKeyID = getData(AmazonS3WebService.ATTR_ACCESKEY).toString();
+  _amazons3Server.SecretAccessKey = getData(AmazonS3WebService.ATTR_SECRETACCESSKEY).toString();
+  _amazons3Server.BucketName = getData(AmazonS3WebService.ATTR_BUCKET).toString();
+
+  var xml:XML = SchemaConverter.VOtoXML("FileServers", _amazons3Server); 
+  trace(xml);
+
+  RESTClient.sendPostRequest("/api/server", xml, OnSaveStatus, progress);
+  stepComplete = true;
+}
+
+private function OnSaveStatus(event:RESTEvent):void
+{
+  var confirmationHandler:Function = (event.hasStandardResponse && event.response.Code == 0)? OnMessageSuccess:OnMessageFailure;
+
+  // Show response message if available
+  if ( Common.showResponseMessage(this, event, confirmationHandler) )
+    return;
+
+  // Show the XML string as response
+  Common.showErrorDialog(this, event.response.toXMLString(), confirmationHandler);
+}
+
+private function OnMessageSuccess(event:Event):void
+{
+  this.parentWizard.dispatchEvent(new ECUITWizardEvent(ECUITWizardEvent.ECUITWIZ_WIZARDCOMPLETE, this.parentWizard, ECUITWizardEvent.ECUITWIZ_WIZARD_CANCELED));
+  serverRoundTripNotHappen = false ;
+  // Need to have public updateSelf function to refresh respective component
+  try{
+    this.parentDocument.updateSelf(getData(NameStep.ATTR_NAME).toString());
+  }catch(err:Error){
+    
+  }
+}
+
+private function OnMessageFailure(event:Event):void
+{
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  serverRoundTripNotHappen = true;
+}

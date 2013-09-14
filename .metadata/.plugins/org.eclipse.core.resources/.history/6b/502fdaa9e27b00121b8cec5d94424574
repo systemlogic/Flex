@@ -1,0 +1,127 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Policies.Policy.PolicyWizard.PolicyWizard;
+
+import flashx.textLayout.factory.TruncationOptions;
+
+import mx.collections.ArrayCollection;
+import mx.collections.XMLListCollection;
+import mx.events.FlexEvent;
+import mx.events.ItemClickEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+private var _initialized:Boolean = false;
+private var setPolicyName:String;
+[Bindable]
+public var policyList:XMLListCollection;
+private var taskTypeState:String;
+
+[Embed(source="../../../../../../../resources/images/assets/Add_16.png")]
+[Bindable]
+public var add_22x22:Class;
+[Embed(source="../../../../../../../resources/images/assets/Edit_16.png")]
+[Bindable]
+public var edit_22x22:Class;
+
+
+protected function creationCompleteHandler():void
+{
+  taskTypeState = getData(TaskType.ATTR_TASK_TYPE).toString();
+}
+
+override public function postDisplay():void
+{
+  if ( !_initialized )
+  {
+    _initialized = true;
+    callLater(updateLater);
+  }
+
+  if ( taskTypeState != getData(TaskType.ATTR_TASK_TYPE.toString()) )
+  {
+    creationCompleteHandler();
+    callLater(updateLater);
+  }
+
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  validateNext();
+}
+
+public function updateLater(policyName:String=""):void
+{
+  setPolicyName = policyName;
+  RESTClient.sendGetRequest("/api/policy?output=minimal", OnGetComplete, progress);
+}
+
+private function OnGetComplete(event:RESTEvent):void
+{
+  var response:XML = event.response;
+
+  if ( getData(TaskType.ATTR_TASK_TYPE)=="Archive" )
+    policyList  = new XMLListCollection(response.PolicyList.Policy.(@type == 'archive' ).name);
+  else
+    policyList  = new XMLListCollection(response.PolicyList.Policy.(@type == 'migrate_file' ).name);
+
+  policyNameComboBox.dataProvider = policyList;
+
+  if ( setPolicyName != "" )
+  {
+    var index:Number = -1;
+
+    for ( var j:int = 0; j < policyList.source.length(); j++)
+    {
+      if ( policyList.source[j].toString() == setPolicyName )
+      {
+        index = j;
+        break;
+      }
+    }
+    if ( index != -1 )
+      policyNameComboBox.selectedIndex = index;
+  }
+
+  validateNext();
+}
+
+private function validateNext():void
+{
+  if (policyList == null) return;
+  if ( policyList.length != 0 )
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  else
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+}
+
+override protected function save():void
+{
+  if ( !isCurrentStep() ) return;
+
+  setData(TaskType.ATTR_POLICYNAME, policyNameComboBox.selectedItem.toString());
+  stepComplete = true;
+}
+
+override protected function validate():Boolean
+{
+  return true;
+}
+
+protected function clickAdd():void
+{
+  var wizard:Object;
+  wizard = new PolicyWizard(this,getData(TaskType.ATTR_TASK_TYPE).toString().toLowerCase());
+  wizard.modal = true;
+  wizard.show(this);
+}
+
+protected function clickEdit():void
+{
+  var wizard:Object;
+  wizard = new PolicyWizard(this,getData(TaskType.ATTR_TASK_TYPE).toString().toLowerCase(),policyNameComboBox.selectedItem.toString());
+  wizard.modal = true;
+  wizard.show(this);
+}

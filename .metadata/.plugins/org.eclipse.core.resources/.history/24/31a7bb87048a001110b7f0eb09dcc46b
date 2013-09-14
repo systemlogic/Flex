@@ -1,0 +1,531 @@
+package com.emc.ecuit.flex.components.dashboards
+{
+   import com.emc.ecuit.flex.components.views.DynamicViewBlock;
+   import com.emc.ecuit.flex.components.views.DynamicViewBlockThumbnail;
+   import com.emc.ecuit.flex.utils.UITrace;
+   
+   import flash.display.DisplayObject;
+   
+   import mx.collections.XMLListCollection;
+   import mx.containers.GridItem;
+   import mx.containers.GridRow;
+   import mx.containers.HBox;
+   import mx.containers.VBox;
+   import mx.core.Container;
+   import mx.events.*;
+   import mx.managers.DragManager;
+   
+   /**
+     * A <code>DashboardColumn</code> is placed within a <code>Dashboard</code> and may 
+     * contain <code>DynamicViewBlocks</code>.  When a <code>DynamicViewBlock</code> is
+     * dragged over a <code>DashboardColumn</code>, the <code>DashboardColumn</code> displays
+     * a <code>DashboardHighlight</code> rectangle indicator to denote where the currently dragged 
+     * <code>DynamicViewBlock</code> will land if dropped.
+     * **/
+   public class DashboardColumn extends GridRow
+   {        
+        /** Highlight box which denotes where a drag-and-drop object will land if
+        * dropped. */
+        public var highlightBox:DashboardHighlight;
+		/** Reference to parent Dashboard */
+		public var parentDashboard:Dashboard;
+        
+        /** Constructor.  Sets percent width and height, and adds drag event listeners. */
+        public function DashboardColumn()
+        {
+            super();
+            
+            this.percentWidth = 100;
+			this.maxHeight = 2500;
+			this.minHeight = 10;
+            this.styleName = "DashboardColumn";
+			// create high light box
+			highlightBox = new DashboardHighlight();
+			highlightBox.percentWidth=100;
+         
+            // add event listeners
+            addEventListener(DragEvent.DRAG_ENTER,dragEnterHandler);
+            addEventListener(DragEvent.DRAG_OVER,dragOverHandler);
+            addEventListener(DragEvent.DRAG_DROP,dragDropHandler);
+			addEventListener(DragEvent.DRAG_EXIT,dragExitHandler);			
+        }
+        
+        /**
+         * Overrides the <code>addChild</code> method. 
+         * Throws an error if attempting to add a standard ViewBlock
+         * to DashboardColumn.  Must use DynamicViewBlocks
+         * @param child The DisplayObject to add to the dashboard.
+         */
+        public override function addChild(child:DisplayObject):DisplayObject
+        {
+            if(child is DynamicViewBlock){
+			   var dvb:DynamicViewBlock = child as DynamicViewBlock;
+			   // wrap view block into GridItem so it could be added to GridRow
+			   var gridItem:GridItem = new GridItem();
+			   if (parentDashboard != null) 
+			   		gridItem.width = parentDashboard.unitHeight;
+			   
+			   // width and height
+			   dvb.percentWidth = 100;
+			   dvb.percentHeight = 100;			   			   
+			   
+			   // turn off scrolling for the cell
+			   gridItem.horizontalScrollPolicy = "off";
+			   gridItem.verticalScrollPolicy = "off";
+			   
+			   // add view block and grid item
+			   gridItem.addChild(dvb);		   
+			   super.addChild(gridItem);          
+            } 
+			else if (child is GridItem) {
+				super.addChild(child);  
+			} 
+			else {
+               throw new Error("Attempted to add a standard ViewBlock to Dashboard.  Please use DynamicViewBlocks in Dashboards.");
+            }
+            return child;
+        }
+        
+        /**
+         * Overrides the <code>addChildAt</code> method. 
+         * Throws an error if attempting to add a standard ViewBlock
+         * to DashboardColumn.  Must use DynamicViewBlocks
+         * @param child The DisplayObject to add to the Dashboard.
+         * @param index The index to add the DisplayObject into the Dashboard.
+         */
+        public override function addChildAt(child:DisplayObject, index:int):DisplayObject
+        {
+            if(child is DynamicViewBlock){
+			   var dvb:DynamicViewBlock = child as DynamicViewBlock;
+			   // wrap view block into GridItem so it could be added to GridRow
+			   var gridItem:GridItem = new GridItem();
+			   if (parentDashboard != null) 
+			   		gridItem.width = parentDashboard.unitWidth;
+			   
+			   // turn off scrolling for the cell
+			   gridItem.horizontalScrollPolicy = "off";
+			   gridItem.verticalScrollPolicy = "off";
+			   
+			   // width and height
+			   dvb.percentWidth = 100;
+			   dvb.percentHeight = 100;
+			   
+			   // add view block and grid item
+			   gridItem.addChild(dvb);
+               super.addChildAt(gridItem, index);        
+            } else if (child is GridItem) {	
+				if (super.numChildren < index)
+					index = super.numChildren - 1;
+				if (index < 0)
+					index = 0;
+				super.addChildAt(child, index);  
+			} 
+			else {
+               throw new Error("Attempted to add a standard ViewBlock to Dashboard.  Please use DynamicViewBlocks in Dashboards.");
+            }
+
+            return child;
+        }
+		
+		/** Add rows if needed to accomodate row span. 
+		 * @param child - GridItem.
+		 */
+		public function addRows(child:DynamicViewBlock):void {
+			if (parentDashboard == null ||child.parent == null) 
+				return;
+			var myRowCount:int = parentDashboard.getRowIndex(this) + (child.parent as GridItem).rowSpan;
+			//trace("addRows myRowCount " + myRowCount);
+			while (myRowCount > parentDashboard.numRows)
+				parentDashboard.addRow();
+				
+		}
+		
+		/**
+		 * Overrides the <code>removeChild</code> method. 
+		 * Throws an error if attempting to remove a standard ViewBlock
+		 * to DashboardColumn.  Must use DynamicViewBlocks
+		 * @param child The DisplayObject to remove from the Dashboard.
+		 */
+		override public function removeChild(child:DisplayObject):DisplayObject  {	
+			if(child is DynamicViewBlock){
+				// remove GridItemildren first 
+				var gridItem:GridItem = child.parent as GridItem;
+				if (gridItem != null) {
+					gridItem.removeChild(child); 
+					super.removeChild(gridItem);
+				}
+			} else if (child is GridItem) {
+				super.removeChild(child);  
+			} 
+			else {
+				throw new Error("Attempted to remove a standard ViewBlock to Dashboard.  Please use DynamicViewBlocks in Dashboards.");
+			}
+			return child;
+		} 
+		
+		/**
+		 * Overrides the <code>removeChild</code> method. 
+		 * Throws an error if attempting to remove a standard ViewBlock
+		 * to DashboardColumn.  Must use DynamicViewBlocks
+		 * @param index - index of the child to be removed from the Dashboard.
+		 */
+		override public function removeChildAt(index:int):DisplayObject {		
+			var child:DisplayObject =  getChildAt(index);
+			if(child is DynamicViewBlock){
+				super.removeChildAt(index);        
+			} else if (child is GridItem) {
+				var gridItem:GridItem = child as GridItem;
+				// remove GridItemildren first				
+				gridItem.removeAllChildren(); 
+				super.removeChildAt(index);    
+			} 
+			else {
+				throw new Error("Attempted to remove a standard ViewBlock to Dashboard.  Please use DynamicViewBlocks in Dashboards.");
+			}
+			return child;
+		}
+		
+		/**
+		 * Overrides the <code>getChildIndex</code> method. 
+		 * Finds index for the GridItem which contains 'child'
+		 * @param child - the DisplayObject which index needs to be determined
+		 * @returns index
+		 */
+		override public function getChildIndex(child:DisplayObject):int {
+			// find Grid item which contains DynamicViewBlock
+			if(child is DynamicViewBlock){
+				for(var i:int=0; i < numChildren; i++)
+				{
+					var item:GridItem = getChildAt(i) as GridItem;
+					if (item == null) 
+						continue;
+					for (var i1:int=0; i1 < item.getChildren().length; i1++) {
+						var dvb:DynamicViewBlock = item.getChildAt(i1) as DynamicViewBlock;
+						if(dvb != null && dvb.id == (child as DynamicViewBlock).id) {
+							return i;
+						}
+					}
+				}
+			}
+			else if(child is DashboardHighlight){
+				for(var i2:int=0; i2 < numChildren; i2++)
+				{
+					var item2:GridItem = getChildAt(i2) as GridItem;
+					if (item2 == null) 
+						continue;
+					if (item2.contains(child))
+						return i2;
+				}
+				
+			}
+			else if (super.contains(child)) {
+				return super.getChildIndex(child);		
+			}
+			// fix index if needed
+			var retIndex:int = super.getChildren().length - 1;
+			if (retIndex < 0) 
+				retIndex = 0;
+			return retIndex;
+		}
+		
+		/**
+		 * Overrides the <code>setChildIndex</code> method. 
+		 * Sets index for the GridItem which contains 'child'
+		 * @param child - the DisplayObject which index needs to be set
+		 * @param index - index of the GridItem which contains 'child'
+		 */
+		override public function setChildIndex(child:DisplayObject, index:int):void {
+			// find Grid item which contains DynamicViewBlock
+			if(child is DynamicViewBlock){
+				for(var i:int=0; i < numChildren; i++)
+				{
+					var item:GridItem = getChildAt(i) as GridItem;
+					if (item == null) 
+						continue;
+					for (var i1:int=0; i1 < item.getChildren().length; i1++) {
+						var dvb:DynamicViewBlock = item.getChildAt(i1) as DynamicViewBlock;
+						if(dvb != null && dvb.id == (child as DynamicViewBlock).id) {
+							if (index >= numChildren)
+								index = numChildren - 1;
+							super.setChildIndex(item, index);
+						}
+					}
+				}
+			}
+			else if(child is DashboardHighlight){
+				for(var i2:int=0; i2 < numChildren; i2++)
+				{
+					var item2:GridItem = getChildAt(i2) as GridItem;
+					if (item2 == null) 
+						continue;
+					if (item2.contains(child)) {
+						if (index >= numChildren)
+							index = numChildren - 1;							
+						super.setChildIndex(item2, index);
+					}
+				}			
+			}	
+			else {
+				if (index >= numChildren)
+					index = numChildren - 1;
+				super. setChildIndex(child, index);
+			}
+		}
+		
+        /** This method checks to see if this <code>DashboardColumn</code> 
+        * contains a visible highlight box. 
+        * @return True indicates that this column contains a highlight box. False 
+        * means that it does not.*/
+        public function hasHighlight():Boolean
+        {   
+			for (var i:int = 0; i < getChildren().length; i++) {
+				var item:GridItem = getChildAt(i) as GridItem;
+				if (item == null)
+					continue;
+				if (item.contains(highlightBox))
+					return true;
+				
+			} 
+            return false;
+        }
+        
+        /** This method sets the height of the highlight box to match 
+        * the height of the passed in <code>DynamicViewBlock</code>.
+        * @param dropObj The <code>DynamicViewBlock</code> being dragged.*/
+        public function sizeHighlightTo(rowSpan:int, columnSpan:int):void
+        {
+			highlightBox.height = rowSpan * parentDashboard.unitHeight;
+			highlightBox.width = columnSpan * parentDashboard.unitWidth;
+            highlightBox.rowSpan = rowSpan;
+		    highlightBox.columnSpan = columnSpan;
+        }
+        
+        /** If the <code>DashboardColumn</code> contains a highlight box, 
+        * this method removes it from the column.*/
+        public function removeHighlight():void
+        {
+			for (var i:int = 0; i < getChildren().length; i++) {
+				var item:GridItem = getChildAt(i) as GridItem;
+				if (item == null)
+					continue;
+				if (item.contains(highlightBox)) {
+					item.removeChild(highlightBox);
+					super.removeChild(item);
+				}				
+			} 
+        }
+		
+		/** This method adds highlight box to the column.
+		 * @param index - index of the column to add hightlight to.
+		 */
+		public function addHighlightAt(index:int):void
+		{
+			// remove highlighlts from all other columns before adding one
+			if (parentDashboard != null) {
+				parentDashboard.removeAllHighlights();
+			}
+			// wrap view block into GridItem so it could be added to GridRow
+			var gridItem:GridItem = new GridItem();
+			gridItem.addChild(highlightBox);
+			// turn off scrolling for the cell
+			gridItem.horizontalScrollPolicy = "off";
+			gridItem.verticalScrollPolicy = "off";
+			// size it
+			gridItem.rowSpan = highlightBox.rowSpan;
+			gridItem.colSpan = highlightBox.columnSpan;
+			
+			// add rows if needed
+			var thisRow:int = parentDashboard.getRowIndex(this);
+			var delta:int = thisRow + gridItem.rowSpan - parentDashboard.numRows; 
+			if (delta > 0) {
+				for (var iii:int = 0; iii < delta; iii++) {	
+					parentDashboard.addRow();
+				}
+			}
+			// validate index
+			if (index >= super.getChildren().length) {
+				super.addChild(gridItem); 
+				return;
+			}
+			if (index < 0) 
+				index = 0;		
+			//trace("addHighlightAt " + index);
+			super.addChildAt(gridItem, index); 
+		}
+		
+        // Called when the user moves the drag proxy onto the drop target.
+        private function dragEnterHandler(event:DragEvent):void {
+			//trace("\nDC dragEnterHandler ");
+            var dragInitiator:VBox = event.dragInitiator as VBox;
+            if (dragInitiator == null)
+            	return;
+
+            // Get the drop target component from the event object.
+            var dropTarget:DashboardColumn = DashboardColumn(event.currentTarget);
+			
+            // Accept the drop.
+            DragManager.acceptDragDrop(dropTarget);
+        }
+		
+		/** This method returns grid item in the dashboard columns which corresponds to the x coordinate.
+		 * @param dc - DashboardColumn
+		 * @param x - x coordinate
+		 * @return GridItem 
+		 */
+		private function getGridItem4Coordinate(dc:DashboardColumn, x:int):GridItem {			
+			for (var i:int = 0; i < dc.numChildren; i++) {
+				var item:GridItem = dc.getChildAt(i) as GridItem;
+				if (item == null)
+					continue;
+				if ((item.x <= x) && ((item.x + item.width) >= x)) {
+					return item;
+				}
+			}
+			return null;
+		}		
+		
+        /* Called when the user moves the drag proxy over the drop target.
+         * If the DashboardColumn doesn't have a highlight box, one is sized
+         * to match the dragged DynamicViewBlock and then added to the column.
+         */
+        private var scrollContainer:Container;
+        private function dragOverHandler(event:DragEvent):void {	
+			if (parentDashboard.isMouseMoving) {
+				// save drag event
+				parentDashboard.lastEnterEvent = event;
+				return;
+			}
+			parentDashboard.lastEnterEvent = null;
+			
+ 			var dropZone:DashboardColumn = DashboardColumn(event.currentTarget);
+			if (dropZone == null) 	
+				return;
+
+			// determine row and column index
+			var columnIndex:int = dropZone.getChildren().length;
+			UITrace.doTrace(this, "DC dragOverHandler columnIndex " + columnIndex, UITrace.LEVEL_DEBUG);
+
+			// find an item on this coordinate
+			var item:GridItem = getGridItem4Coordinate(dropZone, event.localX);
+			// use index of the item as column index for highlight
+			if (item != null) {
+				columnIndex = dropZone.getChildIndex(item);
+				UITrace.doTrace(this, "item columnIndex " + columnIndex, UITrace.LEVEL_DEBUG);
+			}
+
+			// if VB is dragged over itself, no op
+			if (isOverItself(event.dragInitiator as DynamicViewBlock, item))
+				return;
+			
+			// get/create view block
+			var dvb:DynamicViewBlock = parentDashboard.createDVB(event, dropZone);
+			if (dvb == null)
+				return;
+			
+			if(!dropZone.hasHighlight()){
+				dropZone.sizeHighlightTo(dvb.rowSpan, dvb.colSpan);
+				UITrace.doTrace(this, "DC dragOverHandler addHighlightAt " + columnIndex, UITrace.LEVEL_DEBUG);
+				dropZone.addHighlightAt(columnIndex);  
+			}	
+			
+            // If dragging close to bottom or top of application window
+            /*if((this.parentApplication.height - event.stageY < 60) ||
+               (event.stageY < 100))
+            {
+               // find parent container which contains vert. scrollbar
+               scrollContainer = getScrollingContainer();
+               if(scrollContainer != null)
+               {
+               	  // if dragging towards bottom of window, scroll down
+                  if(this.parentApplication.height - event.stageY < 60)
+                     scrollContainer.verticalScrollPosition += 30;
+                  // if dragging towards top of window, scroll up
+                  if(event.stageY < 100)
+                     scrollContainer.verticalScrollPosition -= 30;
+               }
+            }*/
+        }
+        
+		/** This method determines whether view block is dragged over itself.
+		 * @param dragInitiator - DynamicViewBlock
+		 * @param item - GridItem
+		 * @return true id item contains dragInitiator, false otherwise.
+		 */
+		private function isOverItself(dragInitiator:DynamicViewBlock, item:GridItem):Boolean {
+			if (dragInitiator == null || item == null || item.getChildren().length == 0)
+				return false;
+			var dvb:DynamicViewBlock = item.getChildAt(0) as DynamicViewBlock;
+			if (dvb != null && dvb.id == dragInitiator.id)
+				return true;
+			return false;
+		}
+		
+        // find parent container which contains vert. scrollbar
+        private function getScrollingContainer():Container
+        {
+           if(scrollContainer != null){
+           	  return scrollContainer;
+           }
+           
+           var tmpScrollContainer:Container = this as Container;
+           while(tmpScrollContainer!=null && tmpScrollContainer.verticalScrollBar == null){
+                tmpScrollContainer = tmpScrollContainer.parent as Container;
+           }
+           
+           if(tmpScrollContainer != null && tmpScrollContainer.verticalScrollBar == null){
+              return null
+           } else {
+              return tmpScrollContainer;
+           }
+        }
+		
+        /* Called if the target accepts the dragged object and the user
+         * releases the mouse button while over the Canvas container.
+         * When a DynamicViewBlock is dropped onto the column, it replaces
+         * the highlight box. 
+         */  
+        private function dragDropHandler(event:DragEvent):void {
+			
+			var dropTarget:DashboardColumn = DashboardColumn(event.currentTarget);
+			if (dropTarget == null || dropTarget.parent == null || dropTarget.parent.parent == null)
+				return;	
+			var dropZone:DashboardColumn = parentDashboard.getColumnWithHighlight();
+			if(dropZone == null)
+				return;
+
+			// create view block from event info
+			var dvb:DynamicViewBlock = parentDashboard.createDVB(event, dropZone);
+			if (dvb == null)
+				return;
+			var columnIndex:int = dropTarget.getChildIndex(dropTarget.highlightBox);					
+			if(event.dragInitiator is DynamicViewBlock){
+				// remove view block from its location
+				parentDashboard.removeViewBlock(dvb.id, false);
+
+			} else if(event.dragInitiator is DynamicViewBlockThumbnail){
+				if (parentDashboard.removeThumbnailOnAdd)
+					parentDashboard.removeFromContentList(dvb.id);
+			}
+			// add it to drop column
+			UITrace.doTrace(this, "DC dragDropHandler add " + dvb.id + " at " + columnIndex, UITrace.LEVEL_DEBUG);
+			dropTarget.addChildAt(dvb, columnIndex);			
+			// remove highlight
+			if(dropTarget.hasHighlight()){
+				dropTarget.removeHighlight();
+			}
+			parentDashboard.updateLayout();
+         }   
+        
+		// Called after the drag operation exits 
+		private function dragExitHandler(event:DragEvent):void {
+			UITrace.doTrace(this, "DC dragExitHandler", UITrace.LEVEL_DEBUG);
+			var dropZone:DashboardColumn = parentDashboard.getColumnWithHighlight();
+			// remove highllight if mouse is up
+			if(dropZone != null) {
+				UITrace.doTrace(this, "removeHighlight", UITrace.LEVEL_DEBUG);
+				dropZone.removeHighlight();
+			}			
+			parentDashboard.lastEnterEvent = null;
+		}		
+   }
+}

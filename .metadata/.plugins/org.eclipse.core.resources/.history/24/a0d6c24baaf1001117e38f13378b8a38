@@ -1,0 +1,39 @@
+package com.emc.fma.views.Utility
+{
+	import com.emc.efx.guitoolkit.components.views.UxProgressCanvas;
+	import com.emc.efx.guitoolkit.components.views.UxViewBlock;
+	import com.emc.efx.net.UxURL;
+	import com.emc.efx.net.UxURLRequest;
+	import com.emc.efx.net.http.UxHttpClient;
+	import com.emc.efx.net.http.events.UxHttpTimeoutEvent;
+	
+	import flash.utils.ByteArray;
+	
+	public class CtaHttpClient extends UxHttpClient
+	{
+		public function CtaHttpClient(timeout:int=60000)
+		{
+			super(timeout);
+			this.addEventListener(UxHttpTimeoutEvent.HTTP_TIMEOUT,_timerExpire);
+		}
+
+		override public function sendPostRequest(url:UxURL,data:ByteArray):void{
+			super.sendPostRequest(url,data);
+		}
+		override public function sendRequest(request:UxURLRequest):void{
+			super.sendRequest(request);
+		}
+		public function _timerExpire(event:UxHttpTimeoutEvent):void{
+			var temp:Object = this ;
+			for(;;)
+			if(temp instanceof UxViewBlock || temp instanceof UxProgressCanvas ){   
+				temp.updateProgress(100, "default");
+				break;
+			}else{
+				
+			}
+		}
+		
+
+	}
+}

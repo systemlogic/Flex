@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wiz:UxWizardStep xmlns:mx="http://www.adobe.com/2006/mxml"
+				  xmlns:wiz="com.emc.efx.guitoolkit.components.wizards.*"
+				  xmlns:datetime="com.emc.ecuit.flex.components.datetime.*"
+				  xmlns:s="library://ns.adobe.com/flex/spark"
+				  width="400"
+				  height="200" 
+				  backgroundColor="#EAF5FE" xmlns:views="com.emc.efx.guitoolkit.components.views.*">
+	
+	<mx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.datetime.DateTimePicker;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			
+			import flashx.textLayout.formats.BackgroundColor;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.CheckBox;
+			import mx.controls.ComboBase;
+			import mx.controls.DateField;
+			import mx.controls.Label;
+			import mx.controls.NumericStepper;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.formatters.DateFormatter;
+			import mx.resources.ResourceManager;
+			
+			import spark.components.Label;
+			
+			private var _initialized:Boolean = false;
+			private var _client:UxHttpClient ;
+			
+			override public function postDisplay(): void 
+			{
+				if (!_initialized) 
+				{
+					_initialized = true;
+				}
+				
+				enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+				enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			}
+			
+			override protected function save(): void
+			{				
+				stepComplete = true;				
+			}
+			
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			
+			override public function doFinish():void 
+			{				
+				_client = new UxHttpClient();				
+				_client.addEventListener(Event.COMPLETE, onComplete);
+				var xml:XML ;
+				
+				if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+					xml = archiveXML();
+				else 
+					xml = fileMigrationXML();
+				
+				trace(xml);
+				var data:ByteArray = new ByteArray();
+				data.writeUTFBytes(xml.toString());
+				
+				_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "actionSchedule.htm"), data);
+				
+				
+				
+				stepComplete = true;
+				progress.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+				progress.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+			}
+			
+			private function onComplete(event:Event):void
+			{
+				progress.updateProgress(100, "default");
+				ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+			}
+			
+			private function archiveXML():XML
+			{
+				var xml:XML = <REQUEST/>;
+				xml.appendChild(<action>add</action>);
+				xml.appendChild(<Type>archiver</Type>);
+				xml.appendChild(<Policy>{getData(TaskType.ATTR_POLICYNAME)}</Policy>);
+				xml.appendChild(<Schedule>{getData(TaskType.ATTR_SCHEDULE_CONDITION)}</Schedule>);
+				
+				if(getData(TaskType.ATTR_PROTOCOL) == "CIFS")
+					xml.appendChild(<Source>{"\\\\" + getData(TaskType.ATTR_PRIMARYSERVER) + "\\" + getData(TaskType.ATTR_PRIMARYFILESYSTEM)}</Source>);
+				else if(getData(TaskType.ATTR_PROTOCOL) == "NFS")
+					xml.appendChild(<Source>{getData(TaskType.ATTR_PRIMARYSERVER) + ":" + getData(TaskType.ATTR_PRIMARYFILESYSTEM)}</Source>);				
+				
+				return xml ;	
+			}
+			
+			private function fileMigrationXML():XML
+			{
+				var xml:XML = <REQUEST/>;
+				xml.appendChild(<action>add</action>);
+				xml.appendChild(<Type>filemigration</Type>);
+				xml.appendChild(<Schedule>{getData(TaskType.ATTR_SCHEDULE_CONDITION)}</Schedule>);
+				
+				
+				if(getData(TaskType.ATTR_PRIMARYTYPE) != "Windows")
+					xml.appendChild(<Policy>{getData(TaskType.ATTR_POLICYNAME)}</Policy>);
+				
+				
+				if(getData(TaskType.ATTR_PROTOCOL) == "CIFS")
+				{
+					xml.appendChild(<Source>{"\\\\" + getData(TaskType.ATTR_PRIMARYSERVER) + "\\" + getData(TaskType.ATTR_PRIMARYFILESYSTEM)}</Source>);
+					xml.appendChild(<Destination>{"\\\\" + getData(TaskType.ATTR_SECONDARYSERVER) + "\\" + getData(TaskType.ATTR_SECONDARYFILESYSTEM)}</Destination>);
+				}
+				else if(getData(TaskType.ATTR_PROTOCOL) == "NFS")
+				{
+					xml.appendChild(<Source>{getData(TaskType.ATTR_PRIMARYSERVER) + ":" + getData(TaskType.ATTR_PRIMARYFILESYSTEM)}</Source>);
+					xml.appendChild(<Destination>{getData(TaskType.ATTR_SECONDARYSERVER) + ":" + getData(TaskType.ATTR_SECONDARYFILESYSTEM)}</Destination>);
+				}
+				
+				xml.appendChild(<CPUBandwidth>100</CPUBandwidth>);
+				xml.appendChild(<SIDTranslationFile>None</SIDTranslationFile>);
+				xml.appendChild(<ExitFailureCount>1000</ExitFailureCount>);
+				xml.appendChild(<RecursiveFileMigration>false</RecursiveFileMigration>);
+				xml.appendChild(<RecursiveFileThreshold/>);
+				
+				return xml ;	
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >		
+		
+		<mx:Text x="18" y="10" text="Please select finish to continue :" width="100%"  />		
+		
+		<mx:HBox x="10" y="50" width="100%" >
+			
+			<mx:Form id="NewForm" height="100%">
+				<mx:FormItem label="Task Type :" >
+					<mx:Text id="taskTypeLabel" text="{getData(TaskType.ATTR_TASK_TYPE)}" />
+				</mx:FormItem>
+				
+				<mx:FormItem label="Primary Server :" >
+					<mx:Text id="PrimaryLabel" text="{getData(TaskType.ATTR_PRIMARYSERVER)}" />
+				</mx:FormItem>
+				
+				<mx:FormItem label="Primary Path :" >
+					<mx:Text id="PrimaryPathLabel" text="{getData(TaskType.ATTR_PRIMARYFILESYSTEM)}" />
+				</mx:FormItem>
+				
+				<mx:FormItem label="Secondary Server :" >
+					<mx:Text id="DestinationLabel" text="{getData(TaskType.ATTR_SECONDARYSERVER)}" />
+				</mx:FormItem>
+				
+				<mx:FormItem label="Secondary Path :" >
+					<mx:Text id="SecondaryPathLabel" text="{getData(TaskType.ATTR_SECONDARYFILESYSTEM)}" />
+				</mx:FormItem>
+				
+				<mx:FormItem label="Protocol :" >
+					<mx:Text id="ProtocolLabel" text="{getData(TaskType.ATTR_PROTOCOL)}" />
+				</mx:FormItem>
+				
+				<mx:FormItem label="Policy Name:" >
+					<mx:Text id="PolicyLabel" text="{getData(TaskType.ATTR_POLICYNAME)}" />
+				</mx:FormItem>
+				
+				<mx:FormItem label="Schedule:" >
+					<mx:Text id="ScheduleLabel" text="{getData(TaskType.ATTR_SCHEDULE)}" />
+				</mx:FormItem>
+				
+			</mx:Form>
+			
+		</mx:HBox>	
+		
+	</views:UxProgressCanvas>
+	
+</wiz:UxWizardStep>

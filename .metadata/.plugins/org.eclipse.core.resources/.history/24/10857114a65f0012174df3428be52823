@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009"
+                      xmlns:s="library://ns.adobe.com/flex/spark"
+                      xmlns:mx="library://ns.adobe.com/flex/mx"
+                      xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+                      xmlns:controls="com.emc.ecuit.flex.components.controls.*"
+                      xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+                      creationComplete="creationCompleteHandler()"
+                      backgroundColor="#EAF5FE">
+
+  <fx:Script source="PrimaryServerSelection.mxml.as" />
+
+  <views:UxProgressCanvas id="progress" width="100%" height="100%" >
+
+    <mx:VBox x="0" y="0" width="100%" paddingBottom="15" paddingTop="15" paddingLeft="15" paddingRight="15">
+
+      <mx:Text text="Select primary server for storage tiering :" paddingBottom="10"/>
+
+      <mx:Form label="fileSystemForm" width="100%" height="100%" paddingBottom="30">
+
+        <mx:FormItem label="Type" styleName="ECUITWizardBodyText" required="true">
+          <mx:HBox>
+            <mx:ComboBox id="type" dataProvider="{typeArray}" change="changeType()" width="150" />
+            <!--<mx:Button label="Add" toolTip="Add New Server" useHandCursor="true" click="addNewServerClickHandler(event)" icon="{add_22x22}" />-->
+          </mx:HBox>
+        </mx:FormItem>
+
+        <mx:FormItem label="Name" styleName="ECUITWizardBodyText" required="true">
+          <mx:ComboBox id="primary" change="changeProtocol()" width="150" />
+        </mx:FormItem >
+
+        <mx:FormItem label="Protocol" styleName="ECUITWizardBodyText" required="true">
+          <mx:ComboBox id="protocol" dataProvider="{protocolArray}" change="changeProtocol()" width="150" />
+        </mx:FormItem>
+
+        <mx:FormItem label="Path" styleName="ECUITWizardBodyText" required="true">
+          <mx:HBox>
+            <mx:TextInput id="path" width="150" change="validateNext()"/>
+            <mx:Button label="Browse" click="clickHandler(event)" />
+          </mx:HBox>
+        </mx:FormItem>
+      </mx:Form>
+
+      <!--      <mx:Button label="Add New Server" click="addNewServerClickHandler(event)" />-->
+
+      <mx:HBox paddingTop="100" paddingLeft="15">
+        <mx:Button id="addButton" label="Add Server" toolTip="Add New Server" icon="{add_22x22}" width="110" click="addNewServerClickHandler(event)" />
+      </mx:HBox>
+
+    </mx:VBox>
+
+
+  </views:UxProgressCanvas>
+
+</wizards:UxWizardStep>

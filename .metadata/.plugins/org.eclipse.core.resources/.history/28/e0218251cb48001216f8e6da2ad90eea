@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+		xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx" 
+		xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+		xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+		xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+		implements="com.emc.efx.services.navigation.IUxHasPayload"
+		creationComplete="init()" xmlns:views="com.emc.ecuit.flex.components.views.*" 
+		xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" xmlns:controls="com.emc.ecuit.flex.components.controls.*">
+	<states>
+		<mx:State name="celleraSourceOn"/>
+		<mx:State name="celerraSourceOff"/>
+	</states>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock" 
+				 width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false" helpServiceID="FMAHelpService"
+				 helpID="EditCelerraFileServer" xmlns:tx="com.emc.efx.guitoolkit.components.table.*" 
+				 xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+		<!--<UxProgressCanvas id="progress" width="100%" height="100%" styleName="UxProgressCanvasProgressMonitor" >-->
+		<fx:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.AppTitleBar;
+				import com.emc.ecuit.flex.components.application.Breadcrumb;
+				import com.emc.ecuit.flex.components.application.BreadcrumbBar;
+				import com.emc.ecuit.flex.components.application.BreadcrumbEvent;
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.ecuit.flex.events.ECUITEvent;
+				import com.emc.ecuit.flex.services.rest.RestHTTPService;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.UxURLRequest;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.net.http.UxHttpResponse;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				import com.emc.fma.views.Configuration.FileServer.wizard.Centera.UserProfile;
+				import com.emc.fma.views.Utility.Command;
+				import com.emc.fma.views.Utility.UtilityFunctionClass;
+				
+				import flash.sampler.NewObjectSample;
+				
+				import mx.collections.ArrayCollection;
+				import mx.controls.AdvancedDataGrid;
+				import mx.events.CloseEvent;
+				import mx.events.FlexEvent;
+				import mx.managers.PopUpManager;
+				import mx.resources.ResourceManager;
+				
+				[Bindable] public var Server:String;
+				[Bindable] public var ServerType:String;
+				
+				[Bindable]private var _client:UxHttpClient;
+				[Bindable] private var celerraIPs:ArrayCollection = new ArrayCollection();
+				[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+				[Bindable] private var response:XMLList
+				[Bindable] private var ctrlSIP:String;
+				[Bindable] public var cifsUser:String;
+				[Bindable] public var cifsPassword:String;
+				[Bindable] public var cifsDomain:String;
+				[Bindable] public var ndmpUser:String;
+				[Bindable] public var ndmpPassword:String;
+				[Bindable] public var ndmpPort:String;
+				[Bindable] private var ccd:String = "";
+				[Bindable] private var acd:String = "";
+				[Bindable] private var asSource:Boolean = false ;
+				[Bindable] public var isQualified:Boolean ;
+				private var _currentPayload:UxHashMap = null;
+				override protected function initializeData():void {
+					super.initializeData();
+					if (currentPayload != null) {
+						var dataObj:String = currentPayload.getValue("ServerType");
+						nameForm.updateState(dataObj);
+						if (dataObj != null) {
+							Server = currentPayload.getValue("Server");
+							ServerType = currentPayload.getValue("ServerType");
+							viewBlock.title=ServerType + " "+ ResourceManager.getInstance().getString('fma','FIL_SER_PRP') ;
+							
+							var xml:XML = <REQUEST/>; 
+							xml.appendChild(<Name>{Server}</Name>);
+							xml.appendChild(<Type>{ServerType}</Type>);
+							if(Server != null ){
+								var cmd:Command = new Command(_client,onComplete,xml,"getFileServer.htm",viewBlock);
+								_client = cmd.sendCommand();
+							}
+						}
+					}
+				}
+				[Bindable]
+				public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				
+				
+				private function init():void{
+					
+				}
+				
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					response = new XMLList(_client.response.body);
+					nameForm.FileServerName.text = response.Name[0];
+					if(response.IsVDM[0] == "no")
+						nameForm.IsVDM.selected = false ;
+					else if(response.IsVDM[0] == "yes")
+						nameForm.IsVDM.selected = true ;
+					
+					for each (var ip : XML in response..IP ) {
+						celerraIPs.addItem(ip[0]);
+					}
+					ctrlSIP = response.CtrlStationIP[0] == "" ? "..." : response.CtrlStationIP[0];
+					cifsUser = response.UserAccount[0];
+					cifsPassword = response.CIFSPassword[0];
+					cifsDomain = response.DomainName[0];
+					var test:String = response.IsNetBios[0];
+					if(test == "1"){
+						isQualified = false;
+					}else{
+						isQualified =  true;
+					}
+					ndmpUser = response.FMUserName[0];
+					ndmpPassword = response.FMPassword[0];
+					ndmpPort = response.port[0];
+					if(response.Initialized[0] == "no"){
+						asSource = false ;
+						currentState = 'celerraSourceOff';
+						ccd = "" ;
+						acd = "" ;
+						
+					}
+					else if(response.Initialized[0] == "yes"){
+						
+						asSource = true ;
+						currentState = 'celleraSourceOn';
+						ccd = response.CelerraCallbackDNSName[0];
+						acd = response.AtmosCallbackDNSName[0];
+					}
+					for each (var dir : XML in response..DirExclusion ) {
+						excludedDirList.addItem(dir);
+					}
+				}
+				private function titleWindow_close(evt:CloseEvent):void {
+					PopUpManager.removePopUp(this);
+				}
+				
+				protected function Initialized_changeHandler(event:Event):void
+				{
+					// TODO Auto-generated method stub
+					currentState = currentState == 'celleraSourceOn' ? 'celerraSourceOff' : 'celleraSourceOn';		
+				}
+				
+				private function onCanel(event:MouseEvent):void {
+					var navService:IUxNavigationService =
+						UxExtensionManager.getInstance().getService(UxConstants.
+							NAVIGATION_SERVICE) as IUxNavigationService;
+					var location:Array = new Array;
+					location = navService.currentLocation;
+					location.pop();
+					navService.navigate(location);
+				}
+				
+				private function onOK(event:MouseEvent):void {
+					
+					var xml:XML = <REQUEST/>;
+					xml.appendChild(<action>edit</action>);
+					xml.appendChild(<Name>{nameForm.FileServerName.text}</Name> );
+					xml.appendChild(<IsVDM>{(nameForm.IsVDM.selected == true)? "yes":"no"}</IsVDM>);
+					xml.appendChild(<Mode>{ServerType}</Mode>);
+					
+					if(cifsForm.kerberos == null){
+						if(isQualified){
+							xml.appendChild(<IsNetBios>0</IsNetBios>);	
+						}else{
+							xml.appendChild(<IsNetBios>1</IsNetBios>);
+						}
+					}else{
+						if(cifsForm.kerberos.selected){
+							xml.appendChild(<IsNetBios>0</IsNetBios>);	
+						}else{
+							xml.appendChild(<IsNetBios>1</IsNetBios>);
+						}
+					}
+					
+					
+					
+					if(celerraIPs.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','EMPTY_IPLIST'),ResourceManager.getInstance().getString('fma','EMPTY_IPLIST_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						viewstack2.selectedIndex = 0 ; 
+						return ;
+					}else{
+						for each (var ip : String in celerraIPs) {
+							xml.appendChild(<IP>{ip}</IP>);
+						}					
+					}
+					
+					if ( CtrlStationIP == null ){
+						ctrlSIP = ctrlSIP == "..." ? "" : ctrlSIP ;
+						xml.appendChild(<CtrlStationIP>{ctrlSIP}</CtrlStationIP>);
+					}else if ( CtrlStationIP != null ){
+						
+						var address:String = CtrlStationIP.address1.text + "." + 
+							CtrlStationIP.address2.text + "." + 
+							CtrlStationIP.address3.text + "." + 
+							CtrlStationIP.address4.text;
+						trace(address.search(UtilityFunctionClass.IPAddresspattern)) ;
+						if(address.search(UtilityFunctionClass.IPAddresspattern) == 0 ){
+							address = address == "0.0.0.0" ? "" : address ;
+							xml.appendChild(<CtrlStationIP>{address}</CtrlStationIP>);
+						}else if(address == "..."){
+							//No need to add the control station IP node.
+						}else{
+							ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_CONTROL_IP'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+							viewstack2.selectedIndex = 1 ; 
+							return ;
+						}
+						
+					}
+					/* xml.appendChild(<CIFS>
+					<User>{cifsUser}</User>
+					<Password>{cifsPassword}</Password>
+					<Domain>{cifsDomain}</Domain>
+					</CIFS>); */
+					if(cifsForm.UserAccount == null && cifsUser != ""){
+						xml.appendChild(<CIFS>
+						<User>{cifsUser}</User>
+						<Password>{cifsPassword}</Password>
+						<Domain>{cifsDomain}</Domain>
+						</CIFS>
+						);
+					} else if(cifsForm.UserAccount != null && cifsForm.UserAccount.text != ""){
+						var dom:String ;
+						if(cifsForm.kerberos.selected){
+							dom = cifsForm.kerberosName.text ;
+						}else if(cifsForm.netBios.selected){
+							dom = cifsForm.domainName.text ;
+							if(dom.search(UtilityFunctionClass.DotSeprated) == -1){
+								ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_QUALIDFIED_DOMAIN'),ResourceManager.getInstance().getString('fma','INVALID_QUALIDFIED_DOMAIN_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+								viewstack2.selectedIndex = 2 ; 
+								return ;
+							}
+						}
+						if(cifsForm.CIFSPassword.text == ""){
+							ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_PASSWORD'),ResourceManager.getInstance().getString('fma','INVALID_PASSWORD_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+							viewstack2.selectedIndex = 2 ; 
+							return ;
+						}
+						xml.appendChild(<CIFS>
+						<User>{cifsForm.UserAccount.text}</User>
+						<Password>{cifsForm.CIFSPassword.text}</Password>
+						<Domain>{dom}</Domain>
+						</CIFS>
+						);
+					}  
+					
+					if(ndmpForm.FMUserName == null && ndmpUser != ""){
+						xml.appendChild( <NDMP>
+											<User>{ndmpUser}</User>
+											<Password>{ndmpPassword}</Password>
+											<Port>{ndmpPort}</Port>
+										  </NDMP>
+						);
+					}else if(ndmpForm.FMUserName != null && ndmpForm.FMUserName.text != ""){
+						if(ndmpForm.FMPassword.text == ""){
+							ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_PASSWORD'),ResourceManager.getInstance().getString('fma','INVALID_PASSWORD_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+							viewstack2.selectedIndex = 3 ; 
+							return ;
+						}else if(ndmpForm.port.text == ""){
+							ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_PORT'),ResourceManager.getInstance().getString('fma','INVALID_PORT_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+							viewstack2.selectedIndex = 3 ;
+							return ;
+						}
+						xml.appendChild( <NDMP>
+											<User>{ndmpForm.FMUserName.text}</User>
+											<Password>{ndmpForm.FMPassword.text}</Password>
+											<Port>{ndmpForm.port.text}</Port>
+										  </NDMP>
+						);
+					} 
+					
+					var temp:XML = <Exclusions/>;
+					for each (var dir : String in excludedDirList) {
+						temp.appendChild(<Dir>{dir}</Dir>);
+					}
+					
+					if(Initialized == null && asSource){
+						/* if(ccd.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,"Please provide input for CCD DNS Name","CCD Missing",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+						}
+						if(acd.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,"Please provide input for ACD DNS Name","ACD Missing",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+						}
+						if(excludedDirList.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,"Please provide input for Directory","Direcroty Missing",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+						} */
+						xml.appendChild(
+							<Source>
+								<CCD>{ccd}</CCD>
+								<ACD>{acd}</ACD>
+							{temp}
+							</Source>
+							
+						);
+					}else if(Initialized != null && Initialized.selected ){
+						/* if(CelerraCallbackDNSName.text.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,"Please provide input for CCD DNS Name","CCD Missing",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+						}
+						if(AtmosCallbackDNSName.text.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,"Please provide input for ACD DNS Name","ACD Missing",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+						}
+						if(excludedDirList.length == 0){
+						ECUITPopupDialog.showMessageDialog(this,"Please provide input for Directory","Direcroty Missing",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+						} */
+						if(CelerraCallbackDNSName.text != "" && CelerraCallbackDNSName.text.search(UtilityFunctionClass.DotSeprated) == -1){
+								ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_CCD'),ResourceManager.getInstance().getString('fma','INVALID_CCD_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+								viewstack2.selectedIndex = 4 ;
+								return ;
+						}
+						if(AtmosCallbackDNSName.text != "" && AtmosCallbackDNSName.text.search(UtilityFunctionClass.DotSeprated) == -1){
+								ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_ACD'),ResourceManager.getInstance().getString('fma','INVALID_ACD_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+								viewstack2.selectedIndex = 4 ;
+								return ;
+						}
+						xml.appendChild(
+							<Source>
+								<CCD>{CelerraCallbackDNSName.text }</CCD>
+								<ACD>{AtmosCallbackDNSName.text}</ACD>
+							{temp}
+							</Source>
+							
+						);
+					}
+					
+					var cmd:Command = new Command(_client,onCommitComplete,xml,"saveCelerraFileServer.htm",viewBlock);
+					_client = cmd.sendCommand();
+				}
+				
+				private function onCommitComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+				}
+				private function containTest():Boolean{
+					var temp:ArrayCollection = exDirs.dataProvider as ArrayCollection ;
+					for each(var item:String in temp){
+						if(item == Exclusion.text){
+							return true ;
+						}
+					}
+					return false;
+				}
+				public function addExDirs():void
+				{
+						// regulare expression for unix path suggested by anand "^((/)|(/[^/]+)+)$" 	
+					if(Exclusion.text == "" || Exclusion.text.search(UtilityFunctionClass.UnixPath) == -1){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_PATH'),ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_PATH_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}else if(Exclusion.text == "" || containTest()){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_PATH_LIST'),ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_PATH_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					excludedDirList.addItem(Exclusion.text);
+				}
+				public function delExDirs():void
+				{
+					if(exDirs.selectedIndex == -1){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_SELECTION'),ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_SELECTION_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+						excludedDirList.removeItemAt(exDirs.selectedIndex);
+				}
+				
+				public function addIP():void
+				{
+					var address:String = ip.address[0] + "." + 
+						ip.address[1] + "." + 
+						ip.address[2] + "." + 
+						ip.address[3];
+					trace(address.search(UtilityFunctionClass.IPAddresspattern)) ;
+					if(address.search(UtilityFunctionClass.IPAddresspattern) == 0){
+						celerraIPs.addItem(address);
+						ip.address1.text = "" ;
+						ip.address2.text = "" ;
+						ip.address3.text = "" ;
+						ip.address4.text = "" ;
+						
+					}else{
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_IP'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+				}
+				public function delIP():void
+				{
+					if(ips.selectedItem == null){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_DELETION'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}else{
+						celerraIPs.removeItemAt(ips.selectedIndex);	
+					}
+				}
+				
+				protected function ip_creationCompleteHandler(event:FlexEvent):void
+				{
+					ip.validator1.upperRangeValue=255;
+					ip.validator2.upperRangeValue=255;
+					ip.validator3.upperRangeValue=255;
+					ip.validator4.upperRangeValue=255;
+				}
+				private var domainArray:ArrayCollection;
+				
+				
+				private var _clientUpdateIP:UxHttpClient ;
+				protected function _UpdateClickHandler(event:MouseEvent):void { 
+					var xml:XML = <REQUEST/>;
+					xml.appendChild(<Name>{nameForm.FileServerName.text}</Name> );
+					var cmd:Command = new Command(_clientUpdateIP,onIPUpdate,xml,"updateIP.htm",viewBlock);
+					_clientUpdateIP = cmd.sendCommand();
+				}
+				private function onIPUpdate(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var ipstring:String = (new XMLList(_clientUpdateIP.response.body)).Result[0].toString() ;
+					if(UtilityFunctionClass.IPAddresspattern.test(ipstring)){
+						ip.address = ipstring.split(".");
+					}else{
+						ECUITPopupDialog.showMessageDialog(this,(new XMLList(_clientUpdateIP.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+					}
+				}
+				
+				
+			]]>
+		</fx:Script>
+		
+		
+		
+		<form:NameForm id="nameForm"/> 
+		<mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+				 paddingBottom="10" paddingTop="10"  
+				 height="100%">
+			<mx:TabNavigator id="viewstack2" backgroundColor="#EAF5FE"
+							 selectedIndex="0"  tabStyleName="Tab" lastTabStyleName="Tab"
+							 historyManagementEnabled="false"  firstTabStyleName="Tab"
+							 width="100%" height="100%" >
+				<mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_IP_ADD')}"  id="ipa" >
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_NEW_IP_ADD')}">
+						<mx:HBox>
+							<controls:IPAddressControl id="ip" creationComplete="ip_creationCompleteHandler(event)" enabled="false"/>
+							<mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_UPD')}" click="_UpdateClickHandler(event)"/>
+							<mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="addIP()"/>
+						</mx:HBox>
+					</mx:FormItem>
+					<mx:FormItem>
+						<mx:HBox>
+							<mx:List id="ips" height="50" dataProvider="{this.celerraIPs}" width="{ip.width}" />
+							<mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="delIP()"/>
+						</mx:HBox>
+					</mx:FormItem>
+				</mx:Form>
+				<mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_CTR_STA')}" >
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_IPP_ADD')}">
+						<controls:IPAddressControl id="CtrlStationIP" address="{ctrlSIP.split('.')}" />
+					</mx:FormItem>
+				</mx:Form>
+				<form:CifsForm id="cifsForm" label="{ResourceManager.getInstance().getString('fma','FIL_SER_CIF_SPC')}" />
+				<form:NDMPForm id="ndmpForm" label="{ResourceManager.getInstance().getString('fma','FIL_SER_NDM_SPC')}" />
+				
+				<mx:Form id="sourceForm" label="{ServerType + ' ' + ResourceManager.getInstance().getString('fma','FIL_SER_AS_SOU')}">
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_ENBL') + ServerType + ' ' + ResourceManager.getInstance().getString('fma','FIL_SER_AS_SOUC')}">
+						<mx:CheckBox id="Initialized"  change="Initialized_changeHandler(event)" selected="{asSource}"/>
+					</mx:FormItem>
+					
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_CCD_NAM')}"  includeIn="celleraSourceOn"  required="false">
+						<mx:TextInput id="CelerraCallbackDNSName" text="{ccd}" restrict="{ResourceManager.getInstance().getString('fma','DOT_SEPERATED')}"/>
+					</mx:FormItem>
+					
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_ACD_NAM')}" includeIn="celleraSourceOn"  required="false">
+						<mx:TextInput id="AtmosCallbackDNSName" text="{acd}" restrict="{ResourceManager.getInstance().getString('fma','DOT_SEPERATED')}"/>
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_EXC_DIR')}" includeIn="celleraSourceOn"  required="false">
+						<mx:HBox>
+							<mx:TextInput id="Exclusion" restrict="{ResourceManager.getInstance().getString('fma','DIRECTORY_EXCLUSION')}"/>
+							<mx:Button  width="{del.width}" label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="addExDirs()"/>
+						</mx:HBox>
+					</mx:FormItem>
+					<mx:FormItem includeIn="celleraSourceOn"  required="false">
+						<mx:HBox>
+							<mx:List id="exDirs" height="100" dataProvider="{excludedDirList}" width="{Exclusion.width}"/>
+							<mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" id="del" click="delExDirs()"/>
+						</mx:HBox>
+					</mx:FormItem>
+				</mx:Form>
+			</mx:TabNavigator>
+			<mx:HBox>
+				<buttons:UxButton id="commitChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="onOK(event)" />
+				<buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCanel(event)" />
+			</mx:HBox>
+		</mx:Box>
+	</UxViewBlock>
+	<fx:Style>
+		.redTab{
+			fill-colors: #FF0000, #FF0000;
+			backgroundColor: #FF0000
+		}
+		.whiteTab{
+			fill-colors: #FFFFFF, #FFFFFF;
+			backgroundColor: #FFFFFF
+		}
+		.blueTab{
+			fill-colors: #0000ff, #0000ff;
+			backgroundColor: #0000ff
+		}
+		.indigoTab{
+			fill-colors: #EAF5FE ;
+			backgroundColor: #EAF5FE
+		}
+	</fx:Style>
+</UxVBoxWindow>

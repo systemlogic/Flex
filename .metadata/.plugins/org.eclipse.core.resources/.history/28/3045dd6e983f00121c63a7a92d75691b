@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*" 
+					  xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+					  creationComplete="creationCompleteHandler()"
+					  backgroundColor="#EAF5FE">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+			import com.emc.fma.views.Policies.Policy.PolicyWizard.PolicyWizard;
+			import com.emc.fma.views.Utility.Command;
+			
+			import flashx.textLayout.factory.TruncationOptions;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			
+			private var _initialized:Boolean = false;
+			private var _client:UxHttpClient;
+			private var response:XMLList ;
+			private var setPolicyName:String ;
+			private var myWatcher:ChangeWatcher ;
+			[Bindable]
+			public var policyList:XMLListCollection;
+			private var taskTypeState:String;
+			
+			[Embed(source="../../../../../../../resources/images/assets/Add_16.png")]
+			[Bindable]
+			public var add_22x22:Class;
+			[Embed(source="../../../../../../../resources/images/assets/Edit_16.png")]
+			[Bindable]
+			public var edit_22x22:Class;
+			
+			
+			protected function creationCompleteHandler():void
+			{
+				taskTypeState = getData(TaskType.ATTR_TASK_TYPE).toString();
+			}
+			
+			override public function postDisplay(): void 
+			{
+				if (!_initialized) 
+				{
+					_initialized = true;					
+					callLater(updateLater);
+				}
+							
+				if(taskTypeState != getData(TaskType.ATTR_TASK_TYPE.toString()))
+				{
+					creationCompleteHandler();		
+					callLater(updateLater);
+				}
+				
+				enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);	
+				validateNext();
+
+			}	
+			
+			public function updateLater(policyName:String=""):void{
+				
+				setPolicyName = policyName;
+				var xml:XML = <REQUEST/>; 
+				var cmd:Command = new Command(_client,onComplete1,xml,"getPolicyList.htm",progress);
+				_client = cmd.sendCommand("POST");
+			}
+			
+			private function onComplete1(event:Event):void {
+				progress.updateProgress(100, "default");
+				response = new XMLList(_client.response.body);		
+				
+				if(getData(TaskType.ATTR_TASK_TYPE)=="Archive")
+					policyList	= new XMLListCollection(response.Policy.(elements('type') == '0' ).name);
+				else
+					policyList	= new XMLListCollection(response.Policy.(elements('type') == '8' ).name);
+				
+				policyNameComboBox.dataProvider = policyList ;	
+				
+				if(setPolicyName != "")
+				{
+					var index:Number = -1;
+					for( var j:int = 0; j < policyList.source.length(); j++)
+						if(policyList.source[j].toString() == setPolicyName ){index = j;	break;}
+					if(index != -1)
+						policyNameComboBox.selectedIndex = index;
+				}
+				
+				validateNext();
+			} 
+			
+			private function validateNext():void {
+				
+				if (policyList != null)
+					if (policyList.length != 0)
+						enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				else
+					enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+			}	
+			
+			override protected function save(): void
+			{				
+				if(!isCurrentStep())return;				
+				setData(TaskType.ATTR_POLICYNAME, policyNameComboBox.selectedItem.toString());
+				stepComplete = true;
+			}
+			
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			
+			protected function clickAdd():void
+			{				
+				var wizard:Object ;		
+				wizard = new PolicyWizard(this,getData(TaskType.ATTR_TASK_TYPE).toString().toLowerCase());
+				wizard.modal = true;
+				wizard.show(this);
+			}			
+
+			protected function clickEdit():void
+			{
+				var wizard:Object ;		
+				wizard = new PolicyWizard(this,getData(TaskType.ATTR_TASK_TYPE).toString().toLowerCase(),policyNameComboBox.selectedItem.toString());
+				wizard.modal = true;
+				wizard.show(this);
+			}
+
+
+		]]>
+	</fx:Script>
+	
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+		
+		<mx:VBox x="0" y="0" width="100%" paddingBottom="15" paddingTop="15" paddingLeft="15" paddingRight="15">
+			
+			<mx:Text text="Select policy consisting of rules to be applied on primary server :" paddingBottom="10"/>
+			
+			<mx:Form label="fileSystemForm" width="100%" height="100%" paddingBottom="30">				
+				<mx:FormItem label="Policy Name" styleName="ECUITWizardBodyText" required="true">
+					<mx:ComboBox id="policyNameComboBox" width="150" />				
+				</mx:FormItem>				
+			</mx:Form>	
+			
+	
+			<mx:HBox paddingTop="190" paddingLeft="15">
+					<mx:Button id="addButton" label="Add Policy" toolTip="Add New Policy" icon="{add_22x22}" width="110" click="clickAdd()" />
+					<mx:Button id="editButton" label="Details" toolTip="Edit Policy" icon="{edit_22x22}" width="110" click="clickEdit()" />		
+			</mx:HBox>
+				
+		</mx:VBox>
+		
+	</views:UxProgressCanvas>
+	
+</wizards:UxWizardStep>

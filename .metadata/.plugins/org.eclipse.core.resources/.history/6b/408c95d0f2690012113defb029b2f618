@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+    xmlns:fx="http://ns.adobe.com/mxml/2009"
+    xmlns:s="library://ns.adobe.com/flex/spark"
+    xmlns:mx="library://ns.adobe.com/flex/mx"
+    xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+    xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+    xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+    implements="com.emc.efx.services.navigation.IUxHasPayload"
+    xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+    xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*"
+    xmlns:table="com.emc.ecuit.flex.components.table.*">
+  <fx:Declarations>
+    <mx:ArrayCollection id="GridColumns" >
+      <fx:Object Name="Column1" Title="{Common.getResource('CMD_HIST_LIST_LOG')}" />
+    </mx:ArrayCollection>
+  </fx:Declarations>
+  <fx:Script source="CmdHistoryDisplay.mxml.as" />
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         id="viewBlock"
+         xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+         creationComplete="init()"
+         width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false"
+         keyDown="page_keyDownHandler(event)"
+         xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+         xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+         helpServiceID="FMAHelpService" helpID="CmdHistroyDisplay">
+
+
+    <mx:Box width="100%" id="tabContainer"  height="100%">
+      <table:ECUITAdvancedDataGrid id="logList" dataProvider="{_rowsObject}" sortableColumns="false"
+                     showHeaders = "true"
+                     editable="false" useRollOver="false"
+                     allowMultipleSelection="false" rowCount="3">
+      </table:ECUITAdvancedDataGrid>
+    </mx:Box>
+    <mx:HBox paddingBottom="10">
+      <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)" />
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

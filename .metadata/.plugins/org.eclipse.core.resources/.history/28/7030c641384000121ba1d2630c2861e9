@@ -1,0 +1,32 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+
+import mx.utils.StringUtil;
+
+// Suggested step name for use in id field of wizard decriptor XML file
+public static const STEP_NAME            :String = "optionalStep";
+public static const STEP_CA               :String = "CallbackAgentSettings";
+public static const STEP_DirectoryEx     :String = "DirectoryExclusion";
+
+
+
+private var _initialized:Boolean = false;
+
+// Override if we have step specific display work to do
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    _initialized = true;
+  }
+
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+
+// Override if we have step specific data to save
+override protected function save(): void
+{
+  stepComplete = true;
+}
+

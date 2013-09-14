@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009"
+            xmlns:s="library://ns.adobe.com/flex/spark"
+            xmlns:mx="library://ns.adobe.com/flex/mx"
+            xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+            width="500" height="250"
+            xmlns:controls="com.emc.ecuit.flex.components.controls.*">
+  <fx:Script source="UserProfile.mxml.as" />
+  <fx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+  </fx:Declarations>
+  <mx:VBox id="VBox1" x="0" y="0" width="100%" paddingBottom="15" paddingTop="15" paddingLeft="15" paddingRight="15" >
+    <mx:Text id="introText" paddingBottom="10" width="100%"/>
+  <mx:Form>
+    <mx:FormItem  required="true" label="{ResourceManager.getInstance().getString('fma','FIL_SER_USER')}">
+      <mx:TextInput  id="userName" change="updateButtons()"/>
+    </mx:FormItem>
+    <mx:FormItem  required="true" label="{ResourceManager.getInstance().getString('fma','FIL_SER_PASS')}">
+      <mx:TextInput  id="password" displayAsPassword="true" change="updateButtons()"/>
+    </mx:FormItem>
+  </mx:Form>
+    </mx:VBox>
+</wizards:UxWizardStep>

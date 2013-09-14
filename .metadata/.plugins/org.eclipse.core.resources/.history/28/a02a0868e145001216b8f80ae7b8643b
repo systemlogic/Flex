@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+    xmlns:fx="http://ns.adobe.com/mxml/2009"
+    xmlns:s="library://ns.adobe.com/flex/spark"
+    xmlns:mx="library://ns.adobe.com/flex/mx"
+    xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+    xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+    xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+    implements="com.emc.efx.services.navigation.IUxHasPayload"
+    creationComplete="init()" xmlns:views="com.emc.ecuit.flex.components.views.*"
+    xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" xmlns:controls="com.emc.ecuit.flex.components.controls.*">
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock"
+         width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false" helpServiceID="FMAHelpService"
+         helpID="EditDataDomainFileServer" xmlns:tx="com.emc.efx.guitoolkit.components.table.*"
+         keyDown="page_keyDownHandler(event)"
+         xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+    <!--<UxProgressCanvas id="progress" width="100%" height="100%" styleName="UxProgressCanvasProgressMonitor" >-->
+
+    <fx:Script source="DataDomainFileServer.mxml.as" />
+
+    <form:NameForm id="nameForm"/>
+    <mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+         paddingBottom="10" paddingTop="10"
+         height="100%">
+      <mx:TabNavigator id="viewstack2" backgroundColor="#EAF5FE"
+               selectedIndex="0"  tabStyleName="Tab" lastTabStyleName="Tab"
+               historyManagementEnabled="false"  firstTabStyleName="Tab"
+               width="100%" height="100%" >
+        <mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_IP_ADD')}"  id="ipa" >
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_NEW_IP_ADD')}">
+            <mx:HBox>
+              <controls:IPAddressControl id="ip" creationComplete="ip_creationCompleteHandler(event)"/>
+              <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_UPD')}" click="_UpdateClickHandler(event)"/>
+              <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" id="add" click="addIP()" enabled="false" />
+            </mx:HBox>
+          </mx:FormItem>
+          <mx:FormItem>
+            <mx:HBox>
+              <mx:List id="ips" height="50" dataProvider="{this.IPs}" width="{ip.width}" />
+              <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="delIP()" enabled="{ips.selectedItem == null ? false : true }"/>
+            </mx:HBox>
+          </mx:FormItem>
+        </mx:Form>
+        <form:CifsForm id="cifsForm" label="{ResourceManager.getInstance().getString('fma','FIL_SER_CIF_SPC')}" />
+      </mx:TabNavigator>
+      <mx:HBox>
+        <buttons:UxButton id="commitChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="onOK(event)" />
+        <buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCancel(event)" />
+      </mx:HBox>
+    </mx:Box>
+  </UxViewBlock>
+</UxVBoxWindow>

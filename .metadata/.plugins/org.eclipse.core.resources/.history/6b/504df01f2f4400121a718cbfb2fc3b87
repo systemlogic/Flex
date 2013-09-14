@@ -1,0 +1,194 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Dashboard.ConfigurationWizard.PolicySelection;
+import com.emc.fma.views.Policies.Policy.Policy;
+
+import mx.collections.ArrayCollection;
+import mx.events.FlexEvent;
+import mx.events.ListEvent;
+import mx.utils.StringUtil;
+
+[Bindable]
+private var CBDB_PolicyType:ArrayCollection = new ArrayCollection(["archive","multi_tier","multi_tier_stub","delete_orphans","delete_stubs","migrate_file"]);
+[Bindable]
+private var CBDB_Retention:ArrayCollection = new ArrayCollection(["years","months","weeks","days"]);
+[Bindable]
+public var _policyType:String = "";
+[Bindable]
+public var _policyName:String = "";
+
+private var _initialized:Boolean = false;
+
+public var editFlag:Boolean;
+public var response:XMLList;
+
+public static const ATTR_POLICY:String = "POLICY";
+
+protected function _init():void
+{
+  callLater(updateLater);
+}
+
+
+override public function postDisplay():void
+{
+  if (!_initialized)
+  {
+    _initialized = true;
+  }
+
+  this.parentWizard.setButtonLabel(4,"Save Policy");
+  validateNext();
+}
+
+private function updateLater():void
+{
+  // Check for Add or Edit Action
+  if (_policyName != "")
+  {
+    editFlag = true;
+
+    // Check if parent document (PolicySelection)
+    if (this.parentDocument is PolicySelection)
+      currentState = _policyType;
+
+    // Check if parent document (PolicySelection)
+    if (this.parentDocument is Policy)
+    {
+      if (_policyType == "archive" || _policyType == "multi_tier" || _policyType == "multi_tier_stub")
+        currentState = "archive";
+      else
+        currentState = _policyType;
+    }
+
+    // Disable renaming policy
+    policyType.selectedItem = _policyType;
+    policyType.enabled = false;
+    policyName.enabled = false;
+    getPolicy();
+  }
+
+  validateNext();
+
+}
+
+private function getPolicy():void
+{
+  var xml:XML = <REQUEST/>;
+  RESTClient.sendGetRequest("/api/policy/" + _policyName, setresponse, progress);
+}
+
+private function setresponse(event:RESTEvent):void
+{
+  response = new XMLList(event.response);
+  response = new XMLList(response.PolicyList.Policy);
+
+  //Assign values to all fields
+  policyType.selectedItem = response.Type.toString();
+  policyName.text = response.Name.toString();
+
+  if (policyType.selectedItem == "archive" || policyType.selectedItem == "multi_tier" || policyType.selectedItem == "multi_tier_stub")
+  {
+    delayPeriod.text = response.DelayPeriod.toString().replace(/[^0-9]/g,"");
+    retentionTime.text = response.RetentionPeriod.toString().replace(/[^0-9]/g,"")
+    retentionPeriod.selectedItem = response.RetentionPeriod.toString().replace(/[^a-z]/g,"");
+    stubRetention.selected = response.StubRetention.toString() == "true";
+  }
+
+  if (policyType.selectedItem == "delete_orphans")
+  {
+    daysMissing.text = response.DaysMissing.toString().replace(/[^0-9]/g,"");
+    daysMissingUnit.selectedItem = response.DaysMissing.toString().replace(/[^a-z]/g,"");
+  }
+
+  if (policyType.selectedItem == "delete_stubs")
+    deleteAll.selected = response.DeleteAll.toString() == "true";
+
+  validateNext();
+
+  progress.updateProgress(100, "default");
+}
+
+override protected function save():void
+{
+  if (!isCurrentStep())return;
+
+  var xml:XML;
+
+  if (!editFlag)
+  {
+    xml = <Policy/>;
+    xml.appendChild(<Id>1</Id>);
+    xml.appendChild(<Name>
+    {policyName.text}</Name>);
+    xml.appendChild(<Type>
+    {policyType.selectedItem}</Type>);
+
+    if (policyType.selectedItem == "archive" || policyType.selectedItem == "multi_tier" || policyType.selectedItem == "multi_tier_stub")
+    {
+      xml.appendChild(<RetentionPeriod>
+      {retentionTime.text + " " + retentionPeriod.selectedItem}</RetentionPeriod>);
+      xml.appendChild(<DelayPeriod>
+      {delayPeriod.text + " days"}</DelayPeriod>);
+      xml.appendChild(<StubRetention>
+      {stubRetention.selected}</StubRetention>);
+    }
+
+    if (policyType.selectedItem == "delete_orphans")
+      xml.appendChild(<DaysMissing>
+    {daysMissing.text + " " + daysMissingUnit.selectedItem}</DaysMissing>);
+
+    if (policyType.selectedItem == "delete_stubs")
+      xml.appendChild(<DeleteAll>
+    {deleteAll.selected}</DeleteAll>);
+    setData(ATTR_POLICY,xml);
+  }
+  else
+  {
+    xml = response[0];
+
+    if (policyType.selectedItem == "archive" || policyType.selectedItem == "multi_tier" || policyType.selectedItem == "multi_tier_stub")
+    {
+      xml.replace("RetentionPeriod", <RetentionPeriod>
+      {retentionTime.text + " " + retentionPeriod.selectedItem}</RetentionPeriod>);
+      xml.replace("DelayPeriod",<DelayPeriod>
+      {delayPeriod.text + " days"}</DelayPeriod>);
+      xml.replace("StubRetention",<StubRetention>
+      {stubRetention.selected}</StubRetention>);
+    }
+
+    if (policyType.selectedItem == "delete_orphans")
+      xml.replace("DaysMissing",<DaysMissing>
+    {daysMissing.text + " " + daysMissingUnit.selectedItem}</DaysMissing>);
+
+    if (policyType.selectedItem == "delete_stubs")
+      xml.replace("DeleteAll",<DeleteAll>
+    {deleteAll.selected}</DeleteAll>);
+
+    setData(ATTR_POLICY,xml);
+  }
+
+  refreshStepTitle();
+  stepComplete = true;
+}
+
+private function validateNext():void
+{
+
+  if (StringUtil.trim(policyName.text) != "")
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  else
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+}
+
+protected function policyType_changeHandler(event:ListEvent):void
+{
+  if (policyType.selectedItem == "archive" || policyType.selectedItem == "multi_tier" || policyType.selectedItem == "multi_tier_stub")
+    currentState = "archive";
+  else
+    currentState = policyType.selectedItem.toString();
+}
+

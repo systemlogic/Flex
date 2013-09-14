@@ -1,0 +1,142 @@
+package com.emc.fma.views.Schedule.ScheduleWizard
+{
+	import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardPanel;
+	import com.emc.efx.guitoolkit.components.wizards.UxWizardDialog;
+	import com.emc.fma.views.Configuration.FileServer.wizard.CIFSSpecific;
+	import com.emc.fma.views.Configuration.FileServer.wizard.IPAddressList;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NDMPSpecific;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+	
+	import flash.display.DisplayObject;
+	
+	import mx.resources.ResourceManager;
+	
+	public class ScheduleWizard extends UxWizardDialog
+	{
+		// The following references all the classes that could be shown in
+		// the wizard. If these were not referenced here, they would not be
+		// included in the application SWF file and loading them at runtime
+		// would fail.
+    
+		private var step0: TaskType					;
+    private var step1: PrimaryServerSelection					;
+    private var step2: SecondaryServerSelection					;
+    private var step3: PolicySelection					;
+    private var step4: CreateSchedule;
+    private var step5: Summary;
+		
+		public static const  STEP        	:String = "Step";
+		
+		private var _parent:DisplayObject;
+		
+		public function ScheduleWizard()
+		{
+			super();
+		}
+		
+		
+		public override function show (parent:DisplayObject):void
+		{
+			_parent = parent;
+			wizard.addEventListener(ECUITWizardEvent.ECUITWIZ_LOADCOMPLETE, loadComplete);
+			wizard.loadWizardFromXML(wizardXMLFlow);
+		}
+		
+		private function loadComplete(wizEvent:ECUITWizardEvent):void
+		{
+			if (wizEvent.reason == ECUITWizardEvent.ECUITWIZ_LOADSUCCESS)
+			{
+				super.show(_parent);
+				centerDialog();
+			}
+			else
+			{
+				ECUITPopupDialog.showMessageDialog(_parent, 
+					"Unable to create the data wizard.\n\n" + wizEvent.reason,
+					"Error",
+					ECUITPopupDialog.ERROR_MESSAGE);
+			}
+		} 
+		private var wizardXMLFlow:XML = 
+			<UxWizard>
+				<type>SIMPLE</type>
+				<wizardResourceBundle>fma</wizardResourceBundle>
+				<title>Configuration Wizard</title>
+				<cancelPrompt>CREATE_SHARE_WIZARD_CANCEL_PROMPT</cancelPrompt>
+				<width>{ResourceManager.getInstance().getString('fma','DHB_DHB_WIZ_WID')}</width>
+				<stepsWidth>{ResourceManager.getInstance().getString('fma','DHB_WIZ_STP_WID')}</stepsWidth>
+				<help>string</help> 
+				<WizardSteps>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.ScheduleWizard.TaskType</stepClass>
+						<id>taskType</id>
+						<title>{ResourceManager.getInstance().getString('fma','SCHEDULE_WIZARD_STEP_TASKTYPE_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>SCHEDULE_WIZARD_STEP_TASKTYPE_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.ScheduleWizard.PrimaryServerSelection</stepClass>
+						<id>primaryServerSelection</id>
+						<title>{ResourceManager.getInstance().getString('fma','SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_1_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE1_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.ScheduleWizard.SecondaryServerSelection</stepClass>
+						<id>secondaryServerSelection</id>
+						<title>{ResourceManager.getInstance().getString('fma','SCHEDULE_WIZARD_STEP_SECONDARYSERVERSELECTION_STATE_1_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>SCHEDULE_WIZARD_STEP_SECONDARYSERVERSELECTION_STATE_1_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.ScheduleWizard.PolicySelection</stepClass>
+						<id>createPolicy</id>
+						<title>{ResourceManager.getInstance().getString('fma','SCHEDULE_WIZARD_STEP_POLICYSELECTION_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>SCHEDULE_WIZARD_STEP_POLICYSELECTION_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.ScheduleWizard.CreateSchedule</stepClass>
+						<id>createSchedule</id>
+						<title>{ResourceManager.getInstance().getString('fma','SCHEDULE_WIZARD_STEP_CREATESCHEDULE_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>SCHEDULE_WIZARD_STEP_CREATESCHEDULE_TIME_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.ScheduleWizard.Summary</stepClass>
+						<id>summary</id>
+						<title>{ResourceManager.getInstance().getString('fma','SCHEDULE_WIZARD_STEP_SUMMARY_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>SCHEDULE_WIZARD_STEP_SUMMARY_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+				</WizardSteps>
+			</UxWizard>;
+	}
+}

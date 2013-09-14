@@ -1,0 +1,45 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import mx.resources.ResourceManager;
+
+var opr:String = null;
+
+protected function _clickHandler(event:MouseEvent,operation:String):void
+{
+	opr = operation;
+  if ( password.text == "" )
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_PASSWORD'),operation.toUpperCase(),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  var mess:String  = ResourceManager.getInstance().getString('fma','SYS_RST_PREFIX') + operation + " " + ResourceManager.getInstance().getString('fma','SYS_RST_PSTFIX');
+  var dlg:ECUITPopupDialog = ECUITPopupDialog.showConfirmDialog(this,mess, operation, ECUITPopupDialog.YES_NO_OPTION );
+  dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleYesNoDeleteResult);
+}
+
+private function handleYesNoDeleteResult(event:ECUITPopupDialogEvent):void
+{  
+  var user_selection:String = event.resultLabel;
+
+  if ( user_selection == "Yes" )
+  {
+    var xml:XML = <Request/>;
+    xml.appendChild(<action>{opr}</action>);
+    xml.appendChild(<Password>{password.text}</Password>);
+    RESTClient.sendPostRequest("/api/system/shutdown", xml, OnComplete, viewBlock);
+  }
+}
+
+private function OnComplete(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event);
+    return;
+  }
+}

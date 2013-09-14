@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+		xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+		xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+		xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+		implements="com.emc.efx.services.navigation.IUxHasPayload" 
+		xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+	
+	<fx:Declarations>
+
+	</fx:Declarations>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+				 id="viewBlock" title = "{ResourceManager.getInstance().getString('fma','LOG')}" 
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 width="100%" height="100%"
+				 helpServiceID="FMAHelpService" helpID="ViewHistoryText"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		
+		
+		<fx:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				import com.emc.fma.views.Utility.Command;
+				
+				import mx.resources.ResourceManager;
+				[Bindable]private var _client:UxHttpClient;
+				private var _currentPayload:UxHashMap = null;
+				override protected function initializeData():void {
+					super.initializeData();
+					if (currentPayload != null) {
+						var action:String = currentPayload.getValue("action");
+						var file:String = currentPayload.getValue("file");
+						
+						var xml:XML = <REQUEST/>; 
+						xml.appendChild(<action>{action}</action>);
+						xml.appendChild(<file>{file}</file>);
+						var cmd:Command = new Command(_client,onComplete,xml,"viewHistory.htm",viewBlock);
+						_client = cmd.sendCommand("POST");
+					}
+				}
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var byteArray:ByteArray = new ByteArray();
+					byteArray = _client.response.body ;
+					byteArray.position = 0;
+					//var response:Object = new XMLList(_client.response.body);
+					history.text = byteArray.readUTFBytes(byteArray.length);
+				}
+				[Bindable]
+				public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				private function onCanel(event:MouseEvent):void {
+					var navService:IUxNavigationService =
+						UxExtensionManager.getInstance().getService(UxConstants.
+							NAVIGATION_SERVICE) as IUxNavigationService;
+					var location:Array = new Array;
+					location = navService.currentLocation;
+					location.pop();
+					navService.navigate(location);
+				}
+				
+			]]>
+		</fx:Script>
+		<mx:TextInput editable="false" id="history" width="100%" height="100%" />
+		<mx:HBox paddingBottom="10" paddingTop="10">
+			<!--<buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCanel(event)"/>-->
+		</mx:HBox>
+		</UxViewBlock>	
+</UxVBoxWindow>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBox xmlns="com.emc.efx.guitoolkit.components.boxes.*"
+		xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx"
+		xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+		xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+		xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+		width="100%" paddingLeft="10" paddingRight="10" 
+		paddingBottom="10" paddingTop="10" 
+		height="100%" implements="com.emc.efx.services.navigation.IUxHasPayload"
+		>
+	
+	<fx:Declarations>
+
+	</fx:Declarations>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+				 id="viewBlock" title = "Log" 
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		
+		
+		<fx:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.utilities.map.UxHashMap;
+				
+				import mx.resources.ResourceManager;
+				[Bindable]private var _client:UxHttpClient;
+				private var _currentPayload:UxHashMap = null;
+				override protected function initializeData():void {
+					super.initializeData();
+					if (currentPayload != null) {
+						var action:String = currentPayload.getValue("action");
+						var file:String = currentPayload.getValue("file");
+						_client = new UxHttpClient();
+						_client.addEventListener(Event.COMPLETE, onComplete);
+						var data:ByteArray = new ByteArray();
+						var xml:XML = <REQUEST/>; 
+						xml.appendChild(<action>{action}</action>);
+						xml.appendChild(<file>{file}</file>);
+						data.writeUTFBytes(xml);
+						_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "viewHistory.htm"), data);
+						viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+						viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE); 
+					}
+				}
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var byteArray:ByteArray = new ByteArray();
+					byteArray = _client.response.body ;
+					byteArray.position = 0;
+					//var response:Object = new XMLList(_client.response.body);
+					history.text = byteArray.readUTFBytes(byteArray.length);
+				}
+				[Bindable]
+				public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				
+			]]>
+		</fx:Script>
+		<mx:TextInput editable="false" id="history" width="100%" height="100%" />
+		</UxViewBlock>	
+		
+
+</UxVBox>

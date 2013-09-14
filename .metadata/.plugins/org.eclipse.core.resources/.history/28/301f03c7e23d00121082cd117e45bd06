@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  updateComplete="_updateCompleteHandler(event)"
+					  width="500" height="250">
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			
+			import mx.events.FlexEvent;
+			import mx.events.FlexMouseEvent;
+			import mx.events.ItemClickEvent;
+			import mx.resources.ResourceManager;
+			private var _enableBackButton:Boolean = true;
+			private var _initialized:Boolean = false;
+			public static const ATTR_ASSOURCE        :String = "ASSOURCE";
+			public var _defaultSelection:String = "";
+			private var  _client:UxHttpClient ;
+			
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			private function handleChange(event:ItemClickEvent):void
+			{
+				var skipIt:Boolean = yesButton.selected;
+				parentWizard.enableStep(Optional.STEP_LADMIN, skipIt);
+				parentWizard.enableStep(Optional.STEP_DIRECTORYEX, skipIt);
+				parentWizard.enableStep(Optional.STEP_FPCALLBACKAGENT, skipIt);
+				refreshStepTitle();
+				stepComplete = true;
+			}
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					// Pull defaults from wizard data
+					var def:Object;
+					
+					def = getData(ATTR_ASSOURCE);
+					if (def != null) 
+					{
+						_defaultSelection = String(def);
+					}
+					_initialized = true;
+				}
+				
+				setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+				_updateupdateButtons();
+				enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			}
+			protected function _updateupdateButtons():void
+			{
+				if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+				updateButtons();
+				
+			}
+			private function updateButtons():void{
+				enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+			}
+			
+			protected function _updateCompleteHandler(event:FlexEvent):void
+			{
+				//var skipIt:Boolean = (event.currentTarget.selection == yesButton);
+				var skipIt:Boolean = yesButton.selected;
+				parentWizard.enableStep(Optional.STEP_LADMIN, skipIt);
+				parentWizard.enableStep(Optional.STEP_DIRECTORYEX, skipIt);
+				parentWizard.enableStep(Optional.STEP_FPCALLBACKAGENT, skipIt);
+				refreshStepTitle();
+				stepComplete = true;
+				
+			}
+			override protected function save(): void
+			{
+				setData(ATTR_ASSOURCE,yesButton.selected);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<mx:VBox>
+		<mx:Text id="skipStep"  text="{ResourceManager.getInstance().getString('fma','FIL_SER_WIS_SER_SRC')}"/>
+		<mx:RadioButtonGroup id="celerraAsSource" itemClick="handleChange(event)"/>
+		<mx:RadioButton id="yesButton" label="{ResourceManager.getInstance().getString('fma','FIL_SER_YES')}" groupName="celerraAsSource" paddingLeft="15"/>
+		<mx:RadioButton id="noButton" label="{ResourceManager.getInstance().getString('fma','FIL_SER_NO')}" groupName="celerraAsSource" paddingLeft="15" selected="true"/>
+	</mx:VBox>
+</wizards:UxWizardStep>

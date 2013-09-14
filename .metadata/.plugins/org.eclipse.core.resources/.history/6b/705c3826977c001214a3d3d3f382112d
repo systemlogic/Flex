@@ -1,0 +1,210 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+import com.emc.ecuit.flex.components.views.ProgressCanvas;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.services.rest.RestHTTPService;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.efx.net.http.UxHttpResponse;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+
+import flash.sampler.NewObjectSample;
+
+import flashx.textLayout.formats.Float;
+
+import mx.collections.ArrayCollection;
+import mx.controls.AdvancedDataGrid;
+import mx.controls.Button;
+import mx.events.CloseEvent;
+import mx.events.FlexEvent;
+import mx.events.NumericStepperEvent;
+import mx.managers.PopUpManager;
+import mx.resources.ResourceManager;
+
+[Bindable]public var Server:String;
+[Bindable]public var ServerType:String;
+[Bindable]private var pageNumber:Number = 0;
+private var _currentPayload:UxHashMap = null;
+
+override protected function initializeData():void
+{
+  super.initializeData();
+  Common.setFocusOnFirstChild(this);
+
+  if ( currentPayload != null )
+  {
+    viewBlock.title=currentPayload.getValue("historyType") + " List";
+    populateData();
+  }
+}
+
+public function populateData(event:Event = null)
+{
+  var xml:XML = <Request/>;
+  xml.appendChild(<Server>{currentPayload.getValue("serverName")}</Server>);
+  xml.appendChild(<Path>{currentPayload.getValue("path")}</Path>);
+  xml.appendChild(<DaysMissing>{currentPayload.getValue("moreThan")}</DaysMissing>);
+  var stateSet:String = currentPayload.getValue("orphanSelected")
+
+  if ( stateSet == "true" )
+    currentState = "orphan";
+
+  xml.appendChild(<rowsPerPage>{Common.getResource('ROW_PER_PAGE')}</rowsPerPage>);
+  xml.appendChild(<pageNumber>{stepper.value}</pageNumber>);
+  xml.appendChild(<orphanSelected>{stateSet}</orphanSelected>);
+  xml.appendChild(<archStartTime>{currentPayload.getValue("startTime")}</archStartTime>);
+  xml.appendChild(<archEndTime>{currentPayload.getValue("endTime")}</archEndTime>);
+
+  RESTClient.sendPostRequest("/api/archive/list", xml, onComplete, viewBlock);
+  setGridColumns(GridColumns);
+  trace(xml);
+}
+
+public function setGridColumns(columns:ArrayCollection):void
+{
+  if ( columns == null ) return;
+
+  trace(columns);
+  var tableColumns:ArrayCollection = new ArrayCollection();
+
+  for ( var i:int = 0; i < GridColumns.length; i++ )
+  {
+    var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+    var precision:int = 0; //default precision
+    type = ECUITAdvancedDataGridColumn.TEXT;
+    var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+    // This conditional builds an instance of a Severity object through a class factory.
+    column.dataField = GridColumns[i].Name;
+    column.headerText = GridColumns[i].Title;
+
+    if ( i == 1 || i == 2 )
+      column.width = viewBlock.width/3;
+    else
+      column.width = viewBlock.width/10;
+
+    if ( i == 0 || i == 6 )
+      column.visible = false;
+
+    tableColumns.addItem(column);
+  }
+
+  logList.columns = tableColumns.toArray();
+}
+
+[Bindable]
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+
+private function init():void
+{
+}
+
+[Bindable]public var _rowsObject:Object = new Object();
+
+private function onComplete(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event);
+    return;
+  }
+
+  var response:XML = event.response;
+  var rows:Array =  new Array();
+
+  for each ( var file:XML in response.File)
+  {
+    var retentionExpiration = ( file.hasOwnProperty("RetentionExpiration") )? file.RetentionExpiration:"";
+    var obj:Object =
+    {
+      Column0: file.@id,
+      Column1: file.Path,
+      Column2: file.Destination,
+      Column3: retentionExpiration,
+      Column4: file.ModifyTime,
+      Column5: file.ArchivedTime,
+      Column6: file.@fsid
+    };
+    rows.push(obj);
+  }
+
+  _rowsObject = new ArrayCollection(rows);
+
+  var temp:Number = parseFloat(response.NumberOfPages);
+  stepper.maximum = temp;
+  trace(temp);
+}
+
+protected function selAll_clickHandler(event:MouseEvent):void
+{
+  var arr:ArrayCollection = new ArrayCollection();
+
+  //logList.selectedItems = logList.dataProvider.source;
+  for each(var obj:Object in logList.dataProvider.source)
+    arr.addItem(obj);
+
+  logList.selectedItems = arr.source;
+}
+
+protected function clrAll_clickHandler(event:MouseEvent):void
+{
+  logList.selectedItems = new Array();
+}
+
+protected function rcvStb_clickHandler(event:MouseEvent):void
+{
+  var xml:XML = <Request/>;
+
+  for each( var obj:Object in logList.selectedItems )
+    xml.appendChild(<File id={obj.Column0.toString()} fsid={obj.Column6.toString()}>{obj.Column1.toString()}</File>);
+
+  RESTClient.sendPostRequest("/api/stub/recover", xml, OnStubActionComplete, viewBlock);
+}
+
+private function OnStubActionComplete(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event, populateData, populateData, true);
+    return;
+  }
+  populateData();
+}
+
+protected function delOrp_clickHandler(event:MouseEvent):void
+{
+  var xml:XML = <Request/>;
+
+  for each( var obj:Object in logList.selectedItems )
+    xml.appendChild(<File id={obj.Column0.toString()} fsid={obj.Column6.toString()}>{obj.Column1.toString()}</File>);
+
+  RESTClient.sendPostRequest("/api/orphan/delete", xml, OnStubActionComplete, viewBlock);
+}
+
+private function page_keyDownHandler(event:KeyboardEvent):void
+{
+  if ( event.keyCode == Keyboard.ESCAPE )
+    OnCancel(new MouseEvent(MouseEvent.CLICK));
+}
+
+private function OnCancel(event:Event):void
+{
+  var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}

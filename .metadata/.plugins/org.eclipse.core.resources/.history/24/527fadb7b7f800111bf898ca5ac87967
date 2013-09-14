@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A BigButtonContainer -->
+<UxBigButtonContainer xmlns="com.emc.efx.services.layout.containers.*"
+					  xmlns:mx="http://www.adobe.com/2006/mxml" horizontalGap="0"
+					  xmlns:section="com.emc.efx.services.layout.section.*" xmlns:ArchivedReport="com.emc.fma.views.Archived.ArchivedReport.*"
+					>
+	<sections>
+		<section:UxLazyLoadSection key="CHANGEPASSWORD" sortOrder="1"
+								   headerText="@Resource(key='CHANGEPASS', bundle='fma')"
+								   description="@Resource(key='CHANGEPASS_DISC', bundle='fma')"
+								   iconSource="@Resource(key='CHANGEPASS_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='CHANGEPASS_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.ResetPassword"/>
+		
+		<section:UxLazyLoadSection key="ADDUSR" sortOrder="2"
+								   headerText="@Resource(key='ADDUSER', bundle='fma')"
+								   description="@Resource(key='ADDUSER_DISC', bundle='fma')"
+								   iconSource="@Resource(key='ADDUSER_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='ADDUSER_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.AddUser"/>
+		<section:UxLazyLoadSection key="LOGSTNG" sortOrder="3"
+								   headerText="@Resource(key='LOGSETTINGS', bundle='fma')"
+								   description="@Resource(key='LOGSETTINGS_DISC', bundle='fma')"
+								   iconSource="@Resource(key='LOGSETTINGS_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='LOGSETTINGS_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.LogSettings"/>
+		<section:UxLazyLoadSection key="ALERTSTNG" sortOrder="4"
+								   headerText="@Resource(key='ALERTSETTINGS', bundle='fma')"
+								   description="@Resource(key='ALERTSETTINGS_DISC', bundle='fma')"
+								   iconSource="@Resource(key='ALERT_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='ALERT_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.AlertSettings"/>
+		<section:UxLazyLoadSection key="SYSSECURITY" sortOrder="5"
+								   headerText="@Resource(key='SYSTEMSETTINGS', bundle='fma')"
+								   description="@Resource(key='SYSTEMSETTINGS_DISC', bundle='fma')"
+								   iconSource="@Resource(key='SYSTEM_SECURITY_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='SYSTEM_SECURITY_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.SystemSecurity"/>
+		<section:UxLazyLoadSection key="CMDHISTORY" sortOrder="6"
+								   headerText="@Resource(key='COMMANDHISTORY', bundle='fma')"
+								   description="@Resource(key='COMMANDHISTORY_DISC', bundle='fma')"
+								   iconSource="@Resource(key='COMMANDHISTORY_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='COMMANDHISTORY_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.CommandHistory"/>
+		<section:UxLazyLoadSection key="SNMPSTNG" sortOrder="7"
+								   headerText="@Resource(key='SNMPSETTINGS', bundle='fma')"
+								   description="@Resource(key='SNMPSETTINGS_DISC', bundle='fma')"
+								   iconSource="@Resource(key='SNMPSETTINGS_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='SNMPSETTINGS_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.SNMPSettings"/>
+		<section:UxLazyLoadSection key="RESETSYSTEM" sortOrder="8"
+								   headerText="@Resource(key='REBOOT', bundle='fma')"
+								   description="@Resource(key='REBOOT_DISC', bundle='fma')"
+								   iconSource="@Resource(key='SHUTDOWN_IMAGE_64', bundle='fma')"
+								   smallIconSource="@Resource(key='SHUTDOWN_IMAGE_64', bundle='fma')"
+								   contentClass="com.emc.fma.views.System.ResetSystem"/>
+	</sections>
+</UxBigButtonContainer>
+					 
+					  

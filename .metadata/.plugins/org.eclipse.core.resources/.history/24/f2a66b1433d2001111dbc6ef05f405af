@@ -1,0 +1,310 @@
+package com.rainfinity.mng.access;
+
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+
+import com.rainfinity.mng.util.*;
+
+public class CliUser implements RainManageConfigurationItem
+{
+	// constants
+	static public final int USER_TYPE_NOT_AUTHORIZED = -1;
+	static public final int USER_TYPE_SUPER_USER = 0;
+	static public final int USER_TYPE_REGULAR_USER = 1;
+	// XML element names and values
+	static public final String ELEMENT_TAG_USER = new String("CliUser");
+	static public final String ELEMENT_TAG_GUID = new String("GUID");
+	static public final String ELEMENT_TAG_USER_NAME = new String("Name");
+	static public final String ELEMENT_TAG_USER_TYPE = new String("UserType");
+	static public final String ELEMENT_TAG_ENABLED = new String("Enabled");  //
+	static public final String USER_TYPE_SUPER_USER_STR = new String("SUPER_USER");
+	static public final String USER_TYPE_REGULAR_USER_STR = new String("REGULAR_USER");
+
+	// data members
+	private long GUID;
+	private String username;
+	private RainManageAuthentication authentication;
+	private int userType;
+	private boolean enabled;
+	
+	private RainManageLog log;
+	
+	public void log(int logLevel) {
+		log.log(logLevel,"CliUser::log: GUID = " + RainManageUtil.GUIDToString(GUID));
+		log.log(logLevel,
+				"CliUser::log: name = " + username);
+		switch (userType) {
+		case USER_TYPE_SUPER_USER:
+			log.log(logLevel,"CliUser:: usertype = SUPER_USER");
+			break;
+		case USER_TYPE_REGULAR_USER:
+			log.log(logLevel,"CliUser:: usetype = REGULAR_USER");
+			break;
+		default:
+			log.log(logLevel,"CliUser:: usertype = " + userType);
+		}
+	}
+	
+	private void initialize(long GUID,
+							String username,
+							RainManageAuthentication authentication,
+							int userType,
+							boolean enabled) {
+		this.GUID = GUID;
+		this.username = username;
+		this.authentication = authentication;
+		this.userType = userType;
+		this.enabled = enabled;
+		log = RainManageLog.getLog();
+		log.log(RainManageLog.LOG_DEBUG,
+				"CliUser::initialize: creating user");
+		log(RainManageLog.LOG_DEBUG);
+	}
+
+	private void initialize(long GUID,
+			String username,
+			RainManageAuthentication authentication,
+			boolean enabled) {
+		this.GUID = GUID;
+		this.username = username;
+		this.authentication = authentication;
+		this.enabled = enabled;
+		log = RainManageLog.getLog();
+		log.log(RainManageLog.LOG_DEBUG,
+		"CliUser::initialize: creating user");
+		log(RainManageLog.LOG_DEBUG);
+	}
+
+	public CliUser(long GUID,
+			  	String username, 
+				RainManageAuthentication authentication,
+				String passwordHash,
+				boolean enabled)
+	{
+		initialize(GUID,
+				username,
+				authentication,
+				enabled);
+	}
+	
+	public CliUser(long GUID,
+			  	String username, 
+				RainManageAuthentication authentication,
+				int userType,
+				boolean enabled)
+	{
+		initialize(GUID,
+				username,
+				authentication,
+				userType,
+				enabled);
+	}
+
+	public CliUser(long GUID,
+						String username,
+						String passwordHash,
+						int userType,
+						boolean enabled)
+	{
+		initialize(GUID,
+				username,
+				new RainManageAuthentication(RainManageAuthentication.SCHEME_PASSWORD,
+                                                                                                passwordHash,
+                                                                                                RainManageAuthentication.HASH_ALGORITHM_SHA),
+				userType,
+				enabled);
+	}
+
+	// this one defaults to a authentication scheme of a password hash using SHA
+	// and creates a new GUID
+	public CliUser(String username,
+						String passwordHash, 
+						int userType,
+						boolean enabled)
+	{
+		initialize(RainManageUtil.newGUID(),
+				  	username,
+					new RainManageAuthentication(RainManageAuthentication.SCHEME_PASSWORD,
+                                                                                                passwordHash,
+                                                                                                RainManageAuthentication.HASH_ALGORITHM_SHA),
+				   	userType,
+					enabled);
+	}
+
+	public long getGUID() {
+		return GUID;
+	}
+	
+	public String getGUIDStr() {
+		return RainManageUtil.GUIDToString(GUID);
+	}
+	
+	public String getUsername() {
+		return new String(username);
+	}
+	
+	public int getUserType() {
+		return userType;
+	}
+
+	public RainManageAuthentication getAuthentication() {
+		return new RainManageAuthentication(authentication);
+	}
+	
+	public boolean isSuperUser() {
+		return (userType == USER_TYPE_SUPER_USER);
+	}
+
+	public boolean getEnabled() {
+		return enabled;
+	}
+	
+	// takes a new user image and tries to update all fields;
+	// this should probably be a protected method so that only classes within
+	// the same package - such as CliUserList - can call it
+	public RainManageStatusObject modifyUser(CliUser user){
+		if (user.getGUID() != GUID) {
+			return new RainManageStatusObject(RainManageStatusObject.INVALID_CONFIGURATION_OBJECT);
+		}
+		// this must be unique; we'll assume that the caller checks this
+		username = user.username;
+		authentication = user.authentication;
+		userType = user.userType;
+		enabled = user.enabled;
+		log.log(RainManageLog.LOG_DEBUG,
+				"CliUser::modifyUser: new user:");
+		log(RainManageLog.LOG_DEBUG);
+		return new RainManageStatusObject(RainManageStatusObject.STATUS_OK);
+	}
+	
+	// not called directly
+	public RainManageStatusObject updateConfiguration(int changeType,
+													  Object configurationObjects[])
+	{
+		return new RainManageStatusObject(RainManageStatusObject.INVALID_CHANGE_TYPE);
+	}
+
+	// return value as an XML DOM node
+	public Node serializeToDOM(Document doc) {
+		Element result = doc.createElement(ELEMENT_TAG_USER);
+		
+		Element GUIDNode = doc.createElement(ELEMENT_TAG_GUID);
+		GUIDNode.appendChild(doc.createTextNode(RainManageUtil.GUIDToString(GUID)));
+		result.appendChild(GUIDNode);
+		
+		Element usernameNode = doc.createElement(ELEMENT_TAG_USER_NAME);
+		usernameNode.appendChild(doc.createTextNode(username));
+		result.appendChild(usernameNode);
+
+		Node authenticationNode = authentication.serializeToDOM(doc);
+                if (authenticationNode != null) {
+                        result.appendChild(authenticationNode);
+                } else {
+                        log.log(RainManageLog.LOG_ERROR,
+                                        "CliUser::serializeToDOM: unable to serialize authentication");
+                        return null;
+                }
+		
+		Element userTypeNode = doc.createElement(ELEMENT_TAG_USER_TYPE);
+		if (userType == USER_TYPE_SUPER_USER) {
+			userTypeNode.appendChild(doc.createTextNode(USER_TYPE_SUPER_USER_STR));
+		} else if (userType == USER_TYPE_REGULAR_USER) {
+			userTypeNode.appendChild(doc.createTextNode(USER_TYPE_REGULAR_USER_STR));
+		} else {
+			log.log(RainManageLog.LOG_ERROR,
+					"CliUser::serializeToDOM: unexpected userType = " + userType);
+			return null;
+		}
+		result.appendChild(userTypeNode);
+
+		Element enabledNode = doc.createElement(ELEMENT_TAG_ENABLED);
+                enabledNode.appendChild(doc.createTextNode(enabled + ""));
+                result.appendChild(enabledNode);
+
+		return result;
+	}
+
+	// given an XML DOM node, return new CliUser if we can parse; else, null
+	static public CliUser parseXML(Node node,
+										  boolean printTree) {
+		Long GUID = null;
+		String name = null;
+		RainManageAuthentication authentication = null;
+		Integer userType = null;
+		Boolean enabled = null;
+		RainManageLog log = RainManageLog.getLog();
+		
+		NodeList children = node.getChildNodes();
+		if ( children != null ) {
+			int len = children.getLength();
+			for ( int i = 0; i < len; i++ ) {
+				Node child = children.item(i);
+				if (child.getNodeType() != Node.TEXT_NODE) {
+					log.log(RainManageLog.LOG_DEBUG,
+							"CliUser::parseXML: " + RainManageUtil.printNode(child) );
+				}
+				if (child.getNodeName().equals(ELEMENT_TAG_USER_NAME)) {
+					String tmp = RainManageUtil.getElementText(child);
+					if (tmp != null) {
+						name = tmp;
+					} else {
+						log.log(RainManageLog.LOG_ERROR,
+								"CliUser::parseXML: invalid user name element");
+					}
+				} else if (child.getNodeName().equals(ELEMENT_TAG_GUID)) {
+					Long tmp = RainManageUtil.getElementGUID(child);
+					if (tmp != null) {
+						GUID = tmp;
+					} else {
+						log.log(RainManageLog.LOG_ERROR,
+								"CliUser::parseXML: invalid GUID element");
+					}
+				} else if (child.getNodeName().compareTo(RainManageAuthentication.ELEMENT_TAG_USER_AUTHENTICATION) == 0) {
+                                        authentication = RainManageAuthentication.parseXML(child,printTree);
+				} else if (child.getNodeName().equals(ELEMENT_TAG_USER_TYPE)) {
+					String tmp = RainManageUtil.getElementText(child);
+					if (tmp == null) {
+						log.log(RainManageLog.LOG_ERROR,
+								"CliUser::parseXML: invalid user type element");
+						continue;
+					}
+					if (tmp.equals(USER_TYPE_SUPER_USER_STR)) {
+						userType = new Integer(USER_TYPE_SUPER_USER);
+					} else if (tmp.equals(USER_TYPE_REGULAR_USER_STR)) {
+						userType = new Integer(USER_TYPE_REGULAR_USER);
+					} else {
+						log.log(RainManageLog.LOG_ERROR,
+								"AccessManager::parseUser: unrecognized user type = " +
+										   tmp);
+					}
+				} else if (child.getNodeName().equals(ELEMENT_TAG_ENABLED)) {
+                                        Boolean tmp = RainManageUtil.getElementBooleanText(child);
+                                        if (tmp != null) {
+                                                enabled = tmp;
+                                        } else {
+                                                log.log(RainManageLog.LOG_ERROR,
+                                                                "CliUser::parseXML: invalid enabled element");
+                                        }
+				} else {
+					if (child.getNodeType() == Node.TEXT_NODE) {
+						// skip 
+					} else {
+						log.log(RainManageLog.LOG_INFO,
+								"CliUser::parseXML: unrecognized element tag = " + child.getNodeName());
+					}
+				}
+			}
+			if ((GUID != null) && (name != null) && (authentication != null) && 
+				(userType != null) && (enabled != null)) {
+				return new CliUser(GUID.longValue(),name, authentication, userType.intValue(),enabled.booleanValue());
+			} else {
+				log.log(RainManageLog.LOG_ERROR,
+						"CliUser::parseXML: missing required element");
+			}
+		}
+		return null;
+	}
+
+}

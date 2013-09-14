@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+              xmlns:fx="http://ns.adobe.com/mxml/2009"
+              xmlns:s="library://ns.adobe.com/flex/spark"
+              xmlns:mx="library://ns.adobe.com/flex/mx"
+              xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+              xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+              xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+              implements="com.emc.efx.services.navigation.IUxHasPayload"
+              xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+              xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*"
+              xmlns:table="com.emc.ecuit.flex.components.table.*" 
+              xmlns:steppers="com.emc.efx.guitoolkit.components.steppers.*"
+              xmlns:views="com.emc.efx.guitoolkit.components.views.*">
+  
+  <fx:Declarations>
+    <mx:ArrayCollection id="GridColumns" >
+      <fx:Object Name="Column0" Title="Id" />
+      <fx:Object Name="Column1" Title="File Path" />
+      <fx:Object Name="Column2" Title="Destination" />
+      <fx:Object Name="Column3" Title="Retention Expiration" />
+      <fx:Object Name="Column4" Title="Modify Time" />
+      <fx:Object Name="Column5" Title="Archived Time" />
+      <fx:Object Name="Column6" Title="fs" />
+    </mx:ArrayCollection>
+  </fx:Declarations>
+  <fx:Script source="List.mxml.as" />
+  <states>
+    <mx:State name="nonorphan"/>
+    <mx:State name="orphan"/>
+  </states>
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+               id="viewBlock" title="{Common.getResource('VIEWARCHIVE')}"
+               xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+               creationComplete="init()"
+               width="100%" height="100%"
+               showRefresh="false" showFilter="false" showFind="false"
+               showExport="false" showPrint="false" showTools="false"
+               xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+               xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+               keyDown="page_keyDownHandler(event)"
+               helpServiceID="FMAHelpService" helpID="ArchivedFileList">
+    
+    <views:UxProgressCanvas id="progress" width="100%" height="100%" > 
+      <table:ECUITAdvancedDataGrid id="logList" dataProvider="{_rowsObject}" sortableColumns="false"
+                                   showHeaders = "true" editable="false" useRollOver="false"
+                                   allowMultipleSelection="true" rowCount="20">
+      </table:ECUITAdvancedDataGrid>
+      
+      <mx:Form>
+        <mx:FormItem label="{Common.getResource('ARCH_REC_STUB')}" paddingLeft="0">        
+          <mx:HBox>
+            <mx:CheckBox id="recoverStub"/>
+            <mx:HBox paddingLeft="260">            
+              <mx:LinkButton id="firstPage" labelPlacement="top" icon="{firstPageIcon}" click="populateData('firstPage')" toolTip="First Page"/>
+              <mx:LinkButton id="previousPage" labelPlacement="top" icon="{previousPageIcon}" click="populateData('previousPage')" toolTip="Previous Page"/>
+              <mx:Label text="Page"/>
+              <mx:TextInput id="currentPage" restrict="[0-9]" width="40" enter="{StringUtil.trim(currentPage.text) != '' ? populateData('',parseInt(currentPage.text)):currentPage.text=requestedPaeID.toString()}"/>
+              <mx:Label text="of"/>
+              <mx:Label id="totalPages"/>
+              <mx:LinkButton id="nextPage" labelPlacement="top" icon="{nextPageIcon}" click="populateData('nextPage')" toolTip="Next Page"/>
+              <mx:LinkButton id="lastPage" labelPlacement="top"  icon="{lastPageIcon}" click="populateData('lastPage')" toolTip="Last Page"/>
+            </mx:HBox>
+          </mx:HBox>
+        </mx:FormItem>
+      </mx:Form>
+    </views:UxProgressCanvas>
+    
+    <mx:HBox paddingBottom="10" paddingTop="10">
+      <buttons:UxButton label="{Common.getResource('BUTTON_SELALL')}" click="selAll_clickHandler(event)" />
+      <buttons:UxButton label="{Common.getResource('BUTTON_CLRALL')}" click="clrAll_clickHandler(event)" enabled="{logList.selectedItem ==null ? false : true}" />
+      <buttons:UxButton label="{Common.getResource('BUTTON_RECSTB')}" click="rcvStb_clickHandler(event)" enabled="{logList.selectedItem ==null ? false : true}"/>
+      <buttons:UxButton label="{Common.getResource('BUTTON_DELORP')}" includeIn="orphan" click="delOrp_clickHandler(event)" enabled="{logList.selectedItem ==null ? false : true}"/>
+      <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)" />
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

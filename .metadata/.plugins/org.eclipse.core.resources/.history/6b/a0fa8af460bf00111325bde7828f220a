@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+		xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx" 
+		implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+		xmlns:containers="com.emc.ecuit.flex.components.containers.*" 
+		xmlns:table="com.emc.ecuit.flex.components.table.*" 
+		xmlns:controls="com.emc.ecuit.flex.components.controls.*" 
+		xmlns:section="com.emc.efx.services.layout.section.*" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+	<fx:Declarations>
+		<mx:EmailValidator source="{email}" property="text" 
+						   trigger="{add}" triggerEvent="click"
+						   valid="addIP()" invalid="emailvalidator1_invalidHandler(event)"/>
+		<section:UxLazyLoadSection id="logPet" key="PTRNPRO" headerText="@Resource(key='PTRNPRO', bundle='fma')" 
+								   contentClass="com.emc.fma.views.System.logPattern"/>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+			import com.emc.efx.UxConstants;
+			import com.emc.efx.core.extensionmgr.UxExtensionManager;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.efx.services.navigation.IUxNavigationService;
+			import com.emc.efx.utilities.map.UxHashMap;
+			import com.emc.fma.views.Utility.UtilityFunctionClass;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.events.ValidationResultEvent;
+			import mx.resources.ResourceManager;
+			[Bindable]public var _rowsObjectCommunityString:Object = new Object();
+			[Bindable]public var _rowsObjectNotifyString:Object = new Object();
+			[Bindable]private var _client:UxHttpClient;
+			[Bindable] private var emails:ArrayCollection = new ArrayCollection();
+			[Bindable] private var response:XMLList;
+			private function onComplete(event:Event):void{
+				viewBlock.updateProgress(100, "default");
+				response = new XMLList(_client.response.body);
+				emails = new ArrayCollection() ;
+				for each (var mail : XML in response..EmailLogAlert ) {
+					emails.addItem(mail.toString());
+				}
+				enable.selected = (response.Enabled.toString() == UtilityFunctionClass.TRUE ? true : false );
+				time.text = response.PeriodInHour.toString() ;
+				size.text = response.MaxSizeInKB.toString() ;
+				enAlert.selected = false ;
+				emailAlert.selected = false ;
+				snmpAlert.selected = false ;
+				disAlert.selected = false ;
+				if(response.EnableLogAlerts.toString() == UtilityFunctionClass.ALL){
+					enAlert.selected = true ;
+				}else if(response.EnableLogAlerts.toString() == UtilityFunctionClass.EMAIL){
+					emailAlert.selected = true ;
+				}else if(response.EnableLogAlerts.toString() == UtilityFunctionClass.SNMP){
+					snmpAlert.selected = true ;
+				}else if(response.EnableLogAlerts.toString() == UtilityFunctionClass.NO){
+					disAlert.selected = true ;
+				}
+				alertType_itemClickHandler();
+				if(response.msg.toString() != ""){
+					ECUITPopupDialog.showMessageDialog(this,response.msg.toString() ,"Error",ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				}
+			}
+			
+			protected function _creationCompleteHandler(event:String):void
+			{
+				_client = new UxHttpClient();
+				_client.addEventListener(Event.COMPLETE, onComplete);
+				var data:ByteArray = new ByteArray();
+				var xml:XML = <REQUEST/>; 
+				xml.appendChild(<action>{event}</action>);
+				if(event == UtilityFunctionClass.SAVE){
+					xml.appendChild(<EnableLogAlerts>{logType}</EnableLogAlerts>);
+					for each(var temp:String in emailList.dataProvider){
+						xml.appendChild(<EmailLogAlert>{temp}</EmailLogAlert>);
+					}
+					xml.appendChild(<LogAlertSummary>{enable.selected ? UtilityFunctionClass.YES : UtilityFunctionClass.NO}</LogAlertSummary>);
+					xml.appendChild(<PeriodInHour>{time.text}</PeriodInHour>);
+					xml.appendChild(<MaxSizeInKB>{size.text}</MaxSizeInKB>);
+				}
+				data.writeUTFBytes(xml);
+				_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "alerts.htm"), data);
+				viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+				viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+			
+			}
+			protected function commit_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			[Bindable]var logType:String = null
+			protected function alertType_itemClickHandler():void
+			{
+				if(enAlert.selected || emailAlert.selected){
+					enable.enabled = true ;
+					time.enabled = true ;
+					size.enabled = true ;
+					add.enabled = true ;
+					del.enabled = true ;
+				}else if(snmpAlert.selected || disAlert.selected){
+					enable.enabled = false ;
+					time.enabled = false ;
+					size.enabled = false ;
+					add.enabled = false ;
+					del.enabled = false ;
+				}
+				if(enAlert.selected){
+					logType = UtilityFunctionClass.ALL ;
+				}else if(emailAlert.selected){
+					logType = UtilityFunctionClass.EMAIL ;
+				}else if(snmpAlert.selected){
+					logType = UtilityFunctionClass.SNMP ;
+				}else if(disAlert.selected){
+					logType = UtilityFunctionClass.NO ;
+				}
+				
+			}
+			public function addIP():void
+			{
+				emails.addItem(email.text);
+			}
+			public function delIP():void
+			{
+				emails.removeItemAt(emailList.selectedIndex);
+			}
+			
+			[Bindable]var mailadd:Boolean = false ;
+			protected function emailvalidator1_invalidHandler(event:ValidationResultEvent):void
+			{
+					ECUITPopupDialog.showMessageDialog(this,"Invalid Email Address" ,"Error",ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+			}
+			public function get workingPages():Array {
+				var workingPageArray:Array = new Array();
+				workingPageArray.push(logPet);
+				return workingPageArray;
+			}
+			private var _section:UxLazyLoadSection ;
+			protected function logPattern_Handler(event:MouseEvent):void
+			{
+				_section = logPet ;
+				var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+				var map:UxHashMap = new UxHashMap();
+				var location:Array = new Array;
+				_section.headerText = ResourceManager.getInstance().getString('fma','PTRNPRO');
+				location = navService.currentLocation;
+				location.push(logPet.key)
+				navService.moveToChild(logPet.key, map);
+				
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Style>
+		FormItem {
+		labelStyleName: customTextAlignLabel;
+		}
+		
+		.customTextAlignLabel {
+		textAlign: left;
+		}
+	</fx:Style>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock" 
+				 title="{ResourceManager.getInstance().getString('fma','ALERTSETTINGS')}" 
+				 width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 helpServiceID="FMAHelpService" helpID="AlertSettings"
+				 creationComplete="_creationCompleteHandler(UtilityFunctionClass.EDIT)">
+		<mx:HBox width="100%" height="100%">
+			<UxExtendedClass:UxGroupBoxCta id="cString" title="{ResourceManager.getInstance().getString('fma','ALR_SET_ALLERTS')}" width="50%">
+				<mx:VBox height="100%" width="100%">
+					<mx:Form>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ALR_SET_TYPE')}">
+							<mx:VBox>
+								<mx:RadioButtonGroup id="alertType" itemClick="alertType_itemClickHandler()"/>
+								<mx:HBox>
+									<mx:RadioButton id="enAlert" label="{ResourceManager.getInstance().getString('fma','ALR_SET_ALL_ALR')}" groupName="alertType" paddingLeft="15"  selected="true"/>
+									<mx:RadioButton id="emailAlert" label="{ResourceManager.getInstance().getString('fma','ALR_SET_EML_ALR')}" groupName="alertType" paddingLeft="15" />
+									<mx:RadioButton id="snmpAlert" label="{ResourceManager.getInstance().getString('fma','ALR_SET_SMP_ALR')}" groupName="alertType" paddingLeft="15"/>
+								</mx:HBox>
+								<mx:HBox>
+									<mx:RadioButton id="disAlert" label="{ResourceManager.getInstance().getString('fma','ALR_SET_DIS_ALR')}" groupName="alertType" paddingLeft="15"/>	
+								</mx:HBox>
+							</mx:VBox>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ALR_SET_NEW_EML')}">
+							<mx:HBox>
+								<mx:TextInput id="email" restrict="0-9,a-z,A-z,.,@"/>
+								<mx:Button id="add" label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" width="{del.width}"/>
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem>
+							<mx:HBox>
+								<mx:List id="emailList" height="50" dataProvider="{emails}" width="{email.width}"/>
+								<mx:Button id="del" label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="delIP()"/>
+							</mx:HBox>
+						</mx:FormItem>
+					</mx:Form>
+				</mx:VBox>
+			</UxExtendedClass:UxGroupBoxCta>
+			<UxExtendedClass:UxGroupBoxCta id="notifyGBox" title="{ResourceManager.getInstance().getString('fma','ALR_SET_ALR_SUM')}" width="50%">
+				<mx:VBox height="100%" width="100%">
+					<mx:Form>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ALR_SET_LOG_SUM')}">
+							<mx:CheckBox id="enable"/>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ALR_SET_TME_HUR')}">
+							<mx:TextInput id="time" restrict="0-9"/>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ALR_SET_SZE_KB')}">
+							<mx:TextInput id="size" restrict="0-9" maxChars="5" width="{time.width}"/>
+						</mx:FormItem>
+					</mx:Form>
+				</mx:VBox>
+			</UxExtendedClass:UxGroupBoxCta>
+		</mx:HBox>
+		<mx:HBox paddingBottom="10" paddingTop="10">
+			<mx:Button  label="Log Pattern" click="logPattern_Handler(event)"/>
+			<mx:Button  label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="_creationCompleteHandler(UtilityFunctionClass.SAVE)"/>
+		</mx:HBox>
+	</UxViewBlock>
+</UxVBoxWindow>

@@ -1,0 +1,53 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.fma.services
+{
+	import com.emc.ecuit.flex.services.ECUITHelpService;
+	import com.emc.ecuit.flex.services.HelpSystem;
+	import com.emc.efx.core.resourcemanager.UxResourceManager;
+	import com.emc.efx.services.help.UxHelpService;
+	import com.emc.efx.services.help.UxRoboESAConfigHelper;
+	
+	/**
+	 * 
+	 * This Sample Help service demonstrates how to build a plugin help service. 
+	 * You simply override the initializeHelp. The sample below used ESA help system.
+	 * 
+	 */
+	public class FMAHelpService extends UxHelpService
+	{
+		
+		private var config:XML = <helpConfig>
+									  <helpSystemName>fma</helpSystemName>
+									  <defaultHelpID>GetFileServerList</defaultHelpID>
+									  <snippetDir>fma/webHelp/snippets/</snippetDir>
+									  <initialSnippets>fma_snippet.xml</initialSnippets>
+									  <helpDir>fma/webHelp/help/</helpDir>
+									  <homepage>index.htm</homepage>
+									  <contextMapFile>fma_help-map.xml</contextMapFile>
+									  <contextMapFormat>xml</contextMapFormat>
+									  <keyAttribute>target</keyAttribute>
+									  <valueAttribute>url</valueAttribute>
+									  <mapIDTag>mapID</mapIDTag>
+									</helpConfig>;
+		
+		
+		/**
+		 * initialize the help system associated with the sample help service
+		 * 
+		 */
+		override protected function intializeHelp():void {
+			var configHelper:UxRoboESAConfigHelper = new UxRoboESAConfigHelper(config);
+			configHelper.intializeHelpSystem();
+			
+			helpName = configHelper.helpName;
+			defaultHelpID = configHelper.defaultHelpID;
+		}
+		
+	}
+}

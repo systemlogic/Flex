@@ -1,0 +1,988 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx"
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+			  implements="com.emc.efx.services.navigation.IUxHasPayload"
+			  xmlns:fxe="com.emc.efx.guitoolkit.components.table.filter.*" 
+			  xmlns:datetime="com.emc.ecuit.flex.components.datetime.*" 
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+			  preinitialize="_preinitializeHandler(event)" 
+			  xmlns:Schedule="com.emc.fma.views.Schedule.*" 
+			  xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+
+	
+	<!--,com.emc.efx.services.navigation.IUxWorkingPageContainer-->
+	
+	<states>
+		
+		<s:State name="archiver"/>
+		<s:State name="multitier"/>
+		<s:State name="multitierstub"/>
+		<s:State name="importarchive"/>
+		<s:State name="stubscanner"/>
+		<s:State name="deleteorphan"/>
+		<s:State name="deletestub"/>
+		<s:State name="backup"/>
+		<s:State name="repositorymigration"/>
+		<s:State name="repositorymigrationEncryption"/>
+		<s:State name="filemigration"/>
+		<s:State name="runOncearchiver"/>
+		<s:State name="runOncemultitier"/>
+		<s:State name="runOncemultitierstub"/>
+		<s:State name="runOncedeleteOrphan"/>
+		<s:State name="runOncedeleteStub"/>
+		<s:State name="runOnceImportArchive"/>
+		<s:State name="runOnceFileMigration"/>
+		
+		
+	</states>
+	<fx:Declarations>
+	</fx:Declarations>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 helpServiceID="FMAHelpService" helpID="EditScheduleTask"
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		
+		
+		<fx:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.guitoolkit.events.UxViewEvent;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+				import com.emc.fma.views.Utility.UtilityFunctionClass;
+				
+				import mx.binding.utils.ChangeWatcher;
+				import mx.collections.ArrayCollection;
+				import mx.events.FlexEvent;
+				import mx.events.ListEvent;
+				import mx.resources.ResourceManager;
+				private var _currentPayload:UxHashMap = null;
+				private var archive:ArrayCollection = new ArrayCollection();
+				[Bindable]private var fileServer_array:ArrayCollection  = new ArrayCollection();
+				[Bindable]private var destFileServer_array:ArrayCollection = new ArrayCollection();
+				[Bindable]private var sidTranslation_array:ArrayCollection  = new ArrayCollection();
+				[Bindable]private var protoArray:ArrayCollection = new ArrayCollection();
+				[Bindable]private var multiTier:ArrayCollection= new ArrayCollection();
+				[Bindable]private var multiTierStub:ArrayCollection= new ArrayCollection();
+				[Bindable]private var deleteOrphan:ArrayCollection= new ArrayCollection();
+				[Bindable]private var deleteStub:ArrayCollection= new ArrayCollection();
+				[Bindable]private var fileMigration:ArrayCollection= new ArrayCollection();
+				[Bindable]private var days:ArrayCollection= new ArrayCollection();
+				[Bindable]private var months:ArrayCollection= new ArrayCollection();
+				[Bindable]private var runonceTest:Boolean= false;
+				
+				[Bindable]public var runOnce:String;
+				[Bindable]public var mode:String;
+				[Bindable]public var offset_rep:String;
+				[Bindable]public var run_start_time:String;
+				[Bindable]public var start_time:String;
+				[Bindable]public var archive_threshold ;
+				[Bindable]public var warning_threshold ;
+				[Bindable]public var componentState:String = "archiver";
+
+				
+				protected function _preinitializeHandler(event:FlexEvent):void
+				{
+					for(var temp:int = 1 ; temp<= 31 ; temp ++){
+						if(temp == 1 || temp == 31){
+							days.addItem(temp + "st");
+						}else if(temp == 2){
+							days.addItem(temp + "nd");
+						}else if(temp == 3){
+							days.addItem(temp + "rd");
+						}else{
+							days.addItem(temp + "th");	
+						}
+					}
+					for(var temp:int = 1 ; temp<= 12 ; temp ++){
+						months.addItem(temp );
+					}
+					protoArray.addItem("CIFS");
+					protoArray.addItem("NFS");
+					
+				}
+				
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				[Bindable]private var state:String = null ;
+				[Bindable]private var _client:UxHttpClient;
+				[Bindable]var taskid:String ;
+				override protected function initializeData():void {
+					super.initializeData();
+					if (currentPayload != null) {
+						taskid = currentPayload.getValue("TaskId");
+						var Heading:String = currentPayload.getValue("Heading");
+						state = currentPayload.getValue("state");
+						viewBlock.title = Heading ;
+						_client = new UxHttpClient();
+						_client.addEventListener(Event.COMPLETE, onComplete);
+						var data:ByteArray = new ByteArray();
+						var xml:XML = <REQUEST/>; 
+						xml.appendChild(<action>gettasks</action>);
+						xml.appendChild(<TaskID>{taskid}</TaskID>);
+						xml.appendChild(<Type>all</Type>);
+						data.writeUTFBytes(xml);
+						_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "gettaskprogress.htm"), data);
+						viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+						viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+					}
+				}
+				public function get workingPages():Array {
+					var workingPageArray:Array = new Array();
+					return workingPageArray;
+				}
+				
+				[Bindable]
+				public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				[Bindable] private var response:XMLList = null;
+				
+				public function importArchiveFunction(state:String):void{
+					componentState = currentState =  state;
+					taskName.text 	=  response.taskName[0].toString();
+					providers.text  =  response.provider[0].toString();
+					importCheck.enabled = false ;
+					for each (var temp : XML in response..archiver ) {
+						archive.addItem(temp.toString());
+					}
+					for each (var temp : XML in response..multiTier ) {
+						multiTier.addItem(temp.toString());
+					}
+					for each (var temp : XML in response..multiTierStub ) {
+						multiTierStub.addItem(temp.toString());
+					}
+					
+					importCheck.selected = true ;
+					if(response.basetype[0].toString() == "archiver"){
+						awp.selected = true ;
+						var selectIndex:int = -1 ;
+						for each(var testPolicy:String in archive){
+							if(testPolicy.toString() == response.policyName[0].toString()){
+								selectIndex++;
+								break ;
+							}
+							selectIndex++;
+						}
+						arch_combo.selectedIndex = selectIndex;
+					}else if(response.basetype[0].toString() == "multitier"){
+						mtwp.selected = true ;
+						var selectIndex:int = -1 ;
+						for each(var testPolicy:String in multiTier){
+							if(testPolicy.toString() == response.policyName[0].toString()){
+								selectIndex++;
+								break ;
+							}
+							selectIndex++;
+						}
+						multTier_combo.selectedIndex = selectIndex;
+					}else if(response.basetype[0].toString() == "multitierstub"){
+						mtswp.selected = true ;
+						var selectIndex:int = -1 ;
+						for each(var testPolicy:String in multiTierStub){
+							if(testPolicy.toString() == response.policyName[0].toString()){
+								selectIndex++;
+								break ;
+							}
+							selectIndex++;
+						}
+						multiTierStub_combo.selectedIndex = selectIndex;
+					} 
+				}
+				private function setTimeFunction(event:Event):void{
+					timeSchedule.runOnce = response.runOnce[0].toString();
+					timeSchedule.mode = response.mode[0].toString();
+					timeSchedule.offset_rep = response.offset_rep[0].toString();
+					timeSchedule.run_start_time = response.run_start_time[0].toString();
+					timeSchedule.start_time = response.start_time[0].toString();
+					timeSchedule.archive_threshold = response.archive_threshold[0].toString();
+					timeSchedule.warning_threshold = response.warning_threshold[0].toString(); 
+					timeSchedule.componentState = componentState ;	
+					timeSchedule.watcherListener(event);
+					//componentState = response.schedulerType[0].toString() ;
+				}
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					response = new XMLList(_client.response.body);
+					
+					trace(response);
+					if(response.runOnce[0] == null){
+						return ;
+					}
+					
+					trace(response.runOnce[0].toString() );
+					
+					if(response.runOnce[0].toString() == "yes"){
+						runonceTest = true ;
+					}else if(response.runOnce[0].toString() == "no"){
+						runonceTest = false ;
+					} 
+					
+					
+					
+					if(runonceTest){
+						if(response.schedulerType[0].toString() == "importarchive"){
+							importArchiveFunction("runOnceImportArchive");
+							
+						}else if(response.schedulerType[0].toString() == "archiver"){
+							for each (var temp : XML in response..archiver ) {
+								archive.addItem(temp.toString());
+							}
+							componentState = currentState = "runOncearchiver";
+							awp.selected = true ;
+							arch_combo.enabled = false ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in archive){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							arch_combo.selectedIndex = selectIndex;
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+						}else if(response.schedulerType[0].toString() == "multitier"){
+							for each (var temp : XML in response..multiTier ) {
+								multiTier.addItem(temp.toString());
+							}
+							componentState = currentState = "runOncemultitier";
+							mtwp.selected = true ;
+							multTier_combo.enabled = false ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in multiTier){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							multTier_combo.selectedIndex = selectIndex;
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+						}else if(response.schedulerType[0].toString() == "multitierstub"){
+							for each (var temp : XML in response..multiTierStub ) {
+								multiTierStub.addItem(temp.toString());
+							}
+							componentState = currentState = "runOncemultitierstub";
+							mtswp.selected = true ;
+							multiTierStub_combo.enabled = false ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in multiTierStub){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							multiTierStub_combo.selectedIndex = selectIndex;
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+						}else if(response.schedulerType[0].toString() == "deleteorphan"){
+							for each (var temp : XML in response..deleteOrphan ) {
+								deleteOrphan.addItem(temp.toString());
+							}
+							componentState = currentState = "runOncedeleteOrphan";
+							deleteOrphan_combo.enabled = false ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in deleteOrphan){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							deleteOrphan_combo.selectedIndex = selectIndex;
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+						} else if(response.schedulerType[0].toString() == "deletestub"){
+							for each (var temp : XML in response..deleteStub ) {
+								deleteStub.addItem(temp.toString());
+							}
+							componentState = currentState = "runOncedeleteStub";
+							deletestub_combo.enabled = false ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in deleteStub){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							deletestub_combo.selectedIndex = selectIndex;
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+						} else if(response.schedulerType[0].toString() == "filemigration"){
+							for each (var temp : XML in response..fileMigration ) {
+								fileMigration.addItem(temp.toString());
+							}
+							componentState = currentState = "runOnceFileMigration";
+							fileMigration_combo.enabled = false ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in fileMigration){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileMigration_combo.selectedIndex = selectIndex;
+							fileMigration_combo.enabled = false ;
+							
+							thresholdCheck();
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+							destFilesServer.text	=  response.destSevername[0].toString() ;
+							destPath.text 			=  response.destresource[0].toString() ;
+							networkBand.text 		=  response.bandwidth[0].toString() ;
+							sidTranslation.text 	=  response.sidTranslationFile[0].toString() ;
+						}  else if(response.schedulerType[0].toString() == "repositorymigration"){
+							repoMigrationSettings(response);
+						}  else if(response.schedulerType[0].toString() == "backup"){
+							componentState = currentState = "backup";
+						}  else if(response.schedulerType[0].toString() == "stubscanner"){
+							componentState = currentState = "stubscanner";
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+						}
+						
+						
+						timeSchedule.componentState = response.schedulerType[0].toString() ;
+					}else if(!runonceTest){
+						if(response.schedulerType[0].toString() == "importarchive"){
+							importArchiveFunction("importarchive");
+						}
+						if(response.schedulerType[0].toString() == "archiver"){
+							for each (var temp : XML in response..archiver ) {
+								archive.addItem(temp.toString());
+							}
+							componentState = currentState = "archiver";
+							awp.selected = true ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in archive){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							arch_combo.selectedIndex = selectIndex;
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in protocol_combo.dataProvider){
+								if(temp_proto.toString().toLowerCase() == response.protocol[0].toString().toLowerCase()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileServerName(response);
+							protocol_combo.selectedIndex	 = selectIndex ;
+							fsBrowse.text	 = response.resource[0].toString() ;
+						}else if(response.schedulerType[0].toString() == "multitier"){
+							for each (var temp : XML in response..multiTier ) {
+								multiTier.addItem(temp.toString());
+							}
+							componentState = currentState = "multitier";
+							mtwp.selected = true ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in multiTier){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							multTier_combo.selectedIndex = selectIndex;
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in protocol_combo.dataProvider){
+								if(temp_proto.toString().toLowerCase() == response.protocol[0].toString().toLowerCase()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileServerName(response);
+							protocol_combo.selectedIndex	 = selectIndex ;
+							fsBrowse.text	 = response.resource[0].toString() ;
+						}else if(response.schedulerType[0].toString() == "multitierstub"){
+							for each (var temp : XML in response..multiTier ) {
+								multiTierStub.addItem(temp.toString());
+							}
+							componentState = currentState = "multitierstub";
+							mtswp.selected = true ;
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in multiTier){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							multiTierStub_combo.selectedIndex = selectIndex;
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in protocol_combo.dataProvider){
+								if(temp_proto.toString().toLowerCase() == response.protocol[0].toString().toLowerCase()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileServerName(response);
+							protocol_combo.selectedIndex	 = selectIndex ;
+							fsBrowse.text	 = response.resource[0].toString() ;
+						}else if(response.schedulerType[0].toString() == "deleteorphan"){
+							for each (var temp : XML in response..deleteOrphan ) {
+								deleteOrphan.addItem(temp.toString());
+							}
+							componentState = currentState = "deleteorphan";
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in deleteOrphan){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							deleteOrphan_combo.selectedIndex = selectIndex;
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in protocol_combo.dataProvider){
+								if(temp_proto.toString().toLowerCase() == response.protocol[0].toString().toLowerCase()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileServerName(response);
+							protocol_combo.selectedIndex	 = selectIndex ;
+							fsBrowse.text	 = response.resource[0].toString() ;
+						}else if(response.schedulerType[0].toString() == "deletestub"){
+							for each (var temp : XML in response..deleteStub ) {
+								deleteStub.addItem(temp.toString());
+							}
+							componentState = currentState = "deletestub";
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in deleteStub){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							deletestub_combo.selectedIndex = selectIndex;
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in protocol_combo.dataProvider){
+								if(temp_proto.toString().toLowerCase() == response.protocol[0].toString().toLowerCase()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileServerName(response);
+							protocol_combo.selectedIndex	 = selectIndex ;
+							fsBrowse.text	 = response.resource[0].toString() ;
+						} else if(response.schedulerType[0].toString() == "repositorymigration"){
+							repoMigrationSettings(response);
+						}  else if(response.schedulerType[0].toString() == "backup"){
+							componentState = currentState = "backup";
+						}  else if(response.schedulerType[0].toString() == "stubscanner"){
+							componentState = currentState = "stubscanner";
+							filesServer.text = response.fileserver[0].toString() ;
+							protocol.text	 = response.protocol[0].toString() ;
+							sourcePath.text	 = response.resource[0].toString() ;
+						} else if(response.schedulerType[0].toString() == "filemigration"){
+							for each (var temp : XML in response..fileMigration ) {
+								fileMigration.addItem(temp.toString());
+							}
+							componentState = currentState = "filemigration";
+							var selectIndex:int = -1 ;
+							for each(var testPolicy:String in fileMigration){
+								if(testPolicy.toString() == response.policyName[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileMigration_combo.selectedIndex = selectIndex;
+							selectIndex = -1 ;
+							for each(var temp_proto:String in protocol_combo.dataProvider){
+								if(temp_proto.toString().toLowerCase() == response.protocol[0].toString().toLowerCase()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							protocol_combo.selectedIndex	 = selectIndex ;
+							
+							for each (var temp : XML in response..fileServer ) {
+								fileServer_array.addItem(temp.toString());
+							}
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in fileServer_combo.dataProvider){
+								if(temp_proto.toString() == response.fileserver[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							fileServer_combo.selectedIndex	 = selectIndex ;
+							
+							for each (var temp : XML in response..celerraDestFS ) {
+								destFileServer_array.addItem(temp.toString());
+							}
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in destFileServer_combo.dataProvider){
+								if(temp_proto.toString() == response.destSevername[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							destFileServer_combo.selectedIndex	 = selectIndex ;
+							
+							for each (var temp : XML in response..sidTranslationElement ) {
+								sidTranslation_array.addItem(temp.toString());
+							}
+							
+							selectIndex = -1 ;
+							for each(var temp_proto:String in sidTranslation_combo.dataProvider){
+								if(temp_proto.toString() == response.sidTranslationFile[0].toString()){
+									selectIndex++;
+									break ;
+								}
+								selectIndex++;
+							}
+							sidTranslation_combo.selectedIndex	 = selectIndex ;
+							thresholdCheck();
+							networkBandTextInput.text 	= response.bandwidth[0].toString() ;
+							fsBrowse.text				= response.resource[0].toString() ;
+							destfsBrowse.text 			= response.destresource[0].toString() ;
+							
+						}
+					}
+					setTimeFunction(event);
+				}
+				private function thresholdCheck():void{
+					var threshold:String = response.auto_file_threshold[0]
+					var fileThreshold:int = parseInt(threshold.toString());
+					if(fileThreshold > 0){
+						recursiveFileMigration.selected = true ;
+						fileThresholdLimit.text = threshold.toString() ;
+					}else if(fileThreshold == 0){
+						recursiveFileMigration.selected = false ;
+					}
+					timeSchedule.fileMigrationThresholdTest = fileThresholdLimit.enabled = recursiveFileMigration.selected  ; 
+				}
+				protected function recursiveFileMigration_changeHandler(event:Event):void
+				{
+					// TODO Auto-generated method stub
+					timeSchedule.fileMigrationThresholdTest = fileThresholdLimit.enabled = recursiveFileMigration.selected  ; 
+					timeSchedule.watcherListener(event);
+				}
+				private function repoMigrationSettings(response:XMLList):void{
+					var destType:String = response.desttype[0].toString() ;
+					if(destType == UtilityFunctionClass.ATMOS || destType == UtilityFunctionClass.AMAZON){
+						componentState = currentState = "repositorymigrationEncryption";
+						compression.text =	response.compression[0].toString() ;
+						encryption.text =	response.encryption[0].toString() ;
+					}else{
+						componentState = currentState = "repositorymigration" ;
+					}
+					sourcerepoLabel.label	=	response.sourcetype[0].toUpperCase() ;
+					destRepoLabel.label		=	response.desttype[0].toUpperCase() ;
+					var str:String = new String();
+					sourceRepoValue.text	=	response.source[0].toString() ;
+					destRepoValue.text		=	response.destination[0].toString() ;
+					delayPeriod.text		=	response.delayperiod[0].toString() ;
+					orphanFiles.text		=	response.moveOrphans[0].toString() ;
+					rmigration.selected = true ;
+				}
+				
+				private function fileServerName(response:XMLList):void{
+					fileServer_array = new ArrayCollection();
+					for each (var temp : XML in response..fileServer ) {
+						fileServer_array.addItem(temp.toString());
+					}
+				}
+				private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+				{
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+					viewBlock.lastRefreshDate = new Date();
+					cancelChanges_clickHandler(event);
+				}
+				private function onCommitComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var responseXML:XMLList = new XMLList(_client.response.body);
+					if(responseXML.Result[0].toString() == "Task Edited" || responseXML.Result[0].toString() == "Commited"  || responseXML.Result[0].toString() == "Success"){
+						var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+					}else{
+						ECUITPopupDialog.showMessageDialog(this,responseXML.Result[0].toString(),"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+					}
+					
+				}
+				protected function Commit_clickHandler(event:MouseEvent):void
+				{
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, onCommitComplete);
+					var data:ByteArray = new ByteArray();
+					var xml:XML = <REQUEST/>; 
+					
+					xml.appendChild(<TaskID>{taskid}</TaskID>);
+					if(currentState == "archiver" || currentState == "multitier" || currentState == "multitierstub"
+						|| currentState == "deleteorphan" || currentState == "deletestub"  || currentState == "filemigration"  ){
+						xml.appendChild(<action>editTask</action>);
+						xml.appendChild(<Type>{currentState}</Type>);
+						xml.appendChild(<Schedule>{timeSchedule.returnTimeString()}</Schedule>);
+						if(currentState == "archiver"){
+							xml.appendChild(<Policy>{arch_combo.selectedLabel}</Policy>);
+						}else if(currentState == "multitier"){
+							xml.appendChild(<Policy>{multTier_combo.selectedLabel}</Policy>);
+						}else if(currentState == "multitierstub"){
+							xml.appendChild(<Policy>{multiTierStub_combo.selectedLabel}</Policy>);
+						}else if(currentState == "deleteorphan"){
+							xml.appendChild(<Policy>{deleteOrphan_combo.selectedLabel}</Policy>);
+						}else if(currentState == "deletestub"){
+							xml.appendChild(<Policy>{deletestub_combo.selectedLabel}</Policy>);
+						}else if(currentState == "filemigration"){
+							xml.appendChild(<Policy>{fileMigration_combo.selectedLabel}</Policy>);
+							var Destination:String  ;
+							if(protocol_combo.selectedLabel == "CIFS"){
+								Destination =  "\\\\" + destFileServer_combo.selectedLabel + "\\" +  destfsBrowse.text ;	
+							}else if(protocol_combo.selectedLabel == "NFS"){
+								Destination =   destFileServer_combo.selectedLabel + ":" +  destfsBrowse.text ;	
+							}
+							xml.appendChild(<Destination>{Destination}</Destination>);
+							xml.appendChild(<CPUBandwidth>{networkBandTextInput.text}</CPUBandwidth>);
+							xml.appendChild(<SIDTranslationFile>{sidTranslation_combo.selectedLabel}</SIDTranslationFile>);
+							xml.appendChild(<ExitFailureCount>{UtilityFunctionClass.EXITFAILURECOUNT}</ExitFailureCount>);
+							xml.appendChild(<RecursiveFileMigration>{recursiveFileMigration.selected}</RecursiveFileMigration>);
+							if(recursiveFileMigration.selected && fileThresholdLimit.text == "" ){
+								ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_THRESHOLD_LIMIT'),ResourceManager.getInstance().getString('fma','INVALID_THRESHOLD_LIMIT_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+							}
+							xml.appendChild(<RecursiveFileThreshold>{fileThresholdLimit.text}</RecursiveFileThreshold>);
+						} 
+						var source:String 
+						if(protocol_combo.selectedLabel == "CIFS"){
+							source =  "\\\\" + fileServer_combo.selectedLabel + "\\" +  fsBrowse.text ;	
+						}else if(protocol_combo.selectedLabel == "NFS"){
+							source =   fileServer_combo.selectedLabel + ":" +  fsBrowse.text ;	
+						}
+						
+						xml.appendChild(<Source>{source}</Source>);
+					}else if(currentState == "importarchive"){
+						xml.appendChild(<action>editTask</action>);
+						xml.appendChild(<Type>{currentState}</Type>);
+						xml.appendChild(<Schedule>{timeSchedule.returnTimeString()}</Schedule>);
+						if(awp.selected){
+							xml.appendChild(<Policy>{arch_combo.selectedLabel}</Policy>);
+						}else if(mtwp.selected){
+							xml.appendChild(<Policy>{multTier_combo.selectedLabel}</Policy>);
+						}else if(mtswp.selected){
+							xml.appendChild(<Policy>{multiTierStub_combo.selectedLabel}</Policy>);
+						}
+					}else if(currentState == "runOncearchiver" || currentState == "runOncemultitier" ||currentState == "runOncemultitierstub" 
+						||currentState == "runOncedeleteOrphan"  ||currentState == "runOncedeleteStub"  || currentState == "runOnceImportArchive" 
+						||currentState == "backup" ||currentState == "stubscanner"
+						||currentState == "repositorymigrationEncryption" || currentState == "repositorymigration"){
+						xml.appendChild(<action>editTime</action>);
+						xml.appendChild(<Schedule>{timeSchedule.returnTimeString()}</Schedule>);
+					}else if(currentState == "runOnceFileMigration"){
+						xml.appendChild(<action>editTime</action>);
+						xml.appendChild(<RecursiveFileMigration>{recursiveFileMigration.selected}</RecursiveFileMigration>);
+						xml.appendChild(<RecursiveFileThreshold>{fileThresholdLimit.text}</RecursiveFileThreshold>);
+						xml.appendChild(<Schedule>{timeSchedule.returnTimeString()}</Schedule>);
+					}
+					
+					data.writeUTFBytes(xml);
+					_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "actionSchedule.htm"), data);
+					viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+					viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+					
+				}
+				protected function cancelChanges_clickHandler(event:Event):void
+				{
+					var navService:IUxNavigationService =
+						UxExtensionManager.getInstance().getService(UxConstants.
+							NAVIGATION_SERVICE) as IUxNavigationService;
+					var location:Array = new Array;
+					location = navService.currentLocation;
+					location.pop();
+					navService.navigate(location);
+					
+				}
+				private var myWatcher:ChangeWatcher ;
+				public var PathValue:String ;
+				protected function browse_clickHandler(event:MouseEvent):void
+				{
+					var dir:DirectoryBrowser = new DirectoryBrowser();
+					dir.protocal = protocol_combo.selectedLabel ;
+					dir.FileServer = fileServer_combo.selectedLabel ;
+					dir.ref = this ;
+					dir.centerDialog() ;
+					dir.show(this.parent); 
+					myWatcher = ChangeWatcher.watch(dir, "PathValue", watchPath);
+				}
+				private function watchPath(event:Event):void {
+					fsBrowse.text = PathValue ;
+					myWatcher.unwatch();
+					//protocol.enabled = false ;
+				}
+				private function browser(dir:DirectoryBrowser):void{
+					dir = new DirectoryBrowser();
+					dir.protocal = protocol_combo.selectedLabel ;
+					dir.FileServer = fileServer_combo.selectedLabel ;
+					dir.ref = this ;
+					dir.centerDialog() ;
+					dir.show(this.parent);
+				}
+				protected function dest_browse_clickHandler(event:MouseEvent):void
+				{
+					var dir:DirectoryBrowser = new DirectoryBrowser();
+					dir.protocal = protocol_combo.selectedLabel ;
+					dir.FileServer = fileServer_combo.selectedLabel ;
+					dir.ref = this ;
+					dir.centerDialog() ;
+					dir.show(this.parent); 
+					myWatcher = ChangeWatcher.watch(dir, "PathValue", destwatchPath);
+				}
+				private function destwatchPath(event:Event):void {
+					destfsBrowse.text = PathValue ;
+					myWatcher.unwatch();
+					//protocol.enabled = false ;
+				}
+				
+				
+				
+				protected function protocol_combo_changeHandler(event:ListEvent):void
+				{
+					if(currentState == "filemigration"){
+						destfsBrowse.text = "" ;
+						fsBrowse.text = "";
+					}
+				}
+				
+				protected function fileServer_combo_changeHandler(event:ListEvent):void
+				{
+					fsBrowse.text = "" ;
+				}
+				
+				protected function destFileServer_combo_changeHandler(event:ListEvent):void
+				{
+					destfsBrowse.text = "" ;
+				}
+				
+			]]>
+		</fx:Script>
+		<mx:HBox   width="100%" height="100%" >
+			<boxes:UxVBox width="100%">
+				<mx:HBox  id="containerBox" width="100%">
+					<UxExtendedClass:UxGroupBoxCta id="sttype" title="Select Task Type" width="50%">
+						<mx:RadioButtonGroup id="taskType" />
+						<mx:Form>
+							<mx:FormItem label="Import Archive File:" includeIn="importarchive,runOnceImportArchive">
+								<mx:HBox>
+									<mx:CheckBox id="importCheck"/>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Archive with Policy:" includeIn="importarchive,runOnceImportArchive,archiver,runOncearchiver">
+								<mx:HBox>
+									<mx:RadioButton id="awp" groupName="taskType" includeIn="importarchive,runOnceImportArchive"/>
+									<mx:ComboBox  id="arch_combo" dataProvider="{archive}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) - awp.width*1.5}"/>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Multi tier with Policy:" includeIn="importarchive,runOnceImportArchive,multitier,runOncemultitier">
+								<mx:HBox>
+									<mx:RadioButton id="mtwp" groupName="taskType" includeIn="importarchive,runOnceImportArchive"/>
+									<mx:ComboBox id="multTier_combo" dataProvider="{multiTier}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) - mtwp.width*1.5}" />
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Multi tier stub with Policy:" includeIn="importarchive,runOnceImportArchive,multitierstub,runOncemultitierstub">
+								<mx:HBox>
+									<mx:RadioButton id="mtswp" groupName="taskType" includeIn="importarchive,runOnceImportArchive"/>
+									<mx:ComboBox id="multiTierStub_combo" dataProvider="{multiTierStub}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) - mtswp.width*1.5}"/>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Delete Orphan with Policy:" includeIn="runOncedeleteOrphan,deleteorphan">
+								<mx:HBox>
+									<mx:ComboBox id="deleteOrphan_combo" dataProvider="{deleteOrphan}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) - dop.width*1.5}"/>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Delete stub with Policy:" includeIn="runOncedeleteStub,deletestub">
+								<mx:HBox>
+									<mx:ComboBox id="deletestub_combo" dataProvider="{deleteStub}"/>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="File Migration with Policy:" includeIn="filemigration,runOnceFileMigration">
+								<mx:HBox>
+									<mx:ComboBox id="fileMigration_combo" dataProvider="{fileMigration}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) - fmp.width*1.5}"/>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Repository Migration:" includeIn="repositorymigration,repositorymigrationEncryption">
+								<mx:HBox>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Scan Stubs:" includeIn="stubscanner" >
+								<mx:HBox>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Backup:" includeIn="backup">
+								<mx:HBox>
+								</mx:HBox>
+							</mx:FormItem>
+							<mx:FormItem label="Task Name:" includeIn="runOnceImportArchive,importarchive">
+								<mx:Label id="taskName"/>
+							</mx:FormItem>
+							<mx:FormItem label="Providers:" includeIn="runOnceImportArchive,importarchive">
+								<mx:Label id="providers"/>
+							</mx:FormItem>
+							<!--<mx:FormItem label="Source :" includeIn="runOnceFileMigration,repositorymigration,repositorymigrationEncryption">
+							</mx:FormItem>-->
+							<!--<mx:FormItem label="Source Option:" includeIn="repositorymigration,repositorymigrationEncryption">
+							</mx:FormItem>-->
+							<mx:FormItem label="Delay Period:" includeIn="repositorymigration,repositorymigrationEncryption">
+								<mx:Label id="delayPeriod" />
+							</mx:FormItem>
+							<mx:FormItem label="Move Orphan Files:" includeIn="repositorymigration,repositorymigrationEncryption">
+								<mx:Label id="orphanFiles" />
+							</mx:FormItem>
+							<mx:FormItem label="Automatic Recursive File Migration:" includeIn="runOnceFileMigration,filemigration">
+								<mx:CheckBox id="recursiveFileMigration" change="recursiveFileMigration_changeHandler(event)"/>
+							</mx:FormItem>
+							<mx:FormItem label="File Threshold Limit:" includeIn="runOnceFileMigration,filemigration">
+								<mx:TextInput id="fileThresholdLimit" restrict="0-9" maxChars="2" width="{fileMigration_combo.width + fmp.width + 5}"/>
+							</mx:FormItem>
+						</mx:Form>
+						
+					</UxExtendedClass:UxGroupBoxCta>
+					<UxExtendedClass:UxGroupBoxCta title="Archive condition" width="50%" id="archCond">
+						<Schedule:EditScheduleTime id="timeSchedule" />
+					</UxExtendedClass:UxGroupBoxCta>
+					
+				</mx:HBox>
+				<boxes:UxHBox width="100%">
+					<mx:Box width="50%" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub,archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration,repositorymigration,repositorymigrationEncryption">
+						<UxExtendedClass:UxGroupBoxCta title="Source">
+							<mx:Form>
+								<mx:FormItem id="sourcerepoLabel" includeIn="repositorymigration,repositorymigrationEncryption">
+									<mx:Label id="sourceRepoValue" />
+								</mx:FormItem>
+								<mx:FormItem label="File Server:" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub">
+									<mx:Label id="filesServer" />
+								</mx:FormItem>
+								<mx:FormItem label="Protocol:" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub">
+									<mx:Label id="protocol"/>
+								</mx:FormItem>
+								<mx:FormItem label="Source Path:" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub">
+									<mx:Label id="sourcePath"/>
+								</mx:FormItem>
+								<mx:FormItem label="File Server:" includeIn="archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration">
+									<mx:ComboBox id="fileServer_combo" change="fileServer_combo_changeHandler(event)" dataProvider="{fileServer_array}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+								</mx:FormItem>
+								<mx:FormItem label="Protocol:" includeIn="archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration">
+									<mx:ComboBox id="protocol_combo" change="protocol_combo_changeHandler(event)" dataProvider="{protoArray}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+								</mx:FormItem>
+								<mx:FormItem label="Path:" includeIn="archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration">
+									<mx:HBox>
+										<mx:TextInput id="fsBrowse" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"  />
+										<mx:Button label="Browse" click="browse_clickHandler(event)"/>
+									</mx:HBox>
+								</mx:FormItem>
+							</mx:Form>
+						</UxExtendedClass:UxGroupBoxCta>
+					</mx:Box>
+					<mx:Box width="50%" includeIn="filemigration,runOnceFileMigration,repositorymigration,repositorymigrationEncryption">
+						<UxExtendedClass:UxGroupBoxCta title="Destination">
+							<mx:Form>
+								<!--<mx:FormItem label="Destination :" includeIn="runOnceFileMigration,repositorymigration,repositorymigrationEncryption">
+								</mx:FormItem>-->
+								<mx:FormItem id="destRepoLabel" includeIn="repositorymigration,repositorymigrationEncryption">
+									<mx:Label id="destRepoValue" />
+								</mx:FormItem>
+								<mx:FormItem label="Destination Option:" includeIn="repositorymigrationEncryption">
+								</mx:FormItem>
+								<mx:FormItem label="Compression:" includeIn="repositorymigrationEncryption">
+									<mx:Label id="compression" />
+								</mx:FormItem>
+								<mx:FormItem label="Encryption:" includeIn="repositorymigrationEncryption">
+									<mx:Label id="encryption" />
+								</mx:FormItem>
+								<mx:FormItem label="File Server:" includeIn="runOnceFileMigration">
+									<mx:Label id="destFilesServer" />
+								</mx:FormItem>
+								<mx:FormItem label="Path:" includeIn="runOnceFileMigration">
+									<mx:Label id="destPath"/>
+								</mx:FormItem>
+								<mx:FormItem label="Network Bandwidth:" includeIn="runOnceFileMigration">
+									<mx:HBox>
+										<mx:Label id="networkBand"/>
+										<mx:Label text="Mbytes/sec"/>
+									</mx:HBox>
+								</mx:FormItem>
+								<mx:FormItem label="SID Translation File:" includeIn="runOnceFileMigration">
+									<mx:Label id="sidTranslation"/>
+								</mx:FormItem>
+								
+								
+								<mx:FormItem label="Destination File Server:" includeIn="filemigration">
+									<mx:ComboBox id="destFileServer_combo" change="destFileServer_combo_changeHandler(event)" dataProvider="{destFileServer_array}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+								</mx:FormItem>
+								<mx:FormItem label="Destination Path:" includeIn="filemigration">
+									<mx:HBox>
+										<mx:TextInput id="destfsBrowse" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"  />
+										<mx:Button label="Browse" click="dest_browse_clickHandler(event)"/>
+									</mx:HBox>
+								</mx:FormItem>
+								<mx:FormItem label="Network Bandwidth:" includeIn="filemigration">
+									<mx:HBox>
+										<mx:TextInput restrict="0-9" id="networkBandTextInput" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}" />
+										<mx:Label text="Mbytes/sec"/>
+									</mx:HBox>
+								</mx:FormItem>
+								<mx:FormItem label="SID Translation File:" includeIn="filemigration">
+									<mx:ComboBox id="sidTranslation_combo" dataProvider="{sidTranslation_array}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+								</mx:FormItem>
+							</mx:Form>
+						</UxExtendedClass:UxGroupBoxCta>
+					</mx:Box>
+				</boxes:UxHBox>
+			</boxes:UxVBox>
+		</mx:HBox>
+		<mx:Box height="100%" />
+		<mx:HBox paddingBottom="10">
+			<buttons:UxButton label="Commit" id="Commit" click="Commit_clickHandler(event)" />
+			<buttons:UxButton id="cancelChanges" label="Cancel" click="cancelChanges_clickHandler(event)"/>
+		</mx:HBox>
+	</UxViewBlock>
+</UxVBoxWindow>

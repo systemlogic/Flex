@@ -1,0 +1,145 @@
+import com.emc.ecuit.flex.components.application.AppTitleBarButton;
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+import com.emc.ecuit.flex.components.views.ViewTitleBarButton;
+import com.emc.ecuit.flex.components.views.ViewTitleBarButtonEvent;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.ecuit.flex.services.ECUITHelpService;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.events.UxViewEvent;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import mx.collections.ArrayCollection;
+import mx.controls.Alert;
+import mx.controls.Image;
+import mx.events.FlexEvent;
+import mx.resources.ResourceManager;
+
+private var _currentPayload:UxHashMap = null;
+[Bindable]public var rowData:Object = new Object();
+[Bindable]
+private var GridColumns:ArrayCollection = new ArrayCollection([
+  {Name:"Column1", Title:"Name"},
+  {Name:"Column2", Title:"GenerationTime"},
+  {Name:"Column3", Title:"Status"},
+  {Name:"Column4", Title:"Message"}]);
+
+protected function _initializeHandler(event:FlexEvent):void
+{
+}
+
+override protected function initializeData():void
+{
+  super.initializeData();
+  
+  RESTClient.sendGetRequest("/api/settings/encryption", OnComplete, viewBlock);
+}
+
+private function OnComplete(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event, OnCancel);
+    return;
+  }
+  
+  var response:XML = event.response;
+  var keyLength:int = response.child("Key").length();
+  if ( keyLength == 0 ) return;
+  
+  keyID.text = response.Key.Id;
+  keyActivation.text = response.Key.GenerationTime;
+  keyDescription.text = response.Key.Name;
+  keyStatus.text = response.Key.Status;
+  var msg:String = response.Message;
+  
+  if ( msg != "" )
+    Common.showInfoDialog(this, msg);
+  
+  // If there are multiple keys, display the old keys in the grid
+  //if ( keyLength > 1 )
+  setGridColumns(GridColumns); 
+  setGridRows(response);  
+}
+
+protected function onCommit(event:MouseEvent):void
+{
+  if ( keyDescription.text == "" )
+  {
+    Common.showErrorDialog(this, Common.getResource('EMPTY_KEYNAME'));
+    return;
+  }
+  
+  if ( keyStatus.text == UtilityFunctionClass.PENDING_KEY )
+  {
+    Common.showErrorDialog(this, Common.getResource('INVALID_KEY_GENRATION'));
+    return;
+  }
+  
+  var xml:XML = <Request/>;
+  xml.appendChild(<KeyName>{keyDescription.text}</KeyName>);
+  RESTClient.sendPostRequest("/api/settings/encryption", xml, OnComplete, viewBlock);
+}
+
+private function OnCancel(event:Event):void
+{
+  var navService:IUxNavigationService =
+    UxExtensionManager.getInstance().getService(UxConstants.
+      NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}
+
+private function setGridRows(response:XML):void
+{
+  var row:Array =  new Array();
+  for each ( var key:XML in response.Key )
+  {
+    var obj:Object = {Column1:key.Name, Column2:key.GenerationTime, Column3:key.Status, Column4:key.Message};
+    row.push(obj);
+  } 
+  
+  rowData =  new ArrayCollection(row);  
+}
+
+private function setGridColumns(columns:ArrayCollection):void
+{
+  if ( columns == null ) return;
+  
+  var tableColumns:ArrayCollection = new ArrayCollection();
+  
+  for ( var i:int = 0; i < GridColumns.length; i++ )
+  {
+    var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+    var precision:int = 0; //default precision
+    type = ECUITAdvancedDataGridColumn.TEXT;
+    var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+    // This conditional builds an instance of a Severity object through a class factory.
+    column.dataField = GridColumns[i].Name;
+    column.headerText = GridColumns[i].Title;
+    
+    tableColumns.addItem(column);
+  }
+  
+  keyList.columns = tableColumns.toArray();
+}
+
+[Bindable]
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}

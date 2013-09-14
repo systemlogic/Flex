@@ -1,0 +1,108 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.filter.FilterPanel;
+import com.emc.ecuit.flex.components.views.ViewBlock;
+import com.emc.ecuit.flex.components.views.ViewTitleBarButtonEvent;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+import com.emc.efx.guitoolkit.displaybuilders.UxActionInformation;
+import com.emc.efx.guitoolkit.events.UxViewEvent;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import mx.collections.ArrayCollection;
+import mx.controls.Alert;
+
+[Bindable] private var _callbackList:ArrayCollection = new ArrayCollection();
+
+override protected function initializeData():void
+{
+  super.initializeData();
+  Common.setFocusOnFirstChild(this);
+  callLater(getAgents);
+}
+
+private function getAgents(event:Event=null):void
+{
+  // Send GET request to the server
+  RESTClient.sendGetRequest("/api/callbackagent/celerra", OnGetComplete, viewBlock);
+  viewBlock.lastRefreshDate = new Date();
+}
+
+private function OnGetComplete(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event, null, OnCancel);
+    return;
+  }
+  var response:XML = event.response;
+  trace(response);
+
+  var rows:Array = new Array();
+
+  for each ( var item:XML in response.Agent )
+  {
+    var obj:Object =
+    {
+      Column0:item.IP,
+      Column1:item.@type,
+      Column2:item.Status,
+      Column3:item.ListenPort,
+      Column4:item.LastSuccessfulRecallTime,
+      Column5:item.RecallInProgress,
+      Column6:item.LastUpdateTime,
+      Column7:item.DuplicateCelerraMsg,
+      Column8:item.FMList
+    };
+    rows.push(obj);
+  }
+
+  _callbackList = new ArrayCollection(rows);
+}
+
+protected function _viewTitleBarButtonClickHandler(event:ViewTitleBarButtonEvent):void
+{
+  if ( event.viewTitleBarButton.id.toString() == UxViewBlock.REFRESH_BTN_ID )
+    getAgents();
+}
+
+protected function _deleteCallback(event:MouseEvent):void
+{
+  var name:String = callbackList.selectedItem.Column1;
+  Common.showConfirmDialog(this, Common.getResource('INVALID_DELETE') + name, handleYesNoDeleteResult);
+}
+
+private function handleYesNoDeleteResult(event:ECUITPopupDialogEvent):void
+{
+  var user_selection:String = event.resultLabel;
+  if (user_selection != "Yes")
+    return;
+
+  var type:String = callbackList.selectedItem.Column1;
+  var name:String = callbackList.selectedItem.Column0;
+  RESTClient.sendDeleteRequest("/api/callbackagent/celerra/"+encodeURIComponent(type)+"/"+encodeURIComponent(name), OnDeleteComplete, viewBlock);
+}
+
+private function OnDeleteComplete(event:RESTEvent):void
+{
+  Common.showResponseMessage(this, event, getAgents, getAgents);
+}
+
+private function page_keyDownHandler(event:KeyboardEvent):void
+{
+  if (event.keyCode == Keyboard.ESCAPE)
+    OnCancel(new MouseEvent(MouseEvent.CLICK));
+}
+
+private function OnCancel(event:Event):void
+{
+  var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}

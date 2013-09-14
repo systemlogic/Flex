@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009"
+            xmlns:s="library://ns.adobe.com/flex/spark"
+            xmlns:mx="library://ns.adobe.com/flex/mx"
+            xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+            updateComplete="_updateCompleteHandler(event)"
+            width="500" height="250">
+  <fx:Script source="CelerraAsSource.mxml.as" />
+  <fx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+  </fx:Declarations>
+  <mx:VBox>
+    <mx:Text id="skipStep"  text="{ResourceManager.getInstance().getString('fma','FIL_SER_WIS_SER_SRC')}"/>
+    <mx:RadioButtonGroup id="celerraAsSource" itemClick="handleChange(event)"/>
+    <mx:RadioButton id="yesButton" label="{ResourceManager.getInstance().getString('fma','FIL_SER_YES')}" groupName="celerraAsSource" paddingLeft="15" change="_changeHandler()"/>
+    <mx:RadioButton id="noButton" label="{ResourceManager.getInstance().getString('fma','FIL_SER_NO')}" groupName="celerraAsSource" paddingLeft="15" selected="true" change="_changeHandler()" />
+  </mx:VBox>
+</wizards:UxWizardStep>

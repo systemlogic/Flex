@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+    xmlns:fx="http://ns.adobe.com/mxml/2009" 
+    xmlns:s="library://ns.adobe.com/flex/spark" 
+    xmlns:mx="library://ns.adobe.com/flex/mx" 
+    xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+    xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+    xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+    implements="com.emc.efx.services.navigation.IUxHasPayload"
+    creationComplete="init()" xmlns:views="com.emc.ecuit.flex.components.views.*" 
+    xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*">
+  <states>
+    <mx:State name="userProfile"/>
+    <mx:State name="peaFile"/>
+    <mx:State name="anonymous"/>
+  </states>
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+         xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock" 
+         title="Centera Properties" width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false" 
+         showExport="false" showPrint="false" showTools="false" helpServiceID="FMAHelpService"
+         helpID="EditCenteraFileServer" xmlns:tx="com.emc.efx.guitoolkit.components.table.*" 
+         keyDown="page_keyDownHandler(event)" 
+         xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+    <!--<UxProgressCanvas id="progress" width="100%" height="100%" styleName="UxProgressCanvasProgressMonitor" >-->
+
+    <fx:Script source="CenteraFileServer.mxml.as" />
+
+    <form:NameForm id="nameForm"/> 
+    <mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+         paddingBottom="10" paddingTop="10"  
+         height="100%">
+      <mx:TabNavigator id="viewstack2" backgroundColor="#EAF5FE"
+               selectedIndex="0"  tabStyleName="Tab" lastTabStyleName="Tab"
+               historyManagementEnabled="false"  firstTabStyleName="Tab"
+               width="100%" height="100%" >
+        <mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_ACC_PRO')}"  id="ipa" >
+          <mx:FormItem  label="{ResourceManager.getInstance().getString('fma','FIL_SER_ACC_NOD')}">
+            <mx:Label id="nodeString" />
+          </mx:FormItem>
+          <mx:FormItem  label="{ResourceManager.getInstance().getString('fma','FIL_SER_NUM_ACC')}">
+            <mx:Label id="nodeCount" />
+          </mx:FormItem>
+        </mx:Form>
+        <mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_USR_PRO')}"  includeIn="userProfile">
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_USER')}">
+            <mx:TextInput id="username" editable="false"/>
+          </mx:FormItem>
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_PASS')}">
+            <mx:TextInput id="password" displayAsPassword="true" editable="true" change="{StringUtil.trim(password.text)=='' ? commitChanges.enabled=false : commitChanges.enabled=true}"/>
+          </mx:FormItem>
+        </mx:Form>
+        <mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_PEA_FIL')}"  includeIn="peaFile">
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_PEA_FILC')}">
+            <mx:HBox>
+              <mx:TextInput id="PeaFildInput" />
+              <!--<mx:Button label="Browse" id="Browse" click="Browse_clickHandler(event)"/>-->
+            </mx:HBox>
+          </mx:FormItem>
+        </mx:Form>
+        <!--<mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_ANN')}"  includeIn="anonymous">-->
+          
+        
+      </mx:TabNavigator>
+      <mx:HBox>
+        <buttons:UxButton id="commitChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="onOK(event)" />
+        <buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCancel(event)" />
+      </mx:HBox>
+    </mx:Box>
+  </UxViewBlock>
+  <fx:Style>
+    .redTab{
+      fill-colors: #FF0000, #FF0000;
+      backgroundColor: #FF0000
+    }
+    .whiteTab{
+      fill-colors: #FFFFFF, #FFFFFF;
+      backgroundColor: #FFFFFF
+    }
+    .blueTab{
+      fill-colors: #0000ff, #0000ff;
+      backgroundColor: #0000ff
+    }
+    .indigoTab{
+      fill-colors: #EAF5FE ;
+      backgroundColor: #EAF5FE
+    }
+  </fx:Style>
+</UxVBoxWindow>

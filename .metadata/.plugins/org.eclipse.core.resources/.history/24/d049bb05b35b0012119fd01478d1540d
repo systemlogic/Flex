@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fx="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*"
+        xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+        xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*"
+        xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+  <fx:Script source="SystemSecurity.mxml.as" />
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock"
+         title="{Common.getResource('SYS_SECU_SET')}" width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false"
+         creationComplete="viewBlock_creationCompleteHandler(event)"
+         keyDown="page_keyDownHandler(event)"
+         helpServiceID="FMAHelpService" helpID="SystemSecurity">
+    <mx:HBox width="100%">
+      <UxExtendedClass:UxGroupBoxCta  id="container" title="{Common.getResource('SYS_SECU_BAS_SECU')}" width="100%" >
+        <mx:Form>
+          <mx:FormItem label="{Common.getResource('SYS_SECU_SECU_LVL')}">
+            <mx:Label id="securityLevel"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('SYS_SECU_PWRD_HRD')}">
+            <mx:Label id="passwordHardening"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('SYS_SECU_DISA_ROT')}">
+            <mx:Label id="rootLogin"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('SYS_SECU_SING_SEC')}">
+            <mx:Label id="securityDdatabase"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('SYS_SECU_CONF_TME')}">
+            <mx:Label id="configTime"/>
+          </mx:FormItem>
+        </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta >
+    </mx:HBox>
+    <mx:HBox width="100%">
+      <UxExtendedClass:UxGroupBoxCta  title="{Common.getResource('SYS_SECU_PWD_AGE_SET')}" width="50%">
+        <mx:Form>
+          <mx:FormItem label="{Common.getResource('SYS_SECU_PWD_AGN_')}" paddingLeft="28">
+            <mx:Label id="passwordAging"/>
+          </mx:FormItem>
+        </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta >
+      <UxExtendedClass:UxGroupBoxCta  title="{Common.getResource('SYS_SECU_LDP')}" width="50%">
+        <mx:Form>
+          <mx:FormItem label="{Common.getResource('SYS_SECU_LDP_AUTH')}">
+            <mx:Label id="LDAPAuthentication"/>
+          </mx:FormItem>
+        </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta >
+    </mx:HBox>
+    <mx:HBox height="100%"/>
+    <mx:HBox paddingBottom="10">
+      <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)"/>
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

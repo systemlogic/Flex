@@ -1,0 +1,353 @@
+package com.emc.ecuit.flex.components.filter
+{
+	import flash.events.*;
+
+	import mx.events.MenuEvent;
+	import mx.events.DropdownEvent;
+
+	import mx.containers.HBox;
+	import mx.controls.Menu;
+	import mx.controls.ComboBox;
+	import mx.collections.ArrayCollection;
+
+	import com.emc.ecuit.flex.managers.ECUITResourceManager.getInstance();
+	import com.emc.ecuit.flex.utils.UITrace;
+
+	/*************************************************************************
+	 * The Boolean Editor is a three value editor.  The first value (index 0)
+	 * turns off the filter criterion.  The other two (true and false) set
+	 * the filter criterion to the corresponding value.  Although called a
+	 * Boolean editor, it is never assumed that the value is a boolean.  It
+	 * can be any two way value (enabled|disabled).
+	 * <p/>
+	 * The default values shown in the comboBox/menu are:
+	 * <ul>
+	 * 	<li>All</li>
+	 * 	<li>Enabled</li>
+	 * 	<li>Disabled</li>
+	 * </ul>
+	 */
+	public class BooleanEditor extends HBox implements IFilterEditor
+	{
+		/** Value for turning off the filter criterion */
+		public static const VALUE_ALL:int = -1;
+		/** Value for the false choice */ 
+		public static const VALUE_DISABLED:int = 0;
+		/** Value for the true choice */ 
+		public static const VALUE_ENABLED:int = 1;
+
+		/** Resource Manager -- from whence all strings come */
+		protected var _resMgr:ECUITResourceManager.getInstance() = 
+										ECUITResourceManager.getInstance().getInstance();
+
+		/** Handle to the comboBox to hold the values */
+		protected var _comboBox:ComboBox;
+		/** Handle to the filter definition */
+		protected var _filterDef:FilterDefinition;
+		/** Flag denoting if the value is set (criterion is active) */
+		protected var _valueSet:Boolean = false;
+		/** The actual value if set */
+		protected var _value:Object;
+		/** String version of the value to display in the GUI */
+		protected var _valueText:String = null;
+		/** Long description of the current value */
+		protected var _description:String = null;
+
+		/** value to use for "enabled" */
+		protected var _enabledValue:Object = new Boolean(true);
+		/** value to use for "disabled" */
+		protected var _disabledValue:Object = new Boolean(false);
+
+		/** Instead of an editor, a menu can be used */
+		protected var _menuData:Object;
+
+		/** Default data for the combobox */
+        protected var booleanValueData: Array = 
+        [ 
+           	{label:_resMgr.getString("FILTER_ALL"), data:VALUE_ALL}, 
+            {label:_resMgr.getString("FILTER_ENABLED"), data:VALUE_ENABLED}, 
+            {label:_resMgr.getString("FILTER_DISABLED"), data:VALUE_DISABLED} 
+        ];
+
+		/*********************************************************************
+		 * Constructor creates and adds the comboBox to be displayed.
+		 * 
+		 * @param filterDef FilterDefinition associated with this editor
+		 */
+		public function BooleanEditor(filterDef:FilterDefinition=null)
+		{
+			super();
+
+			// stylesheet candidates
+			setStyle("horizontalAlign", "right");
+			setStyle("width", "100%");
+
+			_comboBox = new ComboBox();
+			_comboBox.id = "beComboBox";
+			_comboBox.automationName = _comboBox.id + "_auto";
+	    	_comboBox.dataProvider = booleanValueData;
+	    	_comboBox.addEventListener(DropdownEvent.CLOSE , handleComboBox);
+
+	    	addChild(_comboBox);
+
+			// set the filterDefinition
+			filterDefinition = filterDef;
+		}
+
+		/*********************************************************************
+		 * @private
+		 * 
+		 * Update the value and valueText properties based on what the end
+		 * user has selected in the comboBox.
+		 */
+		protected function handleComboBox(event:Event=null):void
+		{
+			var index:int = _comboBox.selectedIndex;
+			switch (index) 
+			{
+				case 0:
+					_valueSet = false;
+					break;
+				case 1:
+					_value = _enabledValue;
+					_valueSet = true;
+					break;
+				case 2:
+					_value = _disabledValue;
+					_valueSet = true;
+					break;
+			}			
+			_valueText = _comboBox.selectedLabel;
+		}
+
+		/*********************************************************************
+		 * Data to use for the menu when there is no editor.  The labels are
+		 * localized to allow for the use of property keys.
+		 */
+		public function set menuData(data:Object):void
+		{
+			for each (var item:Object in data)
+			{
+				try
+				{
+					// check for resource key
+					item["label"] = _resMgr.getString(item["label"]);
+				}
+				catch (e:Error)
+				{
+					// ignore
+				}
+			}
+			_menuData = data;
+		}
+
+		/*********************************************************************
+		 * Handles a menu click by updating the values for the editor.
+		 */
+		protected function defaultMenuHandler(event:MenuEvent):void
+		{
+			// first item means inactive
+			_valueSet = event.index != 0;
+
+			// second is "enabled", third is "disabled"
+			if (event.index == 1)
+				_value = _enabledValue;
+			else if (event.index == 2)
+				_value = _disabledValue;
+
+			// use the label of the menu item for the current text
+			_valueText = event.item["label"]; 
+
+			// then update the filter
+			dispatchEvent(new FilterEvent(FilterEvent.VALUE_CHANGED));
+		}
+
+		// ------- IFilterEditor methods -------------------------------------
+
+		/*********************************************************************
+		 * @inheritDoc
+		 * 
+		 * The current value of the editor is automatically set from the 
+		 * filterDefinition if it is set.
+		 */
+		public function get filterDefinition():FilterDefinition
+		{
+			return _filterDef;			
+		}
+		public function set filterDefinition(filterDef:FilterDefinition):void
+		{
+			_filterDef = filterDef;			
+
+			if (_filterDef == null)
+				return;
+
+			var values:ArrayCollection = _filterDef.values;
+			var value:Object;
+			if (values == null || values.length < 1)
+			{
+				value = new Object();
+				value["label"] = _resMgr.getString("FILTER_ALL");
+				value["data"] = VALUE_ALL;
+				values.addItem(value); 
+
+				value = new Object();
+				value["label"] = _resMgr.getString("FILTER_ENABLED");
+				value["data"] = _enabledValue;
+				values.addItem(value); 
+
+				value = new Object();
+				value["label"] = _resMgr.getString("FILTER_DISABLED");
+				value["data"] = _disabledValue;
+				values.addItem(value); 
+			}
+			menuData = values;
+
+			try
+			{
+				_enabledValue = values.getItemAt(1)["data"];
+				_disabledValue = values.getItemAt(2)["data"];
+			}
+			catch (e:Error)
+			{
+				UITrace.doTrace(this, e.message, UITrace.LEVEL_ERROR);				
+			}
+
+			_valueText = FilterDefinition.getObjectLabel(values.getItemAt(0));
+			_valueSet = false;
+
+			if (_filterDef.defaultValue != null)
+			{
+				_valueSet = true;
+				var defaultValue:Boolean = 
+					FilterDefinition.getBooleanValue(_filterDef.defaultValue);
+				if (defaultValue)
+				{
+					_value = _enabledValue;
+					_valueText = 
+						FilterDefinition.getObjectLabel(values.getItemAt(1));
+				}
+				else
+				{
+					_value = _disabledValue;
+					_valueText = 
+						FilterDefinition.getObjectLabel(values.getItemAt(2));
+				}
+			}
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 * 
+		 * If set, the value is returned.  Also,
+		 * the comboBox is updated to reflect this property when it is set.
+		 */
+		public function get value():Object
+		{
+			if (_valueSet)
+				return _value;
+			else
+				return null;
+		}
+		public function set value(data:Object):void
+		{
+			if (data == null)
+				_comboBox.selectedIndex = 0;
+			else
+			{
+				var boolVal:Boolean;
+				boolVal = FilterDefinition.getBooleanValue(data);
+				if (boolVal)
+					_comboBox.selectedIndex = 1;
+				else
+					_comboBox.selectedIndex = 2;
+			}
+			handleComboBox();
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 * 
+		 * The descriptive text for this editor defaults to valueText. 
+		 */
+		public function get description():String
+		{
+			if (_description == null)
+				return valueText;
+			return _description;
+		}
+		public function set description(text:String):void
+		{
+			_description = text;
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 */
+		public function get valueText():String
+		{
+			return _valueText;
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 * 
+		 * Hardcoded to false.  This editor does not support multiValue 
+		 * returns.
+		 */
+		public function get multiValueEnabled():Boolean
+		{
+			return false;			
+		}
+		public function set multiValueEnabled(value:Boolean):void
+		{
+			// no-op			
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 */
+		public function isActive():Boolean
+		{
+			return _valueSet;
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 */
+		public function get menu():Menu
+		{
+            var menu:Menu = Menu.createMenu(parent, _menuData, false);
+            menu.id = "menu_" + _filterDef.name;
+            menu.automationName = menu.id + "_auto";
+        	menu.addEventListener("itemClick", defaultMenuHandler);
+        	return menu;
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 */
+		public function get operator():int
+		{
+			return 0;
+		}
+		public function set operator(value:int):void
+		{
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 */
+		public function get customData():String
+		{
+			return null;
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 */
+		public function isValid():Boolean
+		{
+			return true;			
+		}
+	}
+}

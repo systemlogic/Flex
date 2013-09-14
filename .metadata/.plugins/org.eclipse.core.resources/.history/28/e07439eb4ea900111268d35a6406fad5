@@ -1,0 +1,173 @@
+package com.emc.efx.utilities
+{
+	import com.emc.efx.core.ResourceManager.getInstance().UxResourceManager.getInstance();
+
+	public class UxECUEConstants
+	{
+		public function UxECUEConstants()
+		{
+		}
+
+		/**
+		 * Bundle name for additional ECUE reousrces
+		 */
+		public static const BUNDLE_NAME:String = "ecue";
+		
+		// TODO; We may want to use stylesheets rather than putting/getting these color
+		// values from a resource file.  We could grab them from ECUE's style sheet?
+		
+		/**
+		 * ECUE chart color - Blue 100% - 40%
+		 */
+		public static const COLOR_BLUE_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_BLUE_1");
+		public static const COLOR_BLUE_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_BLUE_2");
+		public static const COLOR_BLUE_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_BLUE_3");
+		public static const COLOR_BLUE_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_BLUE_4");
+		public static const COLOR_BLUE_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_BLUE_5");
+		public static const COLOR_BLUE_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_BLUE_6");
+		
+		
+		/**
+		 * ECUE chart color - Red 100% - 40%
+		 */
+		public static const COLOR_RED_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_RED_1");
+		public static const COLOR_RED_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_RED_2");
+		public static const COLOR_RED_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_RED_3");
+		public static const COLOR_RED_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_RED_4");
+		public static const COLOR_RED_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_RED_5");
+		public static const COLOR_RED_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_RED_6");
+		
+		/**
+		 * ECUE chart color - Gold 100% - 40%
+		 */
+		public static const COLOR_GOLD_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GOLD_1");
+		public static const COLOR_GOLD_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GOLD_2");
+		public static const COLOR_GOLD_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GOLD_3");
+		public static const COLOR_GOLD_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GOLD_4");
+		public static const COLOR_GOLD_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GOLD_5");
+		public static const COLOR_GOLD_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GOLD_6");
+		
+		/**
+		 * ECUE chart color - Purple 100% - 40%
+		 */
+		public static const COLOR_PURPLE_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_PURPLE_1");
+		public static const COLOR_PURPLE_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_PURPLE_2");
+		public static const COLOR_PURPLE_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_PURPLE_3");
+		public static const COLOR_PURPLE_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_PURPLE_4");
+		public static const COLOR_PURPLE_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_PURPLE_5");
+		public static const COLOR_PURPLE_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_PURPLE_6");
+		
+		/**
+		 * ECUE chart color - Orange 100% - 40%
+		 */
+		public static const COLOR_ORANGE_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_ORANGE_1");
+		public static const COLOR_ORANGE_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_ORANGE_2");
+		public static const COLOR_ORANGE_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_ORANGE_3");
+		public static const COLOR_ORANGE_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_ORANGE_4");
+		public static const COLOR_ORANGE_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_ORANGE_5");
+		public static const COLOR_ORANGE_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_ORANGE_6");
+		
+		/**
+		 * ECUE chart color - Dark Blue 100% - 40%
+		 */
+		public static const COLOR_DARK_BLUE_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_DARK_BLUE_1");
+		public static const COLOR_DARK_BLUE_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_DARK_BLUE_2");
+		public static const COLOR_DARK_BLUE_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_DARK_BLUE_3");
+		public static const COLOR_DARK_BLUE_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_DARK_BLUE_4");
+		public static const COLOR_DARK_BLUE_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_DARK_BLUE_5");
+		public static const COLOR_DARK_BLUE_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_DARK_BLUE_6");
+		
+		/**
+		 * ECUE chart color - Green 100% - 40%
+		 */
+		public static const COLOR_GREEN_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GREEN_1");
+		public static const COLOR_GREEN_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GREEN_2");
+		public static const COLOR_GREEN_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GREEN_3");
+		public static const COLOR_GREEN_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GREEN_4");
+		public static const COLOR_GREEN_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GREEN_5");
+		public static const COLOR_GREEN_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GREEN_6");
+		
+		/**
+		 * ECUE chart color - Gray 100% - 40%
+		 */
+		public static const COLOR_GRAY_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GRAY_1");
+		public static const COLOR_GRAY_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GRAY_2");
+		public static const COLOR_GRAY_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GRAY_3");
+		public static const COLOR_GRAY_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GRAY_4");
+		public static const COLOR_GRAY_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GRAY_5");
+		public static const COLOR_GRAY_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_GRAY_6");
+		
+		/**
+		 * ECUE color for Informational state - 100% - 40%
+		 */
+		public static const COLOR_STATE_INFORMATIONAL_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_INFORMATIONAL_1");
+		public static const COLOR_STATE_INFORMATIONAL_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_INFORMATIONAL_2");
+		public static const COLOR_STATE_INFORMATIONAL_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_INFORMATIONAL_3");
+		public static const COLOR_STATE_INFORMATIONAL_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_INFORMATIONAL_4");
+		public static const COLOR_STATE_INFORMATIONAL_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_INFORMATIONAL_5");
+		public static const COLOR_STATE_INFORMATIONAL_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_INFORMATIONAL_6");
+		
+
+		/**
+		 * ECUE color for Warning state - 100% - 40%
+		 */
+		public static const COLOR_STATE_WARNING_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_WARNING_1");
+		public static const COLOR_STATE_WARNING_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_WARNING_2");
+		public static const COLOR_STATE_WARNING_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_WARNING_3");
+		public static const COLOR_STATE_WARNING_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_WARNING_4");
+		public static const COLOR_STATE_WARNING_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_WARNING_5");
+		public static const COLOR_STATE_WARNING_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_WARNING_6");
+
+		/**
+		 * ECUE color for Error state - 100% - 40%
+		 */
+		public static const COLOR_STATE_ERROR_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_ERROR_1");
+		public static const COLOR_STATE_ERROR_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_ERROR_2");
+		public static const COLOR_STATE_ERROR_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_ERROR_3");
+		public static const COLOR_STATE_ERROR_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_ERROR_4");
+		public static const COLOR_STATE_ERROR_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_ERROR_5");
+		public static const COLOR_STATE_ERROR_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_ERROR_6");
+
+		/**
+		 * ECUE color for Critical/Failure state - 100% - 40%
+		 */
+		public static const COLOR_STATE_CRITICAL_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_CRITICAL_1");
+		public static const COLOR_STATE_CRITICAL_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_CRITICAL_2");
+		public static const COLOR_STATE_CRITICAL_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_CRITICAL_3");
+		public static const COLOR_STATE_CRITICAL_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_CRITICAL_4");
+		public static const COLOR_STATE_CRITICAL_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_CRITICAL_5");
+		public static const COLOR_STATE_CRITICAL_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_CRITICAL_6");
+
+		/**
+		 * ECUE color for Success state - 100% - 40%
+		 */
+		public static const COLOR_STATE_SUCCESS_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_SUCCESS_1");
+		public static const COLOR_STATE_SUCCESS_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_SUCCESS_2");
+		public static const COLOR_STATE_SUCCESS_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_SUCCESS_3");
+		public static const COLOR_STATE_SUCCESS_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_SUCCESS_4");
+		public static const COLOR_STATE_SUCCESS_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_SUCCESS_5");
+		public static const COLOR_STATE_SUCCESS_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_SUCCESS_6");
+
+		/**
+		 * ECUE color for Free state - 100% - 40%
+		 */
+		public static const COLOR_STATE_FREE_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_FREE_1");
+		public static const COLOR_STATE_FREE_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_FREE_2");
+		public static const COLOR_STATE_FREE_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_FREE_3");
+		public static const COLOR_STATE_FREE_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_FREE_4");
+		public static const COLOR_STATE_FREE_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_FREE_5");
+		public static const COLOR_STATE_FREE_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_FREE_6");
+
+		/**
+		 * ECUE color for Used state - 100% - 40%
+		 */
+		public static const COLOR_STATE_USED_1:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_USED_1");
+		public static const COLOR_STATE_USED_2:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_USED_2");
+		public static const COLOR_STATE_USED_3:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_USED_3");
+		public static const COLOR_STATE_USED_4:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_USED_4");
+		public static const COLOR_STATE_USED_5:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_USED_5");
+		public static const COLOR_STATE_USED_6:uint	= UxResourceManager.getInstance().getInstance().getUint(BUNDLE_NAME, "COLOR_STATE_USED_6");
+
+	
+	}
+}

@@ -1,0 +1,19 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.guitoolkit.effects {
+    import mx.effects.WipeDown;
+
+    /** Extended to support HLM */
+    public class UxWipeDown extends WipeDown {
+        /** Updated to use Ux instance. */
+        public function UxWipeDown(target:Object=null) {
+            super(target);
+            this.instanceClass = UxWipeDownInstance;
+        }
+    }
+}

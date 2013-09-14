@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extensions>
+    <!-- specify a unique id for this extension -->
+    <extension id="fma">
+        <module>fma/fma.swf</module>
+        <pluginInformation version="Fargo"
+                            name="File Management" />
+
+        
+        <!-- specify the version information for this extension -->
+        <versionInformation version="8.0"
+                            name="File Management"
+                            vendor="EMC" />
+
+        <!-- specify the service information - unique id for the service
+             and the class name that implements the service 
+        -->
+        <service id="FMAService"
+                 classname="com.emc.fma.services.FMAService" >
+        </service>
+        
+        <helpSystem  path="fma/webHelp/help" 
+					 title="Cloud Tiering Applience" 
+					 homepage="welcome.htm"
+					 resourceBundle="fma" />
+		
+        <resourceModule locale="en_US" url="fma/fmaResources.swf" />
+        <resourceModule locale="fr_FR" url="fma/fmaResourcesf.swf" />
+        <service id="FMAHelpService"
+                 classname="com.emc.fma.services.UxSampleHelpService"
+                 priority="5001" >
+        </service>
+        
+    </extension>
+</extensions>

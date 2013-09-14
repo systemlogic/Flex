@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250"
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*">
+    
+    <fx:Script>
+        <![CDATA[
+       	import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+       	import com.emc.ecuit.flex.managers.ECUITResourceManager;
+        
+        import mx.utils.StringUtil;
+		
+		// Suggested step name for use in id field of wizard decriptor XML file
+		public static const STEP_NAME            :String = "optionalStep";
+		public static const STEP_CCD             :String = "CelerraCallbackAgent";
+		public static const STEP_ACD             :String = "AtmosCallbackAgent";
+		public static const STEP_DirectoryEx     :String = "DirectoryExclusion";
+			
+		
+		
+		private var _initialized:Boolean = false;
+			
+		// Override if we have step specific display work to do
+		override public function postDisplay(): void 
+		{
+			if (!_initialized) 
+			{
+				_initialized = true;
+			}
+
+			enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+			enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+		}
+
+		// Override if we have step specific data to save
+		override protected function save(): void
+		{
+			stepComplete = true;
+		}
+
+        ]]>
+    </fx:Script>
+    <mx:VBox x="0" y="0" width="100%" paddingBottom="10" paddingTop="10" paddingLeft="10" paddingRight="10">
+        <mx:Text id="optionalText" styleName="ECUITWizardBodyText" text="This step could have been avoided by answering 'Yes' to the question on the previous page." width="100%" paddingLeft="5" paddingRight="5"/>
+    </mx:VBox>
+</wizards:UxWizardStep>

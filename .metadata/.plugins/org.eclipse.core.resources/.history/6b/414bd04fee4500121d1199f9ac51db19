@@ -1,0 +1,1003 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.events.UxViewEvent;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.utils.Common;
+
+import mx.binding.utils.ChangeWatcher;
+import mx.controls.Image;
+import mx.events.DropdownEvent;
+import mx.formatters.SwitchSymbolFormatter;
+import mx.resources.ResourceManager;
+
+import spark.layouts.RowAlign;
+[Bindable]public var editMode:Boolean = false;
+[Bindable]public var _rowsObject:Object = new Object();
+[Bindable]private var exp_array:XML = <Request/>;
+[Bindable]public var temp:XML = new XML();
+import mx.controls.Button;
+import mx.events.FlexEvent;
+private var add_Rule:AddRuleProperties;
+private var myWatcher:ChangeWatcher;
+
+[Bindable]public var PolicyName:String;
+[Bindable]private var actionLabel:String
+
+private var _currentPayload:UxHashMap = null;
+override protected function initializeData():void
+{
+  super.initializeData();
+  Common.setFocusOnFirstChild(this);
+
+  if (currentPayload != null)
+  {
+    var PolicyName:String = currentPayload.getValue("EXPName");
+
+    if (PolicyName != "")
+    {
+      currentState = "ARCHIVE_MTIER_MTIERSTUB";
+      var xml:XML = <REQUEST/>;
+      xml.appendChild(<action>edit</action>);
+      xml.appendChild(<Name>
+      {PolicyName}</Name>);
+      RESTClient.sendPostRequest("/getPolicy.htm", xml, onComplete, viewBlock);
+    }
+    else
+    {
+      setGridColumns(GridColumns);
+      //_rowsObject = createRows4();
+    }
+  }
+}
+[Bindable] public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+
+private function page_keyDownHandler(event:KeyboardEvent):void
+{
+  if (event.keyCode == Keyboard.ESCAPE)
+  {
+    onCancel(event);
+  }
+}
+
+private function deleteRule(event:Event):void
+{
+  var index:int = repositoryList.selectedIndex;
+  var temp:XML = <Rules/>;
+  var index:int = repositoryList.selectedIndex;
+
+  for each(var test:XML in exp_array.Rule)
+  {
+    temp.appendChild(test);
+  }
+
+  delete exp_array.Rule;
+  var deleteItemindex:int = 0;
+
+  for each(var test:XML in temp.Rule)
+  {
+    if (deleteItemindex == repositoryList.selectedIndex)
+    {
+    }
+    else
+    {
+      exp_array.appendChild(test);
+    }
+
+    deleteItemindex++;
+  }
+
+  _rowsObject = createRows4();
+}
+
+private function editRule(event:Event):void
+{
+  var index:int = repositoryList.selectedIndex;
+  editMode = true;
+  rule(event);
+}
+private function addRule(event:Event):void
+{
+  editMode = false;
+  rule(event);
+}
+private function rule(event:Event):void
+{
+  add_Rule = new AddRuleProperties();
+  myWatcher = ChangeWatcher.watch(add_Rule, "xml", watcherListener);
+  add_Rule.editMode = editMode;
+
+  if (editMode)
+  {
+    add_Rule.editExpr = repositoryList.selectedItem.Column1;
+    add_Rule.editRepo = repositoryList.selectedItem.Column2;
+    add_Rule.compressionType = repositoryList.selectedItem.Column3;
+    add_Rule.encryption = repositoryList.selectedItem.Column4;
+  }
+
+  add_Rule.centerDialog();
+  //add_Rule.modal = true;
+  var temp:ArrayCollection = new ArrayCollection();
+  actionLabel = pType.selectedLabel;
+
+  if (  pType.selectedItem ==  "archive" ||
+  pType.selectedItem ==  "multi tier" ||
+  pType.selectedItem ==  "multi tier stub")
+  {
+    actionLabel = "Archive";
+  }
+  else if ( pType.selectedItem ==  "delete orphan" ||
+  pType.selectedItem ==  "delete stub")
+  {
+    actionLabel = "Delete";
+  }
+  else if (pType.selectedItem ==  "migrate file" )
+  {
+    actionLabel = "Migrate";
+  }
+
+  temp.addItem(actionLabel);
+  temp.addItem("Don't " + actionLabel );
+  add_Rule.actionArray = temp;
+  add_Rule.actionLabel = pType.selectedLabel;
+  //add_Rule.show(null);
+  add_Rule.show(this);
+}
+
+public function watcherListener(event:Event):void
+{
+  if (editMode)
+  {
+    var temp:XML = <Rules/>;
+    var index:int = repositoryList.selectedIndex;
+
+    for each(var test:XML in exp_array.Rule)
+    {
+      temp.appendChild(test);
+    }
+
+    delete exp_array.Rule;
+    var index:int = 0;
+
+    for each(var test:XML in temp.Rule)
+    {
+      if (index == repositoryList.selectedIndex)
+      {
+        exp_array.appendChild(add_Rule.xml );
+      }
+      else
+      {
+        exp_array.appendChild(test);
+      }
+
+      index++;
+    }
+  }
+  else
+  {
+    exp_array.appendChild(add_Rule.xml );
+  }
+  myWatcher.unwatch();
+  _rowsObject = createRows4();
+  // Use myWatcher.unwatch() to remove the watcher.
+}
+private var savePolicyAndScheduleCheck:Boolean = false;
+private function savePolicySchedule(event:Event):void
+{
+  savePolicyAndScheduleCheck = true;
+  savePolicy(event);
+}
+private function savePolicy(event:Event):void
+{
+  if (pName.text == "")
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_POLICY_NAME'),ResourceManager.getInstance().getString('fma','INVALID_POLICY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  if (pType.selectedItem ==  "archive" || pType.selectedItem ==  "multi tier" || pType.selectedItem ==  "multi tier stub")
+  {
+    if (retentionTime.text == "")
+    {
+      ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_POLICY_RETENTION'),ResourceManager.getInstance().getString('fma','INVALID_POLICY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+      return;
+    }
+    else if (delayPeriod.text == "")
+    {
+      return;
+    }
+  }
+  else if (pType.selectedItem ==  "delete orphan" )
+  {
+    if (daysMissing.text == "")
+    {
+      ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_POLICY_DAYS_MISSING'),ResourceManager.getInstance().getString('fma','INVALID_POLICY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+      return;
+    }
+  }
+  else if (pType.selectedItem ==  "delete stub" )
+  {
+  }
+  else if (pType.selectedItem ==  "migrate file")
+  {
+  }
+
+  var xml:XML = <REQUEST/>;
+  xml.appendChild(<action>savePolicy</action>);
+  xml.appendChild(<Name>
+  {pName.text}</Name>);
+
+  if (pType.selectedItem ==  "archive")
+  {
+    xml.appendChild(<policyType>archive</policyType>);
+  }
+  else if (pType.selectedItem ==  "multi tier")
+  {
+    xml.appendChild(<policyType>multi_tier</policyType>);
+  }
+  else if (pType.selectedItem ==  "multi tier stub")
+  {
+    xml.appendChild(<policyType>multi_tier_stub</policyType>);
+  }
+  else if (pType.selectedItem ==  "delete orphan")
+  {
+    xml.appendChild(<policyType>delete_orphans</policyType>);
+  }
+  else if (pType.selectedItem ==  "delete stub")
+  {
+    xml.appendChild(<policyType>delete_stubs </policyType>);
+  }
+  else if (pType.selectedItem ==  "migrate file")
+  {
+    xml.appendChild(<policyType>migrate_file</policyType>);
+  }
+
+  if (pType.selectedItem ==  "archive" || pType.selectedItem ==  "multi tier" || pType.selectedItem ==  "multi tier stub")
+  {
+    xml.appendChild(<retentionPeriod>
+    {retentionTime.text}</retentionPeriod>);
+    xml.appendChild(<retentionUnit>
+    {retensionUnit.selectedLabel}</retentionUnit>);
+    xml.appendChild(<delayPeriod>
+    {delayPeriod.text}</delayPeriod>);
+    xml.appendChild(<stubRetention>
+    {stubRetention.selected}</stubRetention>);
+    xml.appendChild(<daysMissing>30</daysMissing>);
+    xml.appendChild(<daysMissingUnit>days</daysMissingUnit>);
+    xml.appendChild(<deleteAll>false</deleteAll>);
+  }
+  else if (pType.selectedItem ==  "delete orphan" )
+  {
+    xml.appendChild(<retentionPeriod>0</retentionPeriod>);
+    xml.appendChild(<retentionUnit>years</retentionUnit>);
+    xml.appendChild(<delayPeriod>0</delayPeriod>);
+    xml.appendChild(<stubRetention>false</stubRetention>);
+    xml.appendChild(<daysMissing>
+    {daysMissing.text}</daysMissing>);
+    xml.appendChild(<daysMissingUnit>
+    {daysMissingUnit.selectedLabel}</daysMissingUnit>);
+    xml.appendChild(<deleteAll>false</deleteAll>);
+  }
+  else if (pType.selectedItem ==  "delete stub" )
+  {
+    xml.appendChild(<retentionPeriod>0</retentionPeriod>);
+    xml.appendChild(<retentionUnit>years</retentionUnit>);
+    xml.appendChild(<delayPeriod>0</delayPeriod>);
+    xml.appendChild(<stubRetention>false</stubRetention>);
+    xml.appendChild(<daysMissing>30</daysMissing>);
+    xml.appendChild(<daysMissingUnit>days</daysMissingUnit>);
+    xml.appendChild(<deleteAll>
+    {deleteAll.selected}</deleteAll>);
+  }
+  else if (pType.selectedItem ==  "migrate file")
+  {
+    xml.appendChild(<retentionPeriod>0</retentionPeriod>);
+    xml.appendChild(<retentionUnit>years</retentionUnit>);
+    xml.appendChild(<delayPeriod>0</delayPeriod>);
+    xml.appendChild(<stubRetention>false</stubRetention>);
+    xml.appendChild(<daysMissing>30</daysMissing>);
+    xml.appendChild(<daysMissingUnit>days</daysMissingUnit>);
+    xml.appendChild(<deleteAll>false</deleteAll>);
+  }
+
+  //xml.appendChild(exp_array);
+  var ExpressionList:XML = <ExpressionList/>
+                           var item:XML;
+
+  for each(item in exp_array.Rule)
+  {
+    var value:String = item.exp;
+    var tempExp:XML = parsedXML(new ArrayCollection(value.split(" and ")))
+
+                      if (item.Type.toString() == "nas repository")
+    {
+      var type:String  = item.Type.toString().replace(" repository","");
+      tempExp.appendChild(<Type>
+      {type}</Type>);
+      var tempRepo:String = item.repo.toString();
+      tempRepo =  tempRepo.replace(new RegExp(/\\\\/gi),"\\");
+      tempExp.appendChild(<repo>
+      {tempRepo}</repo>);
+    }
+    else if (item.Type.toString() == "nas group")
+    {
+      var repo:String  = item.repo.toString().replace("$\"","");
+      repo = repo.replace("\"","");
+      tempExp.appendChild(<Type>reference</Type>);
+      tempExp.appendChild(<repo>
+      {repo}</repo>);
+    }
+    else if (item.Type.toString() == "centera")
+    {
+      var sString:String = item.repo.toString();
+      sString = sString.replace("archive to ", "");
+      sString = sString.replace("\"", "");
+      sString = sString.replace("\"", "");
+      tempExp.appendChild(<repo>
+      {sString}</repo>);
+      tempExp.appendChild(item.Type);
+    }
+    else if (item.Type.toString() == "atmos" || item.Type.toString() == "amazons3" || item.Type.toString() == "azure" )
+    {
+      var sString:String = item.repo.toString();
+      sString = sString.replace("archive to ", "");
+      sString = sString.replace("\"", "");
+      sString = sString.replace("\"", "");
+      tempExp.appendChild(<repo>
+      {sString}</repo>);
+      tempExp.appendChild(item.Type);
+      tempExp.appendChild(item.comp);
+      tempExp.appendChild(item.ency);
+    }/* else if(item.Type.toString() == "nothing")
+
+{          // in case required in future
+
+              tempExp.appendChild(<repo>nothing</repo>);
+              tempExp.appendChild(item.Type);
+            } */else if (item.Type.toString() == "")
+    {
+      tempExp.appendChild(<repo>nothing</repo>);
+      tempExp.appendChild(<Type>nothing</Type>);
+      //tempExp.appendChild(item.Type);
+    }
+
+    ExpressionList.appendChild(tempExp);
+  }
+
+  xml.appendChild(ExpressionList);
+  RESTClient.sendPostRequest("/savePolicy.htm", xml, onSave, viewBlock);
+}
+
+private function parsedXML(expArray:ArrayCollection):XML
+{
+  var tempA:Array;
+  var xml:XML = <Expression/>;
+
+  for each (var num:String in expArray)
+  {
+    tempA = (num as String).split(" ");
+
+    if (tempA[1] == ">" || tempA[1] == ">="
+    || tempA[1] == "<" || tempA[1] == "<=")
+    {
+      var rule:XML = <Rule/>;
+      rule.appendChild(<Keyword>
+      {tempA[0]}</Keyword>);
+      rule.appendChild(<Operator>
+      {tempA[1]}</Operator>);
+      rule.appendChild(<Value>
+      {tempA[2]}</Value>);
+      rule.appendChild(<Unit>
+      {tempA[3]}</Unit>);
+      xml.appendChild(rule);
+    }
+    else if (tempA[1] == "==" )
+    {
+      var rule:XML = <Rule/>;
+      rule.appendChild(<Keyword>
+      {tempA[0]}</Keyword>);
+      rule.appendChild(<Operator>
+      {tempA[1]}</Operator>);
+      var str:String  = tempA[2];
+      str = str.replace("\"", "");
+      str = str.replace("\"", "");
+      rule.appendChild(<Value>
+      {str}</Value>);
+      rule.appendChild(<Unit>Undefined</Unit>);
+      xml.appendChild(rule);
+    }
+    else if (tempA[2] == "regex" || tempA[2] == "singlefile")
+    {
+      var rule:XML = <Rule/>;
+      rule.appendChild(<Keyword>
+      {tempA[0]}</Keyword>);
+      rule.appendChild(<Operator>
+      {tempA[1] + " " + tempA[2]}</Operator>);
+      var str:String  = tempA[3];
+      str = str.replace("\"", "");
+      str = str.replace("\"", "");
+      rule.appendChild(<Value>
+      {str}</Value>);
+      rule.appendChild(<Unit>Undefined</Unit>);
+      xml.appendChild(rule);
+    }
+    else
+    {
+      var str:String  = num as String;
+      str = str.replace("$", "");
+      str = str.replace("\"", "");
+      str = str.replace("\"", "");
+      var rule:XML = <RuleRef/>;
+      rule.appendChild(<Symbol>
+      {str}</Symbol>);
+      xml.appendChild(rule);
+    }
+  }
+
+  return xml;
+}
+
+
+
+public function changeOrder(up:Boolean):void
+{
+  var index:int = repositoryList.selectedIndex;
+
+  if (index == 0 && up)
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_FIRST'),ResourceManager.getInstance().getString('fma','INVALID_CHANGE_ORDER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+  }
+  else if (index == ((_rowsObject as ArrayCollection).length -1) && !up)
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_LAST'),ResourceManager.getInstance().getString('fma','INVALID_CHANGE_ORDER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+  }
+  else if (up)
+  {
+    var item:XML;
+    var count:int = 0;
+    var shiftingNode:XML;
+    var tempXML:XML = <ExpressionList/>
+
+    for each(item in exp_array.Rule)
+    {
+      if (count == index -1)
+      {
+        shiftingNode = item;
+      }
+      else
+      {
+        tempXML.appendChild(item);
+
+        if (count == index)
+        {
+          tempXML.appendChild(shiftingNode);
+        }
+      }
+
+      count++;
+    }
+
+    exp_array = tempXML
+                _rowsObject = createRows4();
+    //(_rowsObject as ArrayCollection).addItemAt( (_rowsObject as ArrayCollection).removeItemAt(index), index -1);
+  }
+  else if (!up)
+  {
+    var item:XML;
+    var count:int = 0;
+    var shiftingNode:XML;
+    var tempXML:XML = <ExpressionList/>
+
+                      for each(item in exp_array.Rule)
+    {
+      if (count == index)
+      {
+        shiftingNode = item;
+      }
+      else
+      {
+        tempXML.appendChild(item);
+
+        if (count == index +1)
+        {
+          tempXML.appendChild(shiftingNode);
+        }
+      }
+
+      count++;
+    }
+
+    exp_array = tempXML
+                _rowsObject = createRows4();
+    //(_rowsObject as ArrayCollection).addItemAt( (_rowsObject as ArrayCollection).removeItemAt(index), index +1);
+  }
+
+  if ((_rowsObject as ArrayCollection).length == 0)
+  {
+    pType.enabled = true;
+  }
+
+
+}
+private function onCancel(event:Event):void
+{
+  var navService:IUxNavigationService =
+  UxExtensionManager.getInstance().getService(UxConstants.
+  NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}
+
+private function handleConfirmMessage(event:ECUITPopupDialogEvent):void
+{
+  viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+  viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+
+  if (savePolicyAndScheduleCheck)
+  {
+    var navService:IUxNavigationService =
+    UxExtensionManager.getInstance().getService(UxConstants.
+    NAVIGATION_SERVICE) as IUxNavigationService;
+    var location:Array = new Array;
+    location = navService.currentLocation;
+    location.pop();
+    location.pop();
+    location.pop();
+    navService.navigate(location);
+  }
+  else if (!savePolicyAndScheduleCheck)
+  {
+    viewBlock.lastRefreshDate = new Date();
+    onCancel(event);
+  }
+
+}
+private function onSave(event:RESTEvent):void
+{
+  viewBlock.updateProgress(100, "default");
+  var dlg:ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(event.response)).Result[0].toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+  dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+}
+private function onComplete(event:RESTEvent):void
+{
+  viewBlock.updateProgress(100, "default");
+  GridColumns = new ArrayCollection();
+  var str:String = new String(event.response);
+  var patternLess:RegExp = / <(=?) /g;
+  var patternGreater:RegExp = / >(=?) /g;
+  str = str.replace(patternLess, "#####$1 ")
+  str = str.replace(patternGreater, "*****$1 ");
+  exp_array = XML(str);
+
+  if ("" != exp_array.Error)
+  {
+    var dlg:ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,exp_array.Error,ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+  }
+
+  if (exp_array.Type == "archive")
+  {
+    pType.selectedIndex = 0
+    currentState = 'ARCHIVE_MTIER_MTIERSTUB';
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_COM'));
+    addHeader("Column4",ResourceManager.getInstance().getString('fma','POL_ECY'));
+    addHeader("Column5",ResourceManager.getInstance().getString('fma','POL_CHO'));
+    retentionTime.text = exp_array.RetentionPeriod;
+
+    if (exp_array.RetentionPeriodUnit == "days")
+    {
+      retensionUnit.selectedIndex = 3;
+    }
+    else if (exp_array.RetentionPeriodUnit == "months")
+    {
+      retensionUnit.selectedIndex = 2;
+    }
+    else if (exp_array.RetentionPeriodUnit == "weeks")
+    {
+      retensionUnit.selectedIndex = 1;
+    }
+    else if (exp_array.RetentionPeriodUnit == "years")
+    {
+      retensionUnit.selectedIndex = 0;
+    }
+
+    delayPeriod.text = exp_array.DelayPeriod;
+    stubRetention.selected = new Boolean(exp_array.StubRetention);
+  }
+  else if (exp_array.Type == "multi_tier")
+  {
+    pType.selectedIndex = 1
+                          currentState = 'ARCHIVE_MTIER_MTIERSTUB';
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_COM'));
+    addHeader("Column4",ResourceManager.getInstance().getString('fma','POL_ECY'));
+    addHeader("Column5",ResourceManager.getInstance().getString('fma','POL_CHO'));
+    retentionTime.text = exp_array.RetentionPeriod;
+
+    if (exp_array.RetentionPeriodUnit == "days")
+    {
+      retensionUnit.selectedIndex = 3;
+    }
+    else if (exp_array.RetentionPeriodUnit == "months")
+    {
+      retensionUnit.selectedIndex = 2;
+    }
+    else if (exp_array.RetentionPeriodUnit == "weeks")
+    {
+      retensionUnit.selectedIndex = 1;
+    }
+    else if (exp_array.RetentionPeriodUnit == "years")
+    {
+      retensionUnit.selectedIndex = 0;
+    }
+
+    delayPeriod.text = exp_array.DelayPeriod;
+    stubRetention.selected = new Boolean(exp_array.StubRetention);
+  }
+  else if (exp_array.Type == "multi_tier_stub")
+  {
+    pType.selectedIndex = 2
+                          currentState = 'ARCHIVE_MTIER_MTIERSTUB';
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_COM'));
+    addHeader("Column4",ResourceManager.getInstance().getString('fma','POL_ECY'));
+    addHeader("Column5",ResourceManager.getInstance().getString('fma','POL_CHO'));
+    retentionTime.text = exp_array.RetentionPeriod;
+
+    if (exp_array.RetentionPeriodUnit == "days")
+    {
+      retensionUnit.selectedIndex = 3;
+    }
+    else if (exp_array.RetentionPeriodUnit == "months")
+    {
+      retensionUnit.selectedIndex = 2;
+    }
+    else if (exp_array.RetentionPeriodUnit == "weeks")
+    {
+      retensionUnit.selectedIndex = 1;
+    }
+    else if (exp_array.RetentionPeriodUnit == "years")
+    {
+      retensionUnit.selectedIndex = 0;
+    }
+
+    delayPeriod.text = exp_array.DelayPeriod;
+    stubRetention.selected = new Boolean(exp_array.StubRetention);
+  }
+  else if (exp_array.Type == "delete_orphans")
+  {
+    pType.selectedIndex = 3
+                          currentState = 'DELETEORPHAN';
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_CHO'));
+    daysMissing.text = exp_array.DaysMissing;
+
+    if (exp_array.DaysMissingUnit == "years")
+    {
+      daysMissingUnit.selectedIndex = 0;
+    }
+    else if (exp_array.DaysMissingUnit == "months")
+    {
+      daysMissingUnit.selectedIndex = 1;
+    }
+    else if (exp_array.DaysMissingUnit == "weeks")
+    {
+      daysMissingUnit.selectedIndex = 2;
+    }
+    else if (exp_array.DaysMissingUnit == "days")
+    {
+      daysMissingUnit.selectedIndex = 3;
+    }
+  }
+  else if (exp_array.Type == "delete_stubs")
+  {
+    pType.selectedIndex = 4
+                          currentState = 'DELETESTUB';
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_CHO'));
+    deleteAll.selected = new Boolean(exp_array.DeleteAll);
+  }
+  else if (exp_array.Type == "migrate_file")
+  {
+    pType.selectedIndex = 5;
+    currentState = 'MIGRATEFILE';
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_CHO'));
+  }
+
+  pName.text = exp_array.Name;
+  pName.editable = false;
+  setGridColumns(GridColumns);
+  _rowsObject = createRows4();
+}
+public function setGridColumns (columns:ArrayCollection):void
+{
+  if (columns == null) return;
+
+  trace(columns);
+  var tableColumns:ArrayCollection = new ArrayCollection();
+
+  if (currentState == "ARCHIVE_MTIER_MTIERSTUB")
+  {
+    for (var i:int = 0; i < GridColumns.length; i++)
+    {
+      var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+      var precision:int = 0; //default precision
+
+      switch (i)
+      {
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+        type = ECUITAdvancedDataGridColumn.TEXT;
+        break;
+
+      case 4:
+        type = ECUITAdvancedDataGridColumn.ICON;
+        break;
+      }
+
+      var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+
+      // This conditional builds an instance of a Severity object through a class factory.
+
+      if (i==4 )
+      {
+        var itemRenderer:ClassFactory = new ClassFactory(RuleActionIcon);
+        column.itemRenderer = itemRenderer;
+      }
+
+      column.dataField = GridColumns[i].Name;
+      column.headerText = GridColumns[i].Title;
+
+      switch (i)
+      {
+      case 0:
+      case 1:
+      case 2:
+      case 3:
+        column.width = gridBox.width/5;
+        break;
+      }
+
+      tableColumns.addItem(column);
+    }
+  }
+  else
+  {
+    for (var i:int = 0; i < GridColumns.length; i++)
+    {
+      var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+      var precision:int = 0; //default precision
+
+      switch (i)
+      {
+      case 0:
+      case 1:
+        type = ECUITAdvancedDataGridColumn.TEXT;
+        break;
+
+      case 2:
+        type = ECUITAdvancedDataGridColumn.ICON;
+        break;
+      }
+
+      var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+
+      // This conditional builds an instance of a Severity object through a class factory.
+
+      if (i==2 )
+      {
+        var itemRenderer:ClassFactory = new ClassFactory(RuleActionIcon);
+        column.itemRenderer = itemRenderer;
+      }
+
+      column.dataField = GridColumns[i].Name;
+      column.headerText = GridColumns[i].Title;
+
+      switch (i)
+      {
+      case 0:
+      case 1:
+        column.width = gridBox.width/3;
+        break;
+      }
+
+      tableColumns.addItem(column);
+    }
+  }
+  repositoryList.columns = tableColumns.toArray();
+}
+
+public function deleteRow(num:String,exp:String,repo:String):void
+{
+  var item:XML;
+  //exp_array.replace(parseInt(num),"" );
+  var tempXML:XML = <ExpressionList/>
+
+  for each(item in exp_array.Rule)
+  {
+    if (item.exp == exp &&
+    item.repo == repo)
+    {
+    }
+    else
+    {
+      tempXML.appendChild(item);
+    }
+  }
+
+  exp_array = tempXML
+              _rowsObject = createRows4();
+
+  if ((_rowsObject as ArrayCollection).length == 0)
+  {
+    pType.enabled = true;
+  }
+}
+private function createRows4():ArrayCollection
+{
+  var count:int = 0;
+  var row:Array =  new Array();
+  var item:XML;
+  var patternLess:RegExp = /#####/gi;
+  var patternGreater:RegExp = /\*\*\*\*\*/gi;
+
+  for each(item in exp_array.Rule)
+  {
+    var compression:String;
+
+    if (item.comp == "0")
+    {
+      compression = "None"
+    }
+    else if (item.comp == "1")
+    {
+      compression = "Fast"
+    }
+                  else if (item.comp == "2")
+    {
+      compression = "Strong"
+    }
+                  else
+    {
+      compression = ""
+    }
+
+                  var encryption:String  = item.ency;
+    var name:String = count.toString();//item.name;
+    var img:Image;
+    var value:String = item.exp;
+    var str:String = new String(value);
+    str = str.replace(patternLess, " <");
+    str = str.replace(patternGreater, " >");
+    value = str;
+    var repo:String = item.repo;
+    repo = repo.replace(new RegExp(/\\\\/g),"\\");
+
+    if (repo == "migrate_file" )
+    {
+      repo = item.Type;
+    }
+    else if (repo == "delete" )
+    {
+      repo = item.Type;
+    }
+
+    if (currentState == "ARCHIVE_MTIER_MTIERSTUB" )
+    {
+      var obj:Object =
+      { Column1:value,Column2:repo,Column3:compression,Column4:encryption,Column5:img};
+    }
+    else
+    {
+      var obj:Object =
+      { Column1:value,Column2:repo,Column5:img};
+    }
+
+    ++count;
+    row.push(obj);
+    trace(name);
+    trace(count);
+  }
+
+  var temp:String = new String(exp_array);
+  temp = temp.replace(patternLess, " &lt;");
+  temp = temp.replace(patternGreater, " &gt;");
+  exp_array = XML(temp);
+  /* delete exp_array.Rule;
+  exp_array.appendChild(tempxml); */
+  //exp_array.replace("Rule",null);
+  //exp_array = XML(exp_array.toString().replace(patternGreater, " >"));
+  //delete exp_array.Expression;
+  var rows:ArrayCollection = new ArrayCollection(row);
+
+  if (rows.length > 0)
+  {
+    pType.enabled = false;
+  }
+
+  return rows;
+}
+protected function _creationCompleteHandler(event:FlexEvent):void
+{
+
+}
+
+protected function repositoryList_clickHandler(event:MouseEvent):void
+{
+  // TODO Auto-generated method stub
+}
+private function addHeader(name:String,title:String ):void
+{
+  var obj:Object = new Object();
+  obj.Name  = name;
+  obj.Title  = title;
+  GridColumns.addItem(obj);
+}
+
+protected function pType_closeHandler(event:Event):void
+{
+  GridColumns = new ArrayCollection();
+
+  if (pType.selectedLabel == "archive" ||
+  pType.selectedLabel == "multi tier" ||
+  pType.selectedLabel == "multi tier stub")
+  {
+    currentState = "ARCHIVE_MTIER_MTIERSTUB";
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_COM'));
+    addHeader("Column4",ResourceManager.getInstance().getString('fma','POL_ECY'));
+    addHeader("Column5",ResourceManager.getInstance().getString('fma','POL_CHO'));
+  }
+  else if (pType.selectedLabel == "delete orphan")
+  {
+    currentState = "DELETEORPHAN";
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_CHO'));
+  }
+  else if (pType.selectedLabel == "delete stub")
+  {
+    currentState = "DELETESTUB";
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_CHO'));
+  }
+  else if (pType.selectedLabel == "migrate file")
+  {
+    currentState = "MIGRATEFILE";
+    addHeader("Column1",ResourceManager.getInstance().getString('fma','VIEWEXP'));
+    addHeader("Column2",ResourceManager.getInstance().getString('fma','POL_ACT'));
+    addHeader("Column3",ResourceManager.getInstance().getString('fma','POL_CHO'));
+  }
+
+  setGridColumns(GridColumns);
+}
+

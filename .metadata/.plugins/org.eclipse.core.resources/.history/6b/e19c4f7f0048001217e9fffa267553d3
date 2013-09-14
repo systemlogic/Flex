@@ -1,0 +1,385 @@
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.efx.guitoolkit.components.wizards.UxWizard;
+import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+
+import mx.binding.utils.ChangeWatcher;
+import mx.collections.ArrayCollection;
+import mx.events.FlexEvent;
+import mx.events.ListEvent;
+import mx.resources.ResourceManager;
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+
+public var _defaultEnterName:String = "";
+public var PathValue:String ;
+public var PathList:ArrayCollection;
+
+public var PathValueList:ArrayCollection ;
+private var testDir:String ;
+private var myWatcher:ChangeWatcher ;
+public static const ATTR_SOURCE_TYPE    :String = "SOURCE_TYPE";
+public static const ATTR_SOURCE        :String = "SOURCE";
+public static const ATTR_REPOSITORY      :String = "REPOSITORY";
+public static const ATTR_REPOSITORY_LIST  :String = "REPOSITORY_LIST";
+public static const ATTR_SERVER_SELECTION  :String = "SERVER_SELECTION";
+public static const ATTR_PROTOCOL_SELECTION  :String = "PROTOCOL_SELECTION";
+public static const ATTR_SOURCE_LIST       :String = "SOURCE_LIST";
+public static const ATTR_STATE           :String = "SOURCE_STATE";
+public static const ATTR_CIFS           :String = "CIFS";
+public static const ATTR_NFS           :String = "NFS";
+public static const ATTR_RMSTATE   :String = "repositoryMigrationState";
+public static const ATTR_RMNFSSTATE  :String = "repositoryNfsCifsMigrationState";
+public static const ATTR_NONRMSTATE  :String = "nonRepositoryMigrationState";
+
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    // Pull defaults from wizard data
+    var def:Object;
+
+    if (def != null)
+    {
+    }
+
+    _initialized = true;
+  }
+
+  var obj_policy:String = getData(TaskSelection.ATTR_POLICY_TYPE).toString() ;
+
+  if ( obj_policy == TaskSelection.ATTR_REPOMIGRATION)
+  {
+    var obj:Object = getData(ATTR_STATE)
+
+                     if (obj != null )
+    {
+      if (getData(ATTR_STATE).toString() == "nonRepositoryMigrationState")
+      {
+        if (SourceType.selectedLabel == DestinationSelection.ATTR_DEST_REPOSITORY)
+        {
+          currentState = "repositoryNfsCifsMigrationState";
+        }
+        else
+        {
+          currentState = "repositoryMigrationState";
+        }
+      }
+      else
+      {
+        currentState = getData(ATTR_STATE).toString();
+      }
+    }
+    else
+    {
+      currentState = "repositoryMigrationState";
+      //setData(ATTR_REPOSITORY_LIST,TaskType.ATTR_CIFS);
+    }
+
+    updateButtons();
+  }
+  else if (obj_policy != TaskSelection.ATTR_REPOMIGRATION)
+  {
+    currentState = "nonRepositoryMigrationState";
+    updateButtons();
+    server.dataProvider = getData(TaskType.ATTR_ISSOURCEFS) as ArrayCollection;
+    var index_s:int = (server.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_SERVER_SELECTION));
+
+    if (index_s > -1)
+    {
+      server.selectedIndex = index_s ;
+    }
+
+    var index_p:int = (protocol.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_PROTOCOL_SELECTION));
+
+    if (index_p > -1)
+    {
+      protocol.selectedIndex = index_p ;
+    }
+
+    server.dataProvider = getData(TaskType.ATTR_ISSOURCEFS) as ArrayCollection;
+    var index_s:int = (server.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_SERVER_SELECTION));
+
+    if (index_s > -1)
+    {
+      server.selectedIndex = index_s ;
+    }
+
+    var index_p:int = (protocol.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_PROTOCOL_SELECTION));
+
+    if (index_p > -1)
+    {
+      protocol.selectedIndex = index_p ;
+    }
+  }
+
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+  sourceList_updateCompleteHandler();
+  setData(ATTR_STATE, currentState);
+
+
+}
+override protected function save(): void
+{
+  if (currentState == "nonRepositoryMigrationState" )
+  {
+    setData(ATTR_SOURCE_LIST, sourceList.dataProvider);
+    setData(ATTR_SERVER_SELECTION, server.selectedLabel);
+    setData(ATTR_PROTOCOL_SELECTION, protocol.selectedLabel);
+  }
+  else if (currentState == "repositoryMigrationState" )
+  {
+    setData(ATTR_SOURCE_TYPE,SourceType.selectedLabel);
+    setData(ATTR_SOURCE,source.selectedLabel);
+  }
+  else if (currentState == "repositoryNfsCifsMigrationState" )
+  {
+    setData(ATTR_SOURCE_TYPE,SourceType.selectedLabel);
+    setData(ATTR_SOURCE,source.selectedLabel);
+    setData(ATTR_REPOSITORY,nfscifsRepository.selectedLabel);
+    setData(ATTR_REPOSITORY_LIST,nfscifsRepository.dataProvider);
+  }
+
+  setData(ATTR_STATE, currentState);
+  updateButtons()
+  stepComplete = true;
+}
+// Override as we have step specific validation
+override protected function validate(): Boolean
+{
+  return true;
+}
+protected function delete_clickHandler(event:MouseEvent):void
+{
+  if (sourceList.selectedItem != null)
+  {
+    (sourceList.dataProvider as ArrayCollection).removeItemAt(sourceList.selectedIndex);
+  }
+
+  if ((sourceList.dataProvider as ArrayCollection).length == 0)
+  {
+    //protocol.enabled = true ;
+  }
+}
+private function updateButtons():void
+{
+  if (currentState == "nonRepositoryMigrationState")
+  {
+    if (sourceList.dataProvider.length > 0)
+    {
+      enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+    else
+    {
+      enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+  }
+  else if (currentState == "repositoryMigrationState" )
+  {
+    if ( source.dataProvider.length > 0)
+    {
+      enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+    else
+    {
+      enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+  }
+  else if (currentState == "repositoryNfsCifsMigrationState" )
+  {
+    if ( nfscifsRepository.dataProvider.length > 0)
+    {
+      enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+    else
+    {
+      enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+  }
+
+  enableButtons(_enableBackButton, UxWizard.ECUITWIZARD_BUTTONID_BACK);
+  //trace(sourceList.dataProvider.length)
+  // TODO Auto-generated method stub
+}
+private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void
+{
+  var length:int = (sourceList.dataProvider as ArrayCollection).length ;
+
+  for (var index:int = length - 1 ; index > -1 ; index--)
+  {
+    var item:Object = sourceList.dataProvider.getItemAt(index) ;
+
+    if (item.length > PathValue.length && item.search(PathValue) == 0 )
+    {
+      (sourceList.dataProvider as ArrayCollection).removeItemAt(index);
+    }
+  }
+
+  if (!sourceList.dataProvider.contains(PathValue))
+  {
+    sourceList.dataProvider.addItem(PathValue);
+  }
+}
+private function handleOk(event:ECUITPopupDialogEvent) : void
+{
+
+}
+private function deleteChildDir():void
+{
+  var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,"Adding parent directory will delete all child directory form the list",ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.OK_CANCEL_OPTION);
+  dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+}
+private function addDirError():void
+{
+  var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,"Child directory can not be added",ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+  dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleOk);
+}
+
+protected function browse_clickHandler(event:MouseEvent):void
+{
+  var dir:DirectoryBrowser = new DirectoryBrowser();
+  dir.multiSelection = true ;
+  dir.protocal = protocol.selectedLabel ;
+  dir.FileServer = server.selectedLabel ;
+  dir.ref = this ;
+  dir.centerDialog() ;
+  dir.show(this.parent);
+  myWatcher = ChangeWatcher.watch(dir, "PathList", watchPath);
+}
+public function watchPath(event:Event):void
+{
+  trace(PathList);
+  var addLongNameDir:Boolean = true ;
+
+  for each(var tempdir:String in PathList)
+  {
+    addLongNameDir = true ;
+
+    for each(testDir in sourceList.dataProvider)
+    {
+      if (testDir.length > tempdir.length && testDir.search(tempdir) == 0 )
+      {
+        addDirctoryItem(tempdir);
+        continue ;
+      }
+      else if (testDir.length < tempdir.length && tempdir.search(testDir) == 0 )
+      {
+        addLongNameDir = false ;
+        continue ;
+      }
+    }
+
+    if (!sourceList.dataProvider.contains(tempdir) && addLongNameDir)
+    {
+      sourceList.dataProvider.addItem(tempdir);
+    }
+  }
+
+  myWatcher.unwatch();
+  return ;
+  //protocol.enabled = false ;
+}
+
+private function addDirctoryItem(dir:String) : void
+{
+  var length:int = (sourceList.dataProvider as ArrayCollection).length ;
+
+  for (var index:int = length - 1 ; index > -1 ; index--)
+  {
+    var item:Object = sourceList.dataProvider.getItemAt(index) ;
+
+    if (item.length > dir.length && item.search(dir) == 0 )
+    {
+      (sourceList.dataProvider as ArrayCollection).removeItemAt(index);
+    }
+  }
+
+  if (!sourceList.dataProvider.contains(dir))
+  {
+    sourceList.dataProvider.addItem(dir);
+  }
+}
+
+protected function protocol_changeHandler(event:ListEvent):void
+{
+  sourceList.dataProvider = new ArrayCollection();
+  updateButtons();
+}
+
+protected function sourceList_updateCompleteHandler():void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+
+  updateButtons();
+}
+
+
+protected function SourceType_changeHandler(event:ListEvent):void
+{
+  if (SourceType.selectedLabel ==DestinationSelection.ATTR_DEST_CENTERA)
+  {
+    currentState = "repositoryMigrationState" ;
+    source.dataProvider = getData(TaskType.ATTR_CENTERA) as ArrayCollection ;
+  }
+  else if (SourceType.selectedLabel ==DestinationSelection.ATTR_DEST_ATMOS)
+  {
+    currentState = "repositoryMigrationState" ;
+    source.dataProvider = getData(TaskType.ATTR_ATMOS) as ArrayCollection ;
+  }
+  else if (SourceType.selectedLabel ==DestinationSelection.ATTR_DEST_AMAZONS3)
+  {
+    currentState = "repositoryMigrationState" ;
+    source.dataProvider = getData(TaskType.ATTR_AMAZONS3) as ArrayCollection ;
+  }
+  else if (SourceType.selectedLabel ==DestinationSelection.ATTR_DEST_AZURE)
+  {
+    currentState = "repositoryMigrationState" ;
+    source.dataProvider = getData(TaskType.ATTR_AZURE) as ArrayCollection ;
+  }
+  else if (SourceType.selectedLabel ==DestinationSelection.ATTR_DEST_REPOSITORY)
+  {
+    currentState = "repositoryNfsCifsMigrationState" ;
+    var nfs_cifs:ArrayCollection = new ArrayCollection();
+    nfs_cifs.addItem(ATTR_CIFS);
+    nfs_cifs.addItem(ATTR_NFS);
+    source.dataProvider = nfs_cifs ;
+    nfscifsRepository.dataProvider = getData(TaskType.ATTR_CIFS) as ArrayCollection ;
+  }
+
+  save();
+}
+
+
+protected function source_changeHandler(event:ListEvent):void
+{
+  changeHandler(event);
+}
+
+private function changeHandler(event:Event):void
+{
+  if (currentState == "repositoryNfsCifsMigrationState")
+  {
+    if (source.selectedLabel == ATTR_CIFS)
+    {
+      nfscifsRepository.dataProvider = getData(TaskType.ATTR_CIFS) as ArrayCollection ;
+    }
+    else if (source.selectedLabel == ATTR_NFS)
+    {
+      nfscifsRepository.dataProvider = getData(TaskType.ATTR_NFS) as ArrayCollection ;
+    }
+  }
+  else if (currentState == "repositoryMigrationState")
+  {
+  }
+}
+protected function source_creationCompleteHandler(event:FlexEvent):void
+{
+  changeHandler(event);
+
+  if (currentState == "repositoryMigrationState")
+  {
+    source.dataProvider = getData(TaskType.ATTR_CENTERA) as ArrayCollection ;
+  }
+}
+

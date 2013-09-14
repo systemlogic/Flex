@@ -1,0 +1,158 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.views.ProgressCanvas;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.services.rest.RestHTTPService;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.model.SchemaManager.SchemaConverter;
+import com.emc.fma.model.SchemaManager.vo.AzureVO;
+
+import flash.sampler.NewObjectSample;
+
+import mx.collections.ArrayCollection;
+import mx.controls.AdvancedDataGrid;
+import mx.controls.Button;
+import mx.controls.Alert;
+import mx.events.CloseEvent;
+import mx.managers.PopUpManager;
+import mx.resources.ResourceManager;
+
+[Bindable]public var Server:String;
+[Bindable]public var ServerType:String;
+
+private var _currentPayload:UxHashMap = null;
+override protected function initializeData():void
+{
+  super.initializeData();
+  Common.setFocusOnFirstChild(this);
+  if (currentPayload != null)
+  {
+    var dataObj:String = currentPayload.getValue("ServerType");
+    nameForm.setNameLabel('Name:');
+    
+    if (dataObj != null)
+    {
+      Server = currentPayload.getValue("Server");
+      ServerType = currentPayload.getValue("ServerType");
+      viewBlock.title=ServerType + " "+ ResourceManager.getInstance().getString('fma','FIL_SER_PRP');
+
+      // Send GET request to the server
+      RESTClient.sendGetRequest("/api/server/"+encodeURIComponent(Server), OnGetServerStatus, viewBlock);
+    }
+  }
+}
+
+private function OnGetServerStatus(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event, OnCancel);
+    return;
+  }
+  trace(event.response);
+
+  try
+  {
+    var serverType:String = event.response.children()[0].localName();
+    var errorString:String = "";
+    if ( serverType != ServerType )
+      throw new Error("Expecting " + ServerType + " server, but returned " + serverType);
+
+    var azureVO:AzureVO = SchemaConverter.XMLtoVO(serverType, event.response);
+    if ( azureVO == null )
+      throw new Error("Error converting XML to AzureVO.\n" + event.response.toXMLString());
+
+    nameForm.FileServerName.text = azureVO.Name
+    containerName.text = azureVO.ContainerName;
+    accountName.text = azureVO.AccountName;
+    accessKey.text = azureVO.AccessKey;          
+  }
+  catch (error:Error)
+  {
+    Common.showErrorDialog(this, error.message, OnCancel);
+  }
+}
+
+private function page_keyDownHandler(event:KeyboardEvent):void
+{
+  if (event.keyCode == Keyboard.ESCAPE)
+    OnCancel(new MouseEvent(MouseEvent.CLICK));
+}
+
+[Bindable]
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+
+private function init():void
+{
+}
+[Bindable] private var response:XMLList
+
+private function onOK(event:MouseEvent):void
+{
+  var azureVO:AzureVO = new AzureVO();
+  azureVO.Name = nameForm.FileServerName.text;
+  azureVO.ContainerName = containerName.text;
+  azureVO.AccountName = accountName.text;
+  azureVO.AccessKey = accessKey.text;
+
+  if ( azureVO.ContainerName == "" )
+  {
+    ECUITPopupDialog.showMessageDialog(this,
+                                       ResourceManager.getInstance().getString('fma','INVALID_CONTAINER_NAME'),
+                                       ResourceManager.getInstance().getString('fma','INVALID_CONTAINER_NAME_HEADER'),
+                                       ECUITPopupDialog.INFORMATION_MESSAGE);
+    return ;
+  }
+  if ( azureVO.AccountName == "" )
+  {
+    ECUITPopupDialog.showMessageDialog(this,
+                                       ResourceManager.getInstance().getString('fma','INVALID_ACCOUNT_NAME'),
+                                       ResourceManager.getInstance().getString('fma','INVALID_ACCOUNT_NAME_HEADER'),
+                                       ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+  if ( azureVO.AccessKey == "" )
+  {
+    ECUITPopupDialog.showMessageDialog(this,
+                                       ResourceManager.getInstance().getString('fma','INVALID_ACCESS_KEY'),
+                                       ResourceManager.getInstance().getString('fma','INVALID_ACCESS_KEY_HEADER'),
+                                       ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  var xml:XML = SchemaConverter.VOtoXML("FileServers", azureVO); 
+  trace(xml);
+
+  RESTClient.sendPutRequest("/api/server/" + encodeURIComponent(azureVO.Name), xml, OnPutComplete, viewBlock);
+}
+
+private function OnPutComplete(event:RESTEvent):void
+{
+  Common.showResponseMessage(this, event, OnCancel);
+}
+
+private function OnCancel(event:Event):void
+{
+  var navService:IUxNavigationService =
+  UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}

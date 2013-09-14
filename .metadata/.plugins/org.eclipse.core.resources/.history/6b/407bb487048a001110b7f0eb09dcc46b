@@ -1,0 +1,198 @@
+package com.emc.ecuit.flex.components.application.stickers
+{
+	import com.emc.ecuit.flex.managers.ECUITResourceManager;
+	
+	import flash.events.Event;
+	
+	import mx.binding.utils.*;
+	import mx.containers.HBox;
+	import mx.controls.Image;
+	import mx.controls.ProgressBar;
+	import mx.effects.Zoom;
+
+
+	/**
+	 * Sticker wrapper for Flex ProgressBar. <br/> 
+	 * Long Format shows Flex ProgressBar with ECUE specified style.
+	 * Short Format shows percentage in text with percentage sign.  
+	 */
+	public class DeterminateProgressSticker extends BaseSticker 
+	{
+
+		/** holds the progress info */
+		private var _progTooltipStr:String; 		
+		private var _progBar:ProgressBar;
+		
+		private var _initialize:Boolean=false;
+		private var _zoomEffect:Zoom;
+		private var curFormat:int=BaseSticker.STICKER_LONG;
+		
+		/** ECUE assesment wants progress bar width set to 150 */
+		private static const DEFAULT_PROGRESS_BAR_WIDTH:int = 150;
+		/** ECUE stylesheet specifys this sticker to be of height 25*/
+		private static const DEFAULT_HEIGHT :int = 25;
+
+		/**
+		 * Construct a determinate progress sticker based on BaseSticker. 
+		 * Statusbar can gain access to this prgressbar and perform statusbar operation. 
+		 * Applicaton should use ApplicationStatusBar for updating progress and not attempt to 
+		 * use the status directly here. 
+		 */
+		public function DeterminateProgressSticker(iconStr:String, progStr:String)
+		{
+			super();
+			sticker=this;  
+			var progBar:ProgressBar = new ProgressBar(); 
+			progBar.indeterminate=false;
+			progBar.setProgress(0, 100);
+			progBar.mode="manual";  
+			progBar.width=DEFAULT_PROGRESS_BAR_WIDTH; 			// ECUE recommands 150	
+			progBar.maxWidth=250; 		// max is 250px - ECUE
+			progBar.automationName= "Sticker_DeterminateProgBar";
+			progBar.label= progStr; //ECUE don't want this
+			progBar.labelPlacement="center";
+			//progBar.includeInLayout=true;
+			progBar.styleName="ECUEDeterminateProgressBar";
+		    	progBar.addEventListener(Event.COMPLETE, progComplete, false, 0, true);
+			_progBar=progBar;  
+			progBar.setStyle("paddingLeft", 0); 
+
+			name="DeterminateProgBar";
+			automationName="Sticker_DetProgBar";
+			customHBox = new HBox(); 
+			//customHBox.height= DEFAULT_HEIGHT; 
+			customHBox.id=name+"ID";
+			customHBox.setStyle("paddingLeft", 2); 
+			customHBox.setStyle("paddingTop", 4 );
+			customHBox.addChild(progBar);
+			_progTooltipStr=progStr; 
+
+			// ECUE do not have icon specified for det-progressbar in v2.   
+			sticker.toolTip = _progTooltipStr;
+			//this.styleName="ECUITAppStatusBar";  
+		}
+
+		private function progComplete(e:Event) :void 
+		{
+			_zoomEffect=new Zoom(_progBar); 
+			_zoomEffect.zoomHeightTo=0; 
+			_zoomEffect.play();  
+		}
+		/**
+		 * Allow access to the progress bar for setting progress 
+		 * progBar.setProgress(5, 100); 
+		 */
+		public function get progBar():ProgressBar 
+		{			
+			return _progBar; 
+		}
+
+		/**
+		 * Determinate progressbar does not follow the same default behavior as the base class. 
+		 * Progressbar specific full and short format display is handled here.
+		 * Full format show the full Flex progressbar. 
+		 * Short format display text with percentage. 
+		 * @parameter stickerFormat  STICKER_LONG for full format<br/>
+		 * 							 STICKER_SHORT for short format.  
+		 */
+		override public function setStickerFormat (stickerFormat:int):void //=BaseStatutsSticker.STICKER_LONG) :void
+		{
+			super.setStickerFormat(stickerFormat);
+			if (stickerFormat==STICKER_LONG) 
+			{
+				curFormat=BaseSticker.STICKER_LONG;
+				if (detailText != null ) 
+				{
+					detailText.setStyle("paddingLeft", 0); 
+					detailText.width = 0;
+				} 
+				if (domainText != null ) 
+				{
+					domainText.includeInLayout=false;
+					domainText.setStyle("paddingLeft", 0); 
+				}
+				detailText.visible=false; 
+				if (progBar.percentComplete > 0 
+						&& progBar.percentComplete < 100 )
+					progBar.visible=true;  
+				progBar.width = DEFAULT_PROGRESS_BAR_WIDTH;  // Progress bar needs to have the width set explicitly
+				sticker.toolTip=_progTooltipStr;				
+			}
+			else {
+				curFormat=BaseSticker.STICKER_SHORT;
+				if (Icon != null) 
+					Icon.width=0;  
+				// Don't show unless it's between 0 and 100
+				if (progBar.percentComplete >=100 || progBar.percentComplete==0) 
+					detailText.visible = false;
+				else  
+					detailText.visible= true;
+				detailText.text = progBar.percentComplete.toString() + "%";					
+				progBar.width = 0; 
+				progBar.visible=false;
+				detailText.width =progBar.measureText(detailText.text).width + 10;
+				detailText.includeInLayout=true; 		
+				sticker.toolTip=_progTooltipStr;					
+				invalidateSize(); 
+			}	
+		}
+		
+		/**
+		 * Update tooltip and in short format detail text to show percentage completed.
+		 */
+		private function onProgressChange(event:Event) : void
+		{
+		 	if (this.curFormat == STICKER_LONG )
+		 	{
+		 		sticker.toolTip = progBar.percentComplete.toString() + "%";		 		
+		 	} 
+		 	else 
+		 	{
+			 	detailText.text = progBar.percentComplete.toString() + "%";
+			 	sticker.toolTip=detailText.text;
+				detailText.visible = true;
+			 }
+			if (progBar.percentComplete >=100 ) 
+			{
+				detailText.visible = false;
+				sticker.toolTip=""; // completed, no longer need to show it. 
+			}		
+		}
+
+		
+		/**
+		 * Reset progress back to initial state getting it ready for another progress session.
+		 */
+		public function resetProgress() : void 
+		{
+			_progBar.setProgress(0, 100);
+			_progBar.scaleX = 1.0; // 100%
+			_progBar.scaleY = 1.0; // 100%
+			_progBar.alpha = 1.0; // 100%
+		}
+
+		/**
+		 * Override initialize to add progressbar and set binding for monitoring progress 
+		 */
+		override public function initialize() :void
+		{		
+			if (!_initialize) 
+			{
+				super.initialize();							
+				_initialize=true;
+				/**
+				 * TODO: Need to create new entry or modify stylesheet to get
+				 * below non-border style sticker added. 
+				 */  
+				this.height=DEFAULT_HEIGHT;
+				this.setStyle("borderThickness", 0); // no border for progressbar
+				this.setStyle("borderSkin", null);  
+				ChangeWatcher.watch(progBar, "percentComplete", onProgressChange);
+				detailText.text = progBar.percentComplete.toString();
+				detailText.visible=false;
+				detailText.automationName="Sticker_DetProgBarDetailTxt";  
+			}
+		}
+		
+	}
+}

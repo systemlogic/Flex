@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250"
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*">
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.guitoolkit.components.wizards.UxWizard;
+			
+			import mx.binding.utils.BindingUtils;
+			import mx.binding.utils.ChangeWatcher;
+			import mx.events.FlexEvent;
+			import mx.events.FlexMouseEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			private var _enableBackButton:Boolean = true;
+			private var _initialized:Boolean = false;
+			public static const ATTR_CSIP        :String = "CSIP";
+			public var _defaultEnterName:String = "";
+			
+			private function ipChangeHandler(event:Event):void 
+			{
+				//events.text = events.text + "ipChangeHandler event: IP Address=\"" + 
+				    ControlStationIP.address[0] + "." + 
+					ControlStationIP.address[1] + "." + 
+					ControlStationIP.address[2] + "." + 
+					ControlStationIP.address[3] + "\"\n";
+					
+					if( ControlStationIP.address[0] != null && ControlStationIP.address[1] != null && 
+						ControlStationIP.address[2] != null && ControlStationIP.address[3] != null &&
+						ControlStationIP.accessibilityName == "" && 
+						ControlStationIP.errorString == ""  ){
+						
+					}
+					
+					
+			}
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					// Pull defaults from wizard data
+					var def:Object;
+					
+					def = getData(ATTR_CSIP);
+					if (def != null) 
+					{
+						_defaultEnterName = String(def);
+					}
+					
+					_initialized = true;
+				}
+				
+
+				enableButtons(validate(), ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			}
+			private function updateButtons():void{
+				if(ATTR_IPList.length > 0){
+					enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+				}else{
+					enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+				}
+				enableButtons(_enableBackButton, UxWizard.ECUITWIZARD_BUTTONID_BACK);
+				trace(ATTR_IPList.length)
+				// TODO Auto-generated method stub
+			}
+			override protected function save(): void
+			{
+				var address:String = ControlStationIP.address[0] + "." + 
+					ControlStationIP.address[1] + "." + 
+					ControlStationIP.address[2] + "." + 
+					ControlStationIP.address[3];
+				
+				setData(ATTR_CSIP,        StringUtil.trim(address));
+				//enableStep(TvShowSelection.STEP_NAME, true);
+				stepComplete = true;
+			}
+			// Override as we have step specific validation
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<controls:IPAddressValidator id="ipValidator" 
+									 source="{ControlStationIP}" property="id" triggerEvent="focusOut" />
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<mx:Form>
+		<mx:FormItem styleName="ECUITWizardBodyText" required="false" label="Control Station IP Address">
+				<controls:IPAddressControl id="ControlStationIP" change="ipChangeHandler(event)" />
+		</mx:FormItem>
+		
+	</mx:Form>
+</wizards:UxWizardStep>

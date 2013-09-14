@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxDialog xmlns="com.emc.efx.guitoolkit.components.dialogs.*"
+          xmlns:mx="library://ns.adobe.com/flex/mx"
+          xmlns:s="library://ns.adobe.com/flex/spark"
+          xmlns:fx="http://ns.adobe.com/mxml/2009"
+          xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+          xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+          xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+          width="600" height="400" title="Define Schedule"
+          buttonMask="{UxDialog.OK_BUTTON|UxDialog.CANCEL_BUTTON}"
+          backgroundColor="#EAF5FE"
+          creationComplete="creationCompleteHandler()"
+          keyDown="page_keyDownHandler(event)"
+          xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*" xmlns:Schedule="com.emc.fma.views.Schedule.*">
+  
+  <fx:Script>
+    <![CDATA[
+      import com.emc.fma.utils.Common;
+      import com.emc.fma.utils.RESTClient;
+      import com.emc.fma.utils.RESTEvent;
+      
+      import mx.utils.StringUtil;
+      
+      [Bindable]public var scheduleVO:ScheduleVO;
+      [Bindable]public var ref:Object;
+      
+      protected function creationCompleteHandler():void
+      {
+        TimeCard.editFlag = true;
+        TimeCard.schedule = scheduleVO;
+      }      
+      
+      private function page_keyDownHandler(event:KeyboardEvent):void
+      {
+        if (event.keyCode == Keyboard.ESCAPE)
+          close();
+      } 
+      
+      override protected function onOK(event:MouseEvent):void
+      {
+        if ( TimeCard.validate())
+        {
+          TimeCard.onChange();
+          
+          var xml:XML = <Request/>;
+          var editTime:XML = <EditTime/>;
+          editTime.appendChild(<Id>{scheduleVO.Id}</Id>);
+          editTime.appendChild(<Schedule>{TimeCard.schedule.Condition}</Schedule>);
+          if (scheduleVO.FileThresholdCheck)
+          {
+            if (StringUtil.trim(TimeCard.recursiveLimit.text) == "" || parseInt(scheduleVO.FileThreshold) == 0)
+            {
+              Common.showErrorDialog(this, "Provide valid file threshold limit.");
+              return;
+            }
+            editTime.appendChild(<RecursiveFileMigration>{scheduleVO.FileThresholdCheck}</RecursiveFileMigration>);
+            editTime.appendChild(<RecursiveFileThreshold>{parseInt(scheduleVO.FileThreshold)}</RecursiveFileThreshold>);
+          } 
+          xml.appendChild(editTime);
+          
+          RESTClient.sendPutRequest("/api/task/id/" + scheduleVO.Id, xml, OnSaveComplete, TimeCard); 
+        }
+        else
+          close();        
+      }
+      
+      private function OnSaveComplete(event:RESTEvent):void
+      {
+        if ( event.hasStandardResponse )
+        {
+          Common.showResponseMessage(this, event, OnSuccessClose);
+        }
+      }
+      
+      private function OnSuccessClose(event:Event):void
+      {
+        ref.refreshGrid();
+        close();
+      }
+      
+    ]]>
+  </fx:Script>
+  
+  <fx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+  </fx:Declarations>
+  
+  <Schedule:TimeCardComponent id="TimeCard"/>
+  
+</UxDialog>

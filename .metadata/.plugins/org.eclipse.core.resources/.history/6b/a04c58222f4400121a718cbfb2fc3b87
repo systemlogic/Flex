@@ -1,0 +1,209 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.efx.guitoolkit.components.buttons.UxButton;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.DataDomain.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard;
+import com.emc.fma.views.Configuration.NASRepository.AddNASRepository;
+import com.emc.fma.views.Dashboard.ConfigurationWizard.Browse;
+import com.emc.fma.views.Policies.Policy.RuleWizard.RuleSecondaryStorage;
+
+import mx.binding.utils.ChangeWatcher;
+import mx.collections.ArrayCollection;
+import mx.collections.XMLListCollection;
+import mx.controls.listClasses.ListRowInfo;
+import mx.events.FlexEvent;
+import mx.events.ItemClickEvent;
+import mx.events.ListEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+[Embed(source="../../../../../../../resources/images/assets/Add_16.png")]
+[Bindable]
+public var add_22x22:Class;
+
+[Bindable]public var ref:Object;
+[Bindable]public var editNasGroupName:String = "";
+private var editFlag:Boolean;
+private var nasGroupID:String;
+[Bindable]
+private var CBDB_Protocol:ArrayCollection = new ArrayCollection(["CIFS","NFS"]);
+
+private var _initialized:Boolean = false;
+
+private var response:XMLList;
+[Bindable]
+public var listAvailableNASRepository:XMLListCollection;
+[Bindable]
+private var listNASRepository:XMLListCollection = new XMLListCollection;
+
+
+
+protected function creationCompleteHandler():void
+{
+  callLater(updateLater);
+}
+
+private function updateLater():void
+{
+  //Check for Edit Condition
+  if (editNasGroupName != "")
+  {
+    editFlag = true;
+    getNASGroup();
+  }
+
+  else
+  {
+    nasProtocol.selectedIndex = 0;
+    getNASRepository();
+  }
+}
+
+private function getNASGroup():void
+{
+  var xml:XML = <REQUEST/>;
+  RESTClient.sendGetRequest("/api/nasgroup/" + editNasGroupName, setresponse, progress);
+}
+
+public function getNASRepository():void
+{
+  var xml:XML = <REQUEST/>;
+  xml.appendChild(<action>getList_rain</action>);
+  RESTClient.sendPostRequest("/listNASRepository.htm", xml, setresponse, progress);
+}
+
+private function setresponse(event:RESTEvent):void
+{
+  response = new XMLList(event.response);
+
+  if (editFlag)
+  {
+    listNASRepository = new XMLListCollection(response.Message.NASGroups.NASGroup.Repository)
+    gridNASRepo.dataProvider = listNASRepository;
+    nasGroupID = response.Message.NASGroups.NASGroup.@id;
+    nasGroupName.text = editNasGroupName;
+
+    if (listNASRepository[0].toString().substr(0,16) == "Repository at \\\\")
+      nasProtocol.selectedIndex = 0;
+    else
+      nasProtocol.selectedIndex = 1;
+
+    editFlag = false;
+    getNASRepository();
+  }
+  else
+  {
+    listAvailableNASRepository = new XMLListCollection(response.NASRepository.(elements('Protocol') == nasProtocol.selectedItem).Name);
+    gridAvailableNASRepo.dataProvider = listAvailableNASRepository;
+
+    progress.updateProgress(100, "default");
+  }
+}
+
+override protected function onOK(event:MouseEvent):void
+{
+  if (StringUtil.trim(nasGroupName.text) == "")
+  {
+    ECUITPopupDialog.showMessageDialog(this,"Provide NAS Group Name","Name",ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  var xml:XML = <NASGroup/>;
+  xml.@id = "-1";
+  xml.@name = nasGroupName.text.toString();
+  xml.@protocol = nasProtocol.selectedItem.toString();
+
+  if (listNASRepository.length == 0)
+  {
+    ECUITPopupDialog.showMessageDialog(this,"Define NAS Repository","NAS Repository",ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  for each (var repo:String in listNASRepository)
+  {
+    xml.appendChild(<Repository>
+    {repo}</Repository>);
+  }
+
+
+  if (editNasGroupName != "")
+    RESTClient.sendPutRequest("/api/nasgroup/" + nasGroupName.text.toString(), xml, onComplete1, progress);
+  else
+    RESTClient.sendPostRequest("/api/nasgroup/" + nasGroupName.text.toString(), xml, onComplete1, progress);
+}
+
+private function onComplete1(event:RESTEvent):void
+{
+  if ((new XMLList(event.response)).Message.toString() == "Commited")
+  {
+    ref.getNASGroup(nasGroupName.text);
+    close();
+  }
+  else
+  {
+    var dlg:ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(event.response)).Message.toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+  }
+
+  progress.updateProgress(100, "default");
+}
+
+private function nasProtocol_changeHandler(event:ListEvent):void
+{
+  listNASRepository.removeAll();
+  getNASRepository();
+}
+
+private function buildToolTip(item:Object):String
+{
+  var myString:String = "";
+
+  if (item != null)
+  {
+    myString = item.*;
+  }
+
+  return myString;
+}
+
+private function addRepo():void
+{
+  listNASRepository.addItem(gridAvailableNASRepo.selectedItem);
+  nasAdd.enabled = false;
+}
+
+
+private function deleteRepo():void
+{
+  listNASRepository.removeItemAt(gridNASRepo.selectedIndex);
+  nasDelete.enabled = false;
+}
+
+private function validateNASAdd():void
+{
+  if (gridAvailableNASRepo.selectedIndex != -1)
+    nasAdd.enabled = true;
+}
+
+private function validateNASDelete():void
+{
+  if (gridNASRepo.selectedIndex != -1)
+    nasDelete.enabled = true;
+}
+
+private function addRepository(event:MouseEvent):void
+{
+  var dialog:AddNASRepository = new AddNASRepository();
+  dialog.ref = this;
+  dialog.centerDialog();
+  dialog.modal = true;
+  dialog.show(this.parent);
+}
+

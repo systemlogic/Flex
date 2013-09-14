@@ -1,0 +1,269 @@
+package com.emc.fma.views.Configuration.FileServer.wizard
+{
+	import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardPanel;
+	import com.emc.efx.guitoolkit.components.wizards.UxWizardDialog;
+	import com.emc.fma.views.Archived.ArchivedReport.CreateReport.Summary;
+	import com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.AmazonS3WebService;
+	import com.emc.fma.views.Configuration.FileServer.wizard.Atmos.AtmosWebService;
+	import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.AtmosCallbackAgent;
+	import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.CelerraAsSource;
+	import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.CelerraCallbackAgent;
+	import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.CelerraControlStation;
+	import com.emc.fma.views.Configuration.FileServer.wizard.Centera.CenteraAuthentication;
+	import com.emc.fma.views.Configuration.FileServer.wizard.Centera.UserProfile;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppAsSource;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppLocalAdmin;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppVFilerHostIP;
+	
+	import flash.display.DisplayObject;
+	
+	import mx.resources.ResourceManager;
+	
+	public class ServerWizard extends UxWizardDialog
+	{
+		// The following references all the classes that could be shown in
+		// the wizard. If these were not referenced here, they would not be
+		// included in the application SWF file and loading them at runtime
+		// would fail.
+		private var step1: ServerWizard 					;
+		private var step2: NameStep 						;
+		private var step3: AmazonS3WebService 				;
+		private var step4: AtmosWebService					;
+		private var step5: IPAddressList					;
+		private var step6: CelerraControlStation			;
+		private var step7: NetAppVFilerHostIP				;
+		private var step8: CIFSSpecific	 					;
+		private var step9: NDMPSpecific	 					;
+		private var step10: NetAppAsSource	 				;
+		private var step11: NetAppLocalAdmin	 			;
+		private var step12: CelerraAsSource	 				;
+		private var step13: CelerraCallbackAgent	 		;
+		private var step14: AtmosCallbackAgent	 			;
+		private var step15: DirectoryExclusion	 			;
+		private var step16: CenteraAuthentication	 		;
+		private var step17: UserProfile	 					;
+		private var step18: PEAFile	 						;
+		private var step19: NetAppLocalAdmin	 			;
+		
+		//private var step4: Summary							;
+		
+		public static const  STEP        	:String = "Step";
+		
+		private var _parent:DisplayObject;
+		
+		public function ServerWizard()
+		{
+			super();
+		}
+		
+		
+		public override function show (parent:DisplayObject):void
+		{
+			_parent = parent;
+			wizard.addEventListener(ECUITWizardEvent.ECUITWIZ_LOADCOMPLETE, loadComplete);
+			wizard.loadWizardFromXML(wizardXMLFlow);
+		}
+		
+		private function loadComplete(wizEvent:ECUITWizardEvent):void
+		{
+			if (wizEvent.reason == ECUITWizardEvent.ECUITWIZ_LOADSUCCESS)
+			{
+				super.show(_parent);
+				centerDialog();
+			}
+			else
+			{
+				ECUITPopupDialog.showMessageDialog(_parent, 
+					"Unable to create the data wizard.\n\n" + wizEvent.reason,
+					"Error",
+					ECUITPopupDialog.ERROR_MESSAGE);
+			}
+		} 
+		var wizardXMLFlow:XML = 
+			<UxWizard>
+				<type>SIMPLE</type>
+				<wizardResourceBundle>fma</wizardResourceBundle>
+				<title>{ResourceManager.getInstance().getString('fma','FIL_SER_CRE_AMZ_FS')}</title>
+				<cancelPrompt>CREATE_SHARE_WIZARD_CANCEL_PROMPT</cancelPrompt>
+				<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+				<stepsWidth>{ResourceManager.getInstance().getString('fma','WIZ_STP_WID')}</stepsWidth>
+				<WizardSteps>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.ServerWizard</stepClass>
+						<id>ServerWizard</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_BAS_INF')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NameStep</stepClass>
+						<id>CelerraNameStep</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_BAS_INF')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.AmazonS3WebService</stepClass>
+						<id>AmazonS3WebService</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WEB_SER')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Atmos.AtmosWebService</stepClass>
+						<id>AtmosWebService</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WEB_SER')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.IPAddressList</stepClass>
+						<id>IPAddressList</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_IP_ADDES')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Celerra.CelerraControlStation</stepClass>
+						<id>CelerraControlStation</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_CTR_STA')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppVFilerHostIP</stepClass>
+						<id>NetAppVFilerHostIP</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_VFL_HST')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.CIFSSpecific</stepClass>
+						<id>CIFSSpecific</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_CIF_SPC')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NDMPSpecific</stepClass>
+						<id>NDMPSpecific</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_NDM_SPC')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppAsSource</stepClass>
+						<id>NetAppAsSource</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_NTAP_SOU')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppLocalAdmin</stepClass>
+						<id>NetAppLocalAdmin</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_NTA_LCL_ADM')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Celerra.CelerraAsSource</stepClass>
+						<id>CelerraAsSource</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_CEL_SOU')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Celerra.CelerraCallbackAgent</stepClass>
+						<id>CelerraCallbackAgent</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_CEL_CAS')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Celerra.AtmosCallbackAgent</stepClass>
+						<id>AtmosCallbackAgent</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_ATM_CAS')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.DirectoryExclusion</stepClass>
+						<id>DirectoryExclusion</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_DEL')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Centera.CenteraAuthentication</stepClass>
+						<id>CenteraAuthentication</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_CEN_TYP')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Centera.UserProfile</stepClass>
+						<id>UserProfile</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_USR_PRO')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.Centera.PEAFile</stepClass>
+						<id>PEAFile</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_PEA_FIL')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.Summary</stepClass>
+						<id>Summary</id>
+						<title>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_SUM_PAG')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+					</WizardStep>
+				</WizardSteps>
+			</UxWizard>;
+	}
+}

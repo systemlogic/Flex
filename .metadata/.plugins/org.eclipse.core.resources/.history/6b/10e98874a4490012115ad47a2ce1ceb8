@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fxs="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:ux="com.emc.efx.guitoolkit.components.boxes.*"
+        implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+        xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+        xmlns:FileServer="com.emc.fma.views.Configuration.FileServer.*"
+        xmlns:section="com.emc.efx.services.layout.section.*"
+        xmlns:combobox="com.emc.efx.guitoolkit.components.combobox.*"
+        xmlns:action="com.emc.efx.guitoolkit.action.*"
+        xmlns:details="com.emc.efx.guitoolkit.components.details.*"
+        xmlns:dataview="com.emc.efx.guitoolkit.components.views.dataview.*"
+        xmlns:model="com.emc.fma.views.Configuration.FileServer.model.*">
+  <fxs:Script source="FileServerList.mxml.as" />
+  <fxs:Declarations>
+    <fxs:XML format="e4x" id="titleBarAddFileserverButtonMenuList">
+      <root>
+        <menuitem  label="VNX"/>
+        <menuitem  label="Celerra"/>
+        <menuitem  label="NetApp"/>
+        <separator type="separator"/>
+        <menuitem  label="VNXe"/>
+        <menuitem  label="Data Domain"/>
+        <menuitem  label="Isilon"/>
+        <menuitem  label="Windows"/>
+        <separator type="separator"/>
+        <menuitem  label="Centera"/>
+        <separator type="separator"/>
+        <menuitem  label="Atmos"/>
+        <menuitem  label="AmazonS3"/>
+        <menuitem  label="Azure"/>
+      </root>
+    </fxs:XML>
+    <section:UxLazyLoadSection id="atmosPage" key="ATMOSPRO" headerText="@Resource(key='ATMOSPRO', bundle='fma')"
+                   contentClass="com.emc.fma.views.Configuration.FileServer.AtmosFileServer"/>
+
+    <section:UxLazyLoadSection id="celerraPage" key="CELERRAPRO" headerText="@Resource(key='CELERRAPRO', bundle='fma')"
+                   contentClass="com.emc.fma.views.Configuration.FileServer.CelerraFileServer"/>
+
+    <section:UxLazyLoadSection  id="centeraPage" key="CENTERAPRO" headerText="@Resource(key='CENTERAPRO', bundle='fma')"
+                  contentClass="com.emc.fma.views.Configuration.FileServer.CenteraFileServer"/>
+
+    <section:UxLazyLoadSection  id="dataDomainPage" key="DATADOMAINPRO" headerText="@Resource(key='DATADOMAINPRO', bundle='fma')"
+                  contentClass="com.emc.fma.views.Configuration.FileServer.DataDomainFileServer"/>
+
+    <section:UxLazyLoadSection  id="isilonPage" key="ISILONPRO" headerText="@Resource(key='ISILONPRO', bundle='fma')"
+                  contentClass="com.emc.fma.views.Configuration.FileServer.IsilonFileServer"/>
+
+    <section:UxLazyLoadSection  id="netAppPage" key="NETAPPPRO" headerText="@Resource(key='NETAPPPRO', bundle='fma')"
+                  contentClass="com.emc.fma.views.Configuration.FileServer.NetAppFileServer"/>
+
+    <section:UxLazyLoadSection  id="windowsPage" key="WINDOWSPRO" headerText="@Resource(key='WINDOWSPRO', bundle='fma')"
+                  contentClass="com.emc.fma.views.Configuration.FileServer.WindowsFileServer"/>
+
+    <section:UxLazyLoadSection  id="amazonS3Page" key="AMAZONS3PRO" headerText="@Resource(key='AMAZONS3PRO', bundle='fma')"
+                  contentClass="com.emc.fma.views.Configuration.FileServer.AmazonS3FileServer"/>
+
+    <section:UxLazyLoadSection  id="azurePage" key="AZUREPRO" headerText="@Resource(key='AZUREPRO', bundle='fma')"
+                  contentClass="com.emc.fma.views.Configuration.FileServer.AzureFileServer"/>
+  </fxs:Declarations>
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         id="viewBlock"
+         title="  {ResourceManager.getInstance().getString('fma','FIL_SER_LST')}"
+         width="100%" height="100%"
+         xmlns:fx="com.emc.efx.guitoolkit.components.table.filter.*"
+         xmlns:table="com.emc.ecuit.flex.components.table.*"
+         xmlns:views="com.emc.ecuit.flex.components.views.*"
+         showRefresh="true" showExport="true" showFind="false"
+         showPrint="false" showTools="true" showFilter="true"
+         helpServiceID="FMAHelpService" helpID="GetFileServerList"
+         xmlns:tx="com.emc.efx.guitoolkit.components.table.*"
+         viewTitleBarButtonClick="_viewTitleBarButtonClickHandler(event)"
+         creationComplete="_init(event)"
+         xmlns:filter="com.emc.efx.guitoolkit.components.filter.*"
+         xmlns:filter1="com.emc.efx.guitoolkit.filter.*"
+         xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+         xmlns:rules="com.emc.efx.guitoolkit.components.table.rules.*">
+
+
+
+
+    <dataview:UxDataViewPanel title="Sample Data View Selection Panel"
+              id="Sample_Data_View_Seleciton_Panel"
+              width="100%"
+              height="100%">
+      <dataview:viewContainers>
+        <fxs:Array>
+          <dataview:UxDataViewCanvas defaultDisplayedView="true">
+            <tx:UxAdvancedDataGrid id="fileServerList" tableModel="  {new FileServerModel()}"
+                         showHeaders = "true" click="_clickHandlerFileServerModel(event)"
+                         doubleClickEnabled="true" itemDoubleClick="_detailFileServer(event);"
+                         editable="false" useRollOver="false"
+                         allowMultipleSelection="false">
+              <tx:tableColumnViewInfo>
+                <mx:ArrayCollection>
+                  <tx:UxTableColumnViewInformation columnKey="Column1" colWidth="400"  />
+                  <tx:UxTableColumnViewInformation columnKey="Column2" colWidth="400"  />
+                  <tx:UxTableColumnViewInformation columnKey="Column3" colWidth="50" colHidden="true" />
+                  <tx:UxTableColumnViewInformation columnKey="Column4" colWidth="400"/>
+                  <tx:UxTableColumnViewInformation columnKey="Column5" colWidth="50" colHidden="true"/>
+                </mx:ArrayCollection>
+              </tx:tableColumnViewInfo>
+
+            </tx:UxAdvancedDataGrid>
+            <dataview:associatedCommandButtons>
+              <fxs:Array>
+                <!-- Properties button, it is enabled when only item was selected-->
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="_addFileServer(event)" />
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_EDT')}" click="_detailFileServer(event)" enabled="  {fileServerList.selectedItem == null ? false : true }"/>
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_VER')}" click="_verifyFileServer(event)"  enabled="  {fileServerList.selectedItem == null ? false : true }" />
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="_deleteFileServer(event)" enabled="  {fileServerList.selectedItem == null ? false : true }"/>
+              </fxs:Array>
+            </dataview:associatedCommandButtons>
+          </dataview:UxDataViewCanvas>
+          <dataview:UxDataViewCanvas viewType="2"
+                     defaultDisplayedView="false">
+            <dataview:UxDataViewList id="fileServerListTileView" dataModel="  {new FileServerViewModel()}" itemRenderer="com.emc.efx.guitoolkit.components.views.dataview.renderers.UxTileViewRenderer"/>
+            <dataview:associatedCommandButtons>
+              <fxs:Array>
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="_addFileServer(event)"  />
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_EDT')}" click="_detailFileServerTileView(event)"  enabled="  {fileServerListTileView.selectedItem == null ? false : true }" />
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_VER')}" click="_verifyFileServerTileView(event)" enabled="  {fileServerListTileView.selectedItem == null ? false : true }" />
+                <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="_deleteFileServerTileView(event)" enabled="  {fileServerListTileView.selectedItem == null ? false : true }"/>
+              </fxs:Array>
+            </dataview:associatedCommandButtons>
+          </dataview:UxDataViewCanvas>
+        </fxs:Array>
+      </dataview:viewContainers>
+    </dataview:UxDataViewPanel>
+
+
+  <!--  <tx:UxTablePanel width="100%" height="100%">
+      <tx:filterPanel>
+        <fx:UxTableFilterPanel id="myTableFilterPanel">
+          <fx:filterGroups>
+            <fxs:Array>
+              <filter:UxFilterComboxBox label="  {ResourceManager.getInstance().getString('fma','FIL_SER_SER_TYP')}">
+                <filter:filterOptions>
+                  <fxs:Array>
+                    <filter1:UxAllFilter label="All">
+                    </filter1:UxAllFilter>
+
+                    <fx:UxTableColumnFilter label="AmazonS3">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="AmazonS3"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="Atmos">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Atmos"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="Azure">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Azure"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="Celerra">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Celerra"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="Centera">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Centera"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="Data Domain">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Data Domain"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="Isilon">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Isilon"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="NetApp">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="NetApp"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="Windows">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Windows"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="VNX">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="VNX"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="VNXe">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="VNXe"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+                  </fxs:Array>
+                </filter:filterOptions>
+              </filter:UxFilterComboxBox>
+              <filter:UxFilterComboxBox label="  {ResourceManager.getInstance().getString('fma','FIL_SER_IS_SOUR')}">
+                <filter:filterOptions>
+                  <fxs:Array>
+                    <filter1:UxAllFilter label="All">
+                    </filter1:UxAllFilter>
+                    <fx:UxTableColumnFilter label="yes">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="2" searchValue="yes"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+                    <fx:UxTableColumnFilter label="no">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="2" searchValue=""/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+                  </fxs:Array>
+                </filter:filterOptions>
+              </filter:UxFilterComboxBox>
+            </fxs:Array>
+          </fx:filterGroups>
+        </fx:UxTableFilterPanel>
+      </tx:filterPanel>
+      <tx:UxAdvancedDataGrid id="fileServerList" tableModel="  {new FileServerModel()}"
+                   showHeaders = "true"
+                   editable="false" useRollOver="false"
+                   allowMultipleSelection="false">
+        <tx:tableColumnViewInfo>
+          <mx:ArrayCollection>
+            <tx:UxTableColumnViewInformation columnKey="Column1" colWidth="400"  />
+            <tx:UxTableColumnViewInformation columnKey="Column2" colWidth="400"  />
+            <tx:UxTableColumnViewInformation columnKey="Column3" colWidth="50" colHidden="true" />
+            <tx:UxTableColumnViewInformation columnKey="Column4" colWidth="400"/>
+            <tx:UxTableColumnViewInformation columnKey="Column5" colWidth="50" colHidden="true"/>
+          </mx:ArrayCollection>
+        </tx:tableColumnViewInfo>
+
+      </tx:UxAdvancedDataGrid>
+      <tx:commandPanel>
+        <tx:UxTableCommandPanel>
+          <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="_addFileServer(event)" id="_addserver" />
+          <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_EDT')}" click="_detailFileServer(event)" />
+          <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_VER')}" click="_verifyFileServer(event)" />
+          <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="_deleteFileServer(event)"/>
+        </tx:UxTableCommandPanel>
+      </tx:commandPanel>
+    </tx:UxTablePanel>  -->
+
+  </UxViewBlock>
+</UxVBoxWindow>

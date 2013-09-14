@@ -1,0 +1,79 @@
+package com.emc.fma.views.Policies.Expression.model
+{
+  import com.emc.efx.guitoolkit.components.table.UxAdvancedDataGridColumn;
+  import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+  import com.emc.efx.guitoolkit.components.table.UxTableModel;
+  import com.emc.efx.guitoolkit.components.table.events.UxTableModelEvent;
+  import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+  import com.emc.fma.utils.Common;
+  import com.emc.fma.utils.RESTClient;
+  import com.emc.fma.utils.RESTEvent;
+  import flash.events.Event;
+  import flash.events.TimerEvent;
+  import flash.utils.Timer;
+
+  import mx.collections.ArrayCollection;
+  import mx.collections.XMLListCollection;
+
+  /**
+   *  Table Model
+   */
+  public class FileMatchingExpressionModel extends UxTableModel
+  {
+
+    [Bindable]private var response:XMLList;
+    public var savedExpressionList:XMLListCollection;
+
+    /*Constructor*/
+    public function FileMatchingExpressionModel()
+    {
+      super();
+    }
+
+    /*Function to load data*/
+    override protected function loadData():void
+    {
+      var xml:XML = <REQUEST/>;
+      RESTClient.sendGetRequest("/api/savedexpression", setresponse, null);
+    }
+
+    private function setresponse(event:RESTEvent):void
+    {
+      response = new XMLList(event.response);
+      savedExpressionList = new XMLListCollection(response.Message.SavedExpressions.SavedExpression);
+      var nasGroupArray:ArrayCollection = new ArrayCollection();
+
+
+      for ( var j:int = 0; j < savedExpressionList.source.length(); j++)
+      {
+        var Expressions:String = "";
+
+        for ( var k:int = 0; k < savedExpressionList[j].Expression.length(); k++)
+        {
+          if (k ==0)
+            Expressions = savedExpressionList[j].Expression[k].toString();
+          else
+            Expressions = Expressions + " and " + savedExpressionList[j].Expression[k].toString();
+        }
+
+        nasGroupArray.addItem(
+        {
+          Name:savedExpressionList[j].@name.toString() ,
+          Expressions:Expressions
+        });
+      }
+
+      modelData = nasGroupArray;
+
+      loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.LOADING_COMPLETE));
+    }
+
+    /*Function to load columns.*/
+    override protected function loadColumns():void
+    {
+      var col1:UxColumnIdentifier = new UxColumnIdentifier("Name", "Name");
+      var col2:UxColumnIdentifier = new UxColumnIdentifier("Expressions", "Expressions");
+      columnIdentifiers = new ArrayCollection([col1, col2]);
+    }
+  }
+}

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<views:CView xmlns:fx="http://ns.adobe.com/mxml/2009" 
+             xmlns:s="library://ns.adobe.com/flex/spark" xmlns:views="views.*" title="FileServer List"
+             creationComplete="cview1_creationCompleteHandler(event)">
+  <fx:Script>
+    <![CDATA[
+      import mx.collections.ArrayCollection;
+      import mx.events.FlexEvent;
+      [Bindable]
+      var obj:ArrayCollection;
+      protected function cview1_creationCompleteHandler(event:FlexEvent):void
+      {
+        // TODO Auto-generated method stub
+        SendGetRequest("/api/server?" ,new XML() , queueStatusChangeComplete)
+      }
+      private function queueStatusChangeComplete(event:Event):void
+      {
+        obj = new ArrayCollection();
+        if(StdResponse(event)){
+          return ;
+        }
+        var xml:XML = prepareXML(event);
+        trace(xml);
+        for each (var server:Object in xml.FileServer )
+        {
+          var name:String = server.Name;
+          var type:String = server.Type;
+          var IsSource:String = server.Source == "true" ? "yes" : "";
+          var IP:String = server.IP;
+          var csip:String = server.ControlStation;
+          //var obj:Object = {Name:name, Type:type, IsSource:IsSource, NetworkID:IP, CSIP:csip};
+          //row.push(obj);
+          obj.addItem({Name:name, Type:type, IsSource:IsSource, NetworkID:IP, CSIP:csip});
+          }
+      }
+      
+      protected function verify_clickHandler(event:MouseEvent):void
+      {
+        // TODO Auto-generated method stub
+        var csip:String = grid.selectedItem.CSIP;
+        var isso:String = grid.selectedItem.IsSource;
+        var type:String = grid.selectedItem.Type;
+        var name:String = grid.selectedItem.Name;
+        
+        if ( (type == "Celerra" || type == "VNX" ) && isso == "yes" )
+        {
+         /*  verify = new VerifyCelerra();
+          myWatcher = ChangeWatcher.watch(verify, "xml", watcherListener);
+          verify.fileServer = name;
+          verify.csip = csip;
+          verify.type = type;
+          verify.isso = isso;
+          verify.centerDialog();
+          verify.show(this); */
+        }
+        else  {   //if(type == "Centera" || type == "NetApp" || type == "Windows" || type == "DataDomain"  || type == "Isilon" || type == "Atmos" || type == "AmazonS3" || type == "Azure")
+          // Send verify request to the server
+          SendPostRequest("/api/server/"+encodeURIComponent(name)+"/verify", new XML(), OnVerifyComplete);
+        }
+      }
+      private function OnVerifyComplete(event:Event):void
+      {
+        obj = new ArrayCollection();
+        if(StdResponse(event)){
+          return ;
+        }
+        var xml:XML = prepareXML(event);
+        trace(xml);
+        (new AlertMsg()).open(this, false)
+      }
+      
+    ]]>
+  </fx:Script>
+  <fx:Declarations>
+    <fx:Component className="AlertMsg">
+      <s:SkinnablePopUpContainer x="70" y="300">
+        <s:TitleWindow title="My Message" close="close()">
+          <s:VGroup horizontalAlign="center" paddingTop="8" paddingBottom="8" paddingLeft="8" paddingRight="8" gap="5" width="100%">
+            <s:Label text="My alert message text here..."/>
+            <s:Button label="OK" click="close()"/>
+          </s:VGroup>
+        </s:TitleWindow>
+      </s:SkinnablePopUpContainer>
+    </fx:Component>
+  </fx:Declarations>
+  <s:VGroup >
+    <s:DataGrid id="grid" dataProvider="{obj}" height="{this.height}" >
+      <s:columns> 
+        <s:ArrayList> 
+          <s:GridColumn headerText="Name" dataField="Name" width="{this.width/8}"/>
+          <s:GridColumn headerText="Type" dataField="Type" width="{this.width/8}"  />
+          <s:GridColumn headerText="NetworkID Mode" dataField="NetworkID" width="{this.width/8}" />
+          <s:GridColumn headerText="IsSource" dataField="IsSource"  />
+          <!--<s:GridColumn headerText="CS IP" dataField="CSIP" width="{this.width/8*6}"/>-->
+        </s:ArrayList> 
+      </s:columns>
+    </s:DataGrid>
+    <s:HGroup >
+          <s:Button label="Verify" click="verify_clickHandler(event)"/>
+    </s:HGroup>
+  </s:VGroup>
+</views:CView>

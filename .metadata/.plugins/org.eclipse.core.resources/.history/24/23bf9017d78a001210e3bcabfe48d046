@@ -1,0 +1,186 @@
+package com.emc.fma.views.Configuration.FileServer.wizard.NetApp
+{
+	import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardPanel;
+	import com.emc.efx.guitoolkit.components.wizards.UxWizardDialog;
+	import com.emc.fma.views.Configuration.FileServer.wizard.CIFSSpecific;
+	import com.emc.fma.views.Configuration.FileServer.wizard.DirectoryExclusion;
+	import com.emc.fma.views.Configuration.FileServer.wizard.IPAddressList;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NDMPSpecific;
+	import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+	
+	import flash.display.DisplayObject;
+	
+	import mx.resources.ResourceManager;
+	
+	public class ServerWizard extends UxWizardDialog
+	{
+		// The following references all the classes that could be shown in
+		// the wizard. If these were not referenced here, they would not be
+		// included in the application SWF file and loading them at runtime
+		// would fail.
+		private var step0: NameStep					;
+		private var step1: IPAddressList	 		;
+		//private var step2: NetAppVFilerHostIP 		;
+		private var step3: CIFSSpecific				;
+		private var step4: NDMPSpecific 			;
+		private var step5: NetAppAsSource 			;
+		private var step6: NetAppLocalAdmin		 	;
+		private var step7: DirectoryExclusion		;
+		private var step8: FPolicyCallBackAgent		;
+		private var step9: Summary					;
+		
+		public static const  STEP   :String = "Step";
+		
+		private var _parent:DisplayObject;
+		
+		public function ServerWizard()
+		{
+			super();
+		}
+		
+		
+		public override function show (parent:DisplayObject):void
+		{
+			_parent = parent;
+			wizard.addEventListener(ECUITWizardEvent.ECUITWIZ_LOADCOMPLETE, loadComplete);
+			wizard.loadWizardFromXML(wizardXMLFlow);
+		}
+		
+		private function loadComplete(wizEvent:ECUITWizardEvent):void
+		{
+			if (wizEvent.reason == ECUITWizardEvent.ECUITWIZ_LOADSUCCESS)
+			{
+				super.show(_parent);
+				centerDialog();
+			}
+			else
+			{
+				ECUITPopupDialog.showMessageDialog(_parent, 
+					"Unable to create the data wizard.\n\n" + wizEvent.reason,
+					"Error",
+					ECUITPopupDialog.ERROR_MESSAGE);
+			}
+		} 
+		private var wizardXMLFlow:XML = 
+			<UxWizard>
+				<type>SIMPLE</type>
+				<wizardResourceBundle>fma</wizardResourceBundle>
+				<title>{ResourceManager.getInstance().getString('fma','FIL_SER_CRE_NTA_FS')}</title>
+				<wizardNavHelp>CreateShareWiz</wizardNavHelp>
+				<cancelPrompt>CREATE_SHARE_WIZARD_CANCEL_PROMPT</cancelPrompt>
+				<showHelpPanel>TRUE</showHelpPanel>
+				<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+				<stepsWidth>{ResourceManager.getInstance().getString('fma','WIZ_STP_WID')}</stepsWidth>
+				<WizardSteps>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NameStep</stepClass>
+						<id>NetAppNameStep</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_1_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+            <stepAttributes>
+							<stepAttribute varName='_defaultMode' value=''/>
+						</stepAttributes>
+						<helpSnippet>FILESERVER_WIZARD_STEP_1_STATE_2_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.IPAddressList</stepClass>
+						<id>NetAppIPAddress</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_2_STATE_1_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<stepAttributes>
+							<stepAttribute varName='_defaultType' value='NetApp'/>
+						</stepAttributes>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_2_STATE_2_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.CIFSSpecific</stepClass>
+						<id>CIFSSpecific</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_3_CIFSSETTINGS_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_3_CIFSSETTINGS_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NDMPSpecific</stepClass>
+						<id>NDMPSpecific</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_4_NDMP_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_4_NDMP_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppAsSource</stepClass>
+						<id>NetAppAsSource</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_5_ISSOURCE_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_5_ISSOURCE_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NetApp.NetAppLocalAdmin</stepClass>
+						<id>NetAppLocalAdmin</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_6_NETAPPLOCALADMIN_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_6_NETAPPLOCALADMIN_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.DirectoryExclusion</stepClass>
+						<id>DirectoryExclusion</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_EXCLUDEDIRECTORY_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_EXCLUDEDIRECTORY_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NetApp.FPolicyCallBackAgent</stepClass>
+						<id>FPolicyCallBackAgent</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_FPOLICY_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_FPOLICY_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>	
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Configuration.FileServer.wizard.NetApp.Summary</stepClass>
+						<id>Summary</id>
+						<title>{ResourceManager.getInstance().getString('fma','FILESERVER_WIZARD_STEP_SUMMARY_TITLE')}</title>
+						<width>{ResourceManager.getInstance().getString('fma','WIZ_WID')}</width>
+						<height>{ResourceManager.getInstance().getString('fma','WIZ_HGT')}</height>
+						<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>FILESERVER_WIZARD_STEP_SUMMARY_SNIPPET_ID</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+				</WizardSteps>
+			</UxWizard>;
+	}
+}

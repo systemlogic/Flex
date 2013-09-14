@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<section name="org.eclipse.team.internal.ccvs.ui.CVSHistoryPage">
+		<item value="500;500;" key="INNER_SASH_WEIGHTS"/>
+		<item value="650;200;150;" key="SASH_WEIGHTS"/>
+	</section>
+	<section name="TagConfigurationDialog">
+		<item value="511" key="AllowRefreshWidth"/>
+		<item value="593" key="AllowRefreshHeight"/>
+	</section>
+	<section name="org.eclipse.team.internal.ccvs.ui.CVSHistoryTableProvider">
+		<item value="213" key="COL_COMMENT"/>
+		<item value="213" key="COL_DATE"/>
+		<item value="347" key="COL_TAGS"/>
+		<item value="128" key="SORT_COL_DIRECTION"/>
+		<item value="COL_DATE" key="SORT_COL_NAME"/>
+		<item value="213" key="COL_REVISIONID"/>
+		<item value="213" key="COL_AUTHOR"/>
+	</section>
+	<section name="CommitWizard">
+		<item value="611" key="height"/>
+		<item value="false" key="ShowCompare"/>
+		<item value="400" key="width"/>
+		<item value="500" key="VWeight2"/>
+		<item value="500" key="VWeight1"/>
+	</section>
+	<section name="CheckoutAsWizard">
+	</section>
+	<section name="NewLocationWizard">
+		<item value="false" key="ConfigurationWizardMainPage.STORE_DONT_VALIDATE_ID"/>
+		<list key="ConfigurationWizardMainPage.STORE_PATH_ID">
+			<item value="/cvs/rain/cvs_root"/>
+		</list>
+		<list key="ConfigurationWizardMainPage.STORE_HOSTNAME_ID">
+			<item value="aleve.lss.emc.com"/>
+		</list>
+		<list key="ConfigurationWizardMainPage.STORE_USERNAME_ID">
+			<item value="arorah1"/>
+		</list>
+	</section>
+	<section name="org.eclipse.team.ccvs.ui.RepositoriesView">
+		<item value="0" key="selectedOrderBy"/>
+		<item value="" key="SelectedWorkingSet"/>
+		<item value="true" key="selectedSortingOrder"/>
+		<item value="" key="filterShowModules"/>
+	</section>
+</section>

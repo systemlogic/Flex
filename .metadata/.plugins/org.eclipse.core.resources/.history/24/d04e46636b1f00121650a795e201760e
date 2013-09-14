@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx" 
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  xmlns:views="com.emc.ecuit.flex.components.views.*" 
+			  xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" 
+			  xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock" 
+				 title="{ResourceManager.getInstance().getString('fma','BCK_AND_REC')}" 
+				 width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false" 
+				 creationComplete="_creationCompleteHandler(event)"
+				 helpServiceID="FMAHelpService" helpID="BackupAndRecovery" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		
+		<fx:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.fma.views.Policies.Policy.PolicyProperties;
+				import com.emc.fma.views.Utility.Command;
+				
+				import mx.events.FlexEvent;
+				import mx.events.ListEvent;
+				import mx.resources.ResourceManager;
+				private var _client:UxHttpClient ;
+				[Bindable]public var PathValue:String="";
+				[Bindable]var xmlList:XMLList
+				
+				protected function _creationCompleteHandler(event:FlexEvent):void
+				{
+					
+					var xml:XML = <REQUEST/>; 
+					xml.appendChild(<action>edit</action>);
+					var cmd:Command = new Command(_client,onComplete,xml,"getBackupRestore.htm",viewBlock);
+					_client = cmd.sendCommand();
+				}
+				
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var str:String = new String(_client.response.body);
+					xmlList = new XMLList(_client.response.body);
+					var backupList:ArrayCollection = new ArrayCollection();
+					for each (var Backup : XML in xmlList..Backup ) {
+						backupList.addItem(Backup[0].toString());
+					}
+					backupComboBox.dataProvider = backupList ;
+					numberOfBackup.text = xmlList.NumberOfBackups.toString();
+					var type:String = xmlList.DestType.toString();
+					var name:String = xmlList.DestName.toString();
+					var repoType:int = parseInt(type);
+					var index:int = -1 ;
+					var setIndex:int ;
+					repositoryType.selectedIndex = repoType ;
+					var repoList:ArrayCollection = new ArrayCollection();
+					if(repoType == 0){
+						for each (var Centera : XML in xmlList..Centera ) {
+							repoList.addItem(Centera[0].toString());
+							index++;
+							if(name == Centera[0].toString()){
+								setIndex = index ;
+							}
+						}
+					}else if(repoType == 1){
+						for each (var nasRepository : XML in xmlList..nasRepository ) {
+							repoList.addItem(nasRepository[0].toString());
+							index++;
+							if(name == nasRepository[0].toString()){
+								setIndex = index ;
+							}
+						}
+					}
+					repository.dataProvider = repository.dropdown.dataProvider =repoList ;
+					repository.selectedIndex = setIndex ;
+					
+					var serverName:String = xmlList.DesasterDestname.toString();
+					var fileServerList:ArrayCollection = new ArrayCollection();
+					index = -1 ;
+					for each (var fileServer : XML in xmlList..fileServer ) {
+						fileServerList.addItem(fileServer[0].toString());
+						index++;
+						if(serverName == fileServer[0].toString()){
+							setIndex = index ;
+						}
+					}
+					server.dataProvider = server.dropdown.dataProvider = fileServerList ;
+					server.selectedIndex = index ;
+					Path.text = xmlList.DesasterDestPath.toString();
+					//repository.selectedIndex = repository.get
+				}
+				protected function browse_clickHandler(event:MouseEvent):void
+				{
+					var dir:DirectoryBrowser = new DirectoryBrowser();
+					dir.protocal = "NFS" ;
+					dir.FileServer = server.selectedLabel ;
+					dir.ref = this ;
+					dir.centerDialog() ;
+					dir.show(this.parent);
+					// TODO Auto-generated method stub
+				}
+				
+				
+				protected function repositoryType_changeHandler(event:ListEvent):void
+				{
+					var repoList:ArrayCollection = new ArrayCollection();
+					if(repositoryType.selectedLabel == "Centera"){
+						for each (var Centera : XML in xmlList..Centera ) {
+							repoList.addItem(Centera[0].toString());
+						}
+					}else if(repositoryType.selectedLabel == "NAS Repository"){
+						for each (var nasRepository : XML in xmlList..nasRepository ) {
+							repoList.addItem(nasRepository[0].toString());
+						}
+					}
+					repository.dataProvider = repository.dropdown.dataProvider =repoList ;
+					// TODO Auto-generated method stub
+				}
+				
+				private function onSaveBackUp(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+				}
+				protected function saveBackup_clickHandler(event:MouseEvent):void
+				{
+					
+					var xml:XML = <REQUEST/>; 
+					xml.appendChild(<action>saveBackUp</action>);
+					if(numberOfBackup.text == ""){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','EMPTY_BACKUP'),ResourceManager.getInstance().getString('fma','EMPTY_BACKUP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					if(repository.selectedItem == null){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_DESTINATION'),ResourceManager.getInstance().getString('fma','INVALID_DESTINATION_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					if(server.selectedItem == null || Path.text == "" ){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_DISASTER_RECOVERY'),ResourceManager.getInstance().getString('fma','INVALID_DISASTER_RECOVERY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					xml.appendChild(<NoOfBackups>{numberOfBackup.text}</NoOfBackups>);
+					xml.appendChild(<DestType>{repositoryType.selectedIndex}</DestType>);
+					xml.appendChild(<DestName>{repository.selectedLabel}</DestName>);
+					xml.appendChild(<DRDestName>{server.selectedLabel}</DRDestName>);
+					xml.appendChild(<DRStartDir>{Path.text}</DRStartDir>);
+					var cmd:Command = new Command(_client,onSaveBackUp,xml,"saveBackupRestore.htm",viewBlock);
+					_client = cmd.sendCommand();
+					// TODO Auto-generated method stub
+				}
+				
+				
+				protected function restore_clickHandler(event:MouseEvent):void
+				{
+					if(backupComboBox.selectedItem== null){
+						ECUITPopupDialog.showMessageDialog(this,"No backup selected",ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					
+					var xml:XML = <REQUEST/>; 
+					xml.appendChild(<action>restoreBackupFile</action>);
+					xml.appendChild(<FileName>{backupComboBox.selectedLabel}</FileName>);
+					xml.appendChild(<NoOfBackups>{numberOfBackup.text}</NoOfBackups>);
+					xml.appendChild(<DestType>{repositoryType.selectedIndex}</DestType>);
+					xml.appendChild(<DestName>{repository.selectedLabel}</DestName>);
+					xml.appendChild(<DRDestName>{server.selectedLabel}</DRDestName>);
+					xml.appendChild(<DRStartDir>{Path.text}</DRStartDir>);
+					var cmd:Command = new Command(_client,onSaveBackUp,xml,"saveBackupRestore.htm",viewBlock);
+					_client = cmd.sendCommand();
+				}
+				
+			]]>
+		</fx:Script>
+		<mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+				 paddingBottom="10" paddingTop="10"  
+				 >
+			<mx:VBox width="100%" >
+				<UxExtendedClass:UxGroupBoxCta id="fmbd" title="{ResourceManager.getInstance().getString('fma','BCK_AND_REC_BCK_DES')}" width="50%">
+					<mx:Form id="backupForm">
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','BCK_AND_REC_NUM_BCK')}">
+							<mx:TextInput id="numberOfBackup" restrict="0-9" maxChars="2" width="{repositoryType.width}"/>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','BCK_AND_REC_SEL_DES')}">
+							<mx:HBox>
+								<mx:ComboBox id="repositoryType"  change="repositoryType_changeHandler(event)">
+									<mx:ArrayCollection>
+										<fx:String>Centera</fx:String>
+										<fx:String>NAS Repository</fx:String>
+									</mx:ArrayCollection>
+								</mx:ComboBox>
+								<mx:ComboBox id="repository" /> <!-- width="{Path.width + browser.width + 10}"-->
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','BCK_AND_REC_REC_LOC')}">
+							<mx:HBox>
+								<mx:ComboBox id="server" width="{repositoryType.width}"/>
+								<mx:TextInput editable="false" id="Path" text="{PathValue}" width="{repository.width}"/> 
+								<mx:Button id="browser" label="{ResourceManager.getInstance().getString('fma','BUTTON_BRO')}" click="browse_clickHandler(event)"/>
+							</mx:HBox>
+							
+						</mx:FormItem>
+						<mx:FormItem>
+							<mx:Button id="saveBackup" label="{ResourceManager.getInstance().getString('fma','BUTTON_SBL')}" click="saveBackup_clickHandler(event)" enabled="{Path.text == '' ? false : repository.selectedItem ==null ? false : true }"/>
+						</mx:FormItem>
+					</mx:Form>
+				</UxExtendedClass:UxGroupBoxCta>
+				
+				<UxExtendedClass:UxGroupBoxCta height="100%" title="{ResourceManager.getInstance().getString('fma','BCK_AND_REC_REC_MGT')}" width="50%">
+					<mx:Form width="{backupForm.width}">
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','BCK_AND_REC_BCK_FIL')}">
+							<mx:HBox>
+								<mx:ComboBox id="backupComboBox"/>
+								<mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_RES')}" id="restore" click="restore_clickHandler(event)" enabled="{backupComboBox.selectedItem == null ? false : true}"/>
+							</mx:HBox>
+						</mx:FormItem>
+					</mx:Form>
+				</UxExtendedClass:UxGroupBoxCta>
+			</mx:VBox>
+		</mx:Box>
+		
+	</UxViewBlock>
+</UxVBoxWindow>

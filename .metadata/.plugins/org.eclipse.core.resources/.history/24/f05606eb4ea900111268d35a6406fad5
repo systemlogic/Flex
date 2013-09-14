@@ -1,0 +1,149 @@
+package com.emc.ecuit.flex.components.application
+{
+	import com.emc.ecuit.flex.events.AppNavAreaPopupEvent;
+	import com.emc.ecuit.flex.managers.ECUITResourceManager.getInstance();
+	import com.emc.ecuit.flex.utils.UITrace;
+	
+	import mx.collections.ArrayCollection;
+	import mx.containers.Panel;
+	import mx.controls.HRule;
+	import mx.controls.Button;
+	
+	import flash.events.Event;
+	import flash.events.MouseEvent;
+
+	/**
+	 * The popup menu to be displayed for a hover action on top of an area. At present, this has items for
+	 * each page that an area supports.
+	 */
+	public class AppNavAreaPopup extends Panel
+	{
+		private var popupTitleLbl:Button;
+		private var pageLabels:ArrayCollection;
+		
+		private var _area:IAppNavArea;		
+		
+		public function AppNavAreaPopup(area:IAppNavArea)
+		{		
+			super();
+			_area = area;
+			pageLabels = new ArrayCollection();
+			this.setStyle("styleName", "areaHoverMenu");
+			this.minWidth = 150;
+			this.minHeight = 101;
+			this.id = "AppNavAreaPopup_" + _area.areaID;
+			this.automationName = this.id;			
+			
+			// Add a locale change listener to update the page labels
+         	ECUITResourceManager.getInstance().getInstance().addLocaleChangeEventListener(doLocaleChange);	
+		}
+		
+		/**
+		 * Creates the children of this popup menu. Right now the title of the menu and the
+		 * menu link for each page id of the area.
+		 */
+		override protected function createChildren():void
+		{	
+			super.createChildren();
+			
+			popupTitleLbl = new Button();
+			popupTitleLbl.id = "appNavAreaPopupTitle_" + _area.areaID;
+			popupTitleLbl.label = ECUITResourceManager.getInstance().getInstance().getString(_area.navAreaLbl);
+			popupTitleLbl.setStyle("styleName", "areaHoverMenuTitle"); 
+			popupTitleLbl.automationName = popupTitleLbl.id;
+			// addChild(popupTitleLbl);
+			popupTitleLbl.addEventListener("click", handleAreaClicked, false, 0, true);
+			
+			var titleSep:HRule = new HRule();
+			titleSep.percentWidth = 100;
+			titleSep.setStyle("styleName", "areaSeparator");
+			// this.addChild(titleSep);
+			
+			var pageIds:ArrayCollection = _area.pageIDs;
+			
+			for (var i:int = 0; i < pageIds.length; i++)
+            {
+            	if(pageIds[i] != null)
+            	{            	       
+            		if(pageIds[i].id == null || pageIds[i].label == null)
+            		{
+            			UITrace.doTrace(this, "Page object to build the menu is not well defined." + pageIds[i].toString());
+            		}   
+            		else 
+            		{     
+		                var lbl:Button = new Button();
+		                lbl.label = ECUITResourceManager.getInstance().getInstance().getString(pageIds[i].label);
+		                lbl.id = "appNavAreaPopupPageLabel_" + pageIds[i].id;
+		                lbl.automationName = lbl.id;
+		                lbl.addEventListener("click", handlePageClicked, false, 0, true);
+		                lbl.data = pageIds[i].id;
+		                lbl.setStyle("styleName", "areaHoverMenuSectionLabel");
+		                lbl.percentWidth = 100;
+		                addChild(lbl);
+		                pageLabels.addItem(lbl);
+		            }
+	            }                
+            }
+		}
+		
+		public function release():void
+		{
+			
+		}
+		
+		public function get area():IAppNavArea
+		{
+			return _area;
+		}
+		
+		/** 
+		 * This handler executes when the area page is clicked.
+		 * 
+		 * This method should dispatch an <code>AppNavAreaIconEvent.NAV_AREA_CLICK</code> 
+		 * event. The AppNavAreaBar listens for this event.
+		 * 
+		 * @param event The original click event.  
+		 */  
+		public function handlePageClicked(event:Event):void
+		{
+			var comp:Button = event.currentTarget as Button;
+			var pageID:String = comp["data"] as String;
+			
+		     // Dispatch the event
+		     var navClickEvent:AppNavAreaPopupEvent = new AppNavAreaPopupEvent(AppNavAreaPopupEvent.NAV_AREA_PAGE_CLICK, _area, pageID);
+		     dispatchEvent(navClickEvent);
+		}
+		
+		/** 
+		 * This handler executes when the area title is clicked.
+		 * 
+		 * This method should dispatch an <code>AppNavAreaPopupEvent.NAV_AREA_CLICK</code> 
+		 * event. The AppNavAreaBar listens for this event.
+		 * 
+		 * @param event The original click event.  
+		 */  
+		public function handleAreaClicked(event:Event):void
+		{	
+		     // Dispatch the event
+		     var navClickEvent:AppNavAreaPopupEvent = new AppNavAreaPopupEvent(AppNavAreaPopupEvent.NAV_AREA_CLICK, _area);
+		     dispatchEvent(navClickEvent);		     
+		}
+		
+		/**
+	     * @private
+	     * 
+	     * Locale change listener to update the button label when the locale changes.
+	     **/
+	    private function doLocaleChange (event:Event):void
+	    {
+	    	var length:int = pageLabels.length;
+	    	for(var i:int=0; i<length; i++)
+	    	{
+	    		var comp:Button = pageLabels[i];
+	    		comp.label = ECUITResourceManager.getInstance().getInstance().getString(_area.pageIDs[i].label);
+	    	}
+	    	this.title = ECUITResourceManager.getInstance().getInstance().getString(_area.navAreaLbl);	    	
+	    }
+		
+	}
+}

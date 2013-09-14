@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<boxes:UxHBox xmlns:sx="http://ns.adobe.com/mxml/2009"
+    xmlns:fx="com.emc.efx.guitoolkit.components.table.filter.*"
+    xmlns:s="library://ns.adobe.com/flex/spark" width="100%" height="100%"
+    xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:table1="com.emc.efx.guitoolkit.components.table.*" xmlns:Archiver="com.emc.fma.views.Schedule.Archiver.*" xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*">
+  <sx:Script>
+    <![CDATA[
+      import com.emc.fma.views.Schedule.model.ScheduleTaskModel;
+    ]]>
+  </sx:Script>
+  <sx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+  </sx:Declarations>
+  <table1:UxTablePanel id="table" width="100%" height="100%">
+    <table1:filterPanel>
+      <fx:UxTableFilterPanel id="myTableFilterPanel">
+      </fx:UxTableFilterPanel>
+    </table1:filterPanel>
+    <Archiver:MyAdvancedDataGrid id="CustomScheduleGrid" tableModel="  {new ScheduleTaskModel('archiver')}"
+                   showHeaders = "true"
+                   editable="false" useRollOver="false"
+                   allowMultipleSelection="false">
+      <Archiver:tableColumnViewInfo>
+        <mx:ArrayCollection>
+          <table1:UxTableColumnViewInformation columnKey="Column1" colWidth="200"
+                             displayType="2"/>
+          <table1:UxTableColumnViewInformation columnKey="Column2" colWidth="200"
+                             displayType="2"/>
+          <table1:UxTableColumnViewInformation columnKey="Column3" colWidth="200" id="Column3"
+                             displayType="2"/>
+          <table1:UxTableColumnViewInformation columnKey="Column4" colWidth="200" id="Column4"
+                             displayType="2"/>
+          <table1:UxTableColumnViewInformation columnKey="Column5" colWidth="200"
+                             displayType="2"/>
+        </mx:ArrayCollection>
+      </Archiver:tableColumnViewInfo>
+    </Archiver:MyAdvancedDataGrid>
+  </table1:UxTablePanel>
+</boxes:UxHBox>

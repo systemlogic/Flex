@@ -1,0 +1,127 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+import com.emc.efx.guitoolkit.dataloading.IUxLoader;
+import com.emc.efx.guitoolkit.dataloading.UxLoadingHandler;
+import com.emc.fma.model.SchemaManager.SchemaConverter;
+import com.emc.fma.model.SchemaManager.vo.IsilonVO;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Configuration.FileServer.wizard.CIFSSpecific;
+import com.emc.fma.views.Configuration.FileServer.wizard.IPAddressList;
+import com.emc.fma.views.Configuration.FileServer.wizard.NDMPSpecific;
+import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+
+import mx.collections.ArrayCollection;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+      
+// Suggested step name for use in id field of wizard decriptor XML file
+      
+private var _initialized:Boolean = false;
+private var next:Boolean = false;
+private var serverRoundTripNotHappen:Boolean = true;
+
+[Bindable] private var fsName:String;
+[Bindable] private var fsType:String;
+[Bindable] private var netAdd:String;
+
+override public function postDisplay():void 
+{
+  if ( !_initialized ) 
+    _initialized = true;
+
+  fsName = getData(NameStep.ATTR_NAME).toString();
+  fsType = ResourceManager.getInstance().getString('fma', 'ISILON');
+  netAdd = getData(IPAddressList.ATTR_IPList_Static_List).getItemAt(0);
+  if ( serverRoundTripNotHappen )
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  }
+  if ( !serverRoundTripNotHappen )
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_BACK); 
+    serverRoundTripNotHappen = false;
+  }
+}
+
+private function OnGetIPStatus(event:RESTEvent):void
+{
+  if ( Common.showResponseMessage(this, event) ){
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+    serverRoundTripNotHappen = true ;
+    return;
+  }
+	
+	var ip:String = event.response.IP[0].toString();
+	var _isilonServer:IsilonVO = new IsilonVO();
+	_isilonServer.Name = getData(NameStep.ATTR_NAME).toString();
+	
+	for each (var _tmpip:String in getData(IPAddressList.ATTR_IPList_Static_List))
+	{
+		var _tmpArray:Array = new Array();
+		_tmpArray.push(_tmpip);
+	}
+	_isilonServer.IP = new ArrayCollection(_tmpArray); 
+	if ( getData(CIFSSpecific.ATTR_userName) != "" )
+	{
+		_isilonServer.Cifs.User = getData(CIFSSpecific.ATTR_userName)as String;
+		_isilonServer.Cifs.Password = getData(CIFSSpecific.ATTR_password)as String;
+		_isilonServer.Cifs.Domain = getData(CIFSSpecific.ATTR_domainName)as String;
+		_isilonServer.Cifs.IsFQDN = getData(CIFSSpecific.ATTR_ISQUALIFIED)as String;
+	}
+	if ( getData(NDMPSpecific.ATTR_userName) != "" )
+	{
+		_isilonServer.Ndmp.User = getData(NDMPSpecific.ATTR_userName) as String;
+		_isilonServer.Ndmp.Password = getData(NDMPSpecific.ATTR_password) as String;
+		_isilonServer.Ndmp.Port = getData(NDMPSpecific.ATTR_port) as String;
+	}
+	
+	var xml:XML = SchemaConverter.VOtoXML("FileServers", _isilonServer); 
+	trace(xml);
+	
+	RESTClient.sendPostRequest("/api/server", xml, OnSaveStatus, progress);
+	stepComplete = true;
+}
+override public function doFinish():void
+{
+	var xml:XML = <Request/>;
+	xml.appendChild(<Name>{getData(NameStep.ATTR_NAME)}</Name> );
+	RESTClient.sendGetRequest("/api/resolve/isilon/" + (getData(IPAddressList.ATTR_IPList_Static_List) as ArrayCollection).getItemAt(0) + "/" + getData(NameStep.ATTR_NAME), OnGetIPStatus, progress);
+  //STClient.sendGetRequest("/api/resolve/isilon/" + nameForm.FileServerName.text + "/" + IPs.getItemAt(0), OnCommitGetIP, viewBlock);
+}
+
+private function OnSaveStatus(event:RESTEvent):void
+{
+  var confirmationHandler:Function = (event.hasStandardResponse && event.response.Code == 0)? OnMessageSuccess:OnMessageFailure;
+
+  // Show response message if available
+  if ( Common.showResponseMessage(this, event, confirmationHandler) )
+    return;
+
+  // Show the XML string as response
+  Common.showErrorDialog(this, event.response.toXMLString(), confirmationHandler);
+}
+
+private function OnMessageSuccess(event:Event):void
+{
+  this.parentWizard.dispatchEvent(new ECUITWizardEvent(ECUITWizardEvent.ECUITWIZ_WIZARDCOMPLETE, this.parentWizard, ECUITWizardEvent.ECUITWIZ_WIZARD_CANCELED));
+  serverRoundTripNotHappen = false ;
+  // Need to have public updateSelf function to refresh respective component
+  this.parentDocument.updateSelf(getData(NameStep.ATTR_NAME).toString());
+}
+
+private function OnMessageFailure(event:Event):void
+{
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  serverRoundTripNotHappen = true;
+}

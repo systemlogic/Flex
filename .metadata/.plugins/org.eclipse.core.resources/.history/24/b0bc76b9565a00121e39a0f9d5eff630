@@ -1,0 +1,87 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import mx.events.FlexEvent;
+import mx.events.FlexMouseEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+public static const ATTR_userName        :String = "NDMPUser";
+public static const ATTR_password        :String = "NDMPPass";
+public static const ATTR_port        :String = "NDMPPort";
+
+public var _defaultEnterName:String = "";
+public var _defaultEnterpassword:String = "";
+public var _defaultEnterport:String = "";
+
+
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    // Pull defaults from wizard data
+    var def:Object;
+    def = getData(ATTR_userName);
+
+    if (def != null)
+    {
+      _defaultEnterName = String(def);
+    }
+
+    def = getData(ATTR_password);
+
+    if (def != null)
+    {
+      _defaultEnterpassword = String(def);
+    }
+
+    def = getData(ATTR_port);
+
+    if (def != null)
+    {
+      _defaultEnterport = String(def);
+    }
+
+    _initialized = true;
+  }
+
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+  userName_updateCompleteHandler();
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+override protected function save(): void
+{
+
+  setData(ATTR_userName,        StringUtil.trim(userName.text));
+  setData(ATTR_password,        StringUtil.trim(password.text));
+  setData(ATTR_port,        StringUtil.trim(port.text));
+  //enableStep(TvShowSelection.STEP_NAME, true);
+  stepComplete = true;
+}
+
+protected function userName_updateCompleteHandler():void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+
+  updateButtons();
+
+}
+
+private function updateButtons():void
+{
+  if ((userName.text == "" && password.text == "" ) ||
+  (userName.text != "" && password.text != "" && port.text != "" ))
+  {
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+}
+
+// Override as we have step specific validation
+override protected function validate(): Boolean
+{
+  return true;
+}

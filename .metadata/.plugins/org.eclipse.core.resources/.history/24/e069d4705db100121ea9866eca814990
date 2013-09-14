@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+              xmlns:fx="http://ns.adobe.com/mxml/2009"
+              xmlns:s="library://ns.adobe.com/flex/spark"
+              xmlns:mx="library://ns.adobe.com/flex/mx"
+              implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+              xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+              xmlns:section="com.emc.efx.services.layout.section.*"
+              xmlns:datetime="com.emc.ecuit.flex.components.datetime.*"
+              xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+              xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*"
+              xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+              xmlns:table="com.emc.ecuit.flex.components.table.*">
+  
+  
+  <fx:Script source="ArchivedFile.mxml.as" />
+  
+  <fx:Declarations>
+    <section:UxLazyLoadSection id="listPage" key="listPage" headerText="@Resource(key='HISPRO', bundle='fma')"
+                               contentClass="com.emc.fma.views.Archived.ArchivedReport.ArchiveFileList.List"/>
+    <section:UxLazyLoadSection id="viewLogPage" key="viewLogPage" headerText="@Resource(key='LOG', bundle='fma')"
+                               contentClass="com.emc.fma.views.Archived.ArchivedReport.ArchiveFileList.ViewLog"/>
+  </fx:Declarations>
+  
+  <states>
+    <mx:State name="nonorphan"/>
+    <mx:State name="orphan"/>
+  </states>
+  
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+               xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock"
+               title="{Common.getResource('VIEWARCHIVE')}"
+               width="100%" height="100%" creationComplete="init(event)"
+               showRefresh="false" showFilter="false" showFind="false"
+               showExport="false" showPrint="false" showTools="false"
+               keyDown="page_keyDownHandler(event)"
+               helpServiceID="FMAHelpService" helpID="ArchivedFileList">
+    <mx:HBox width="100%" height="100%">      
+      
+      <mx:VBox>        
+        <UxExtendedClass:UxGroupBoxCta title="Path Filter" width="260" height="100%">          
+          <mx:VBox paddingTop="10" paddingBottom="10" paddingLeft="10">     
+            <mx:Label text="Directory Path :" paddingTop="5" />
+            <mx:HBox>
+              <mx:TextInput id="path" width="180" />
+              <mx:Image source="{browse}" toolTip="Browse" buttonMode="true" useHandCursor="true" click="clickImage(event)"/>
+            </mx:HBox>            
+          </mx:VBox>          
+        </UxExtendedClass:UxGroupBoxCta>
+        
+        <UxExtendedClass:UxGroupBoxCta title="Date Filter" width="260" height="100%">          
+          <mx:VBox paddingTop="10" paddingBottom="10" paddingLeft="10">            
+            <mx:Label text="{Common.getResource('ARCH_FROM')}" paddingTop="5" />
+            <datetime:DateTimePicker id="startTime" />
+            <mx:Label text="{Common.getResource('ARCH_TO')}" paddingTop="5" />
+            <datetime:DateTimePicker id="endTime" />            
+          </mx:VBox>          
+        </UxExtendedClass:UxGroupBoxCta>
+        
+        <UxExtendedClass:UxGroupBoxCta title="Orphan Filter" width="260" height="100%">          
+          <mx:VBox paddingTop="10" paddingBottom="10" paddingLeft="10">   
+            <mx:CheckBox id="shwOrphan" label="Show Orphan Files" click="orphan_clickHandler(event)" paddingTop="5" textAlign="center"/>             
+            <mx:Label text="{Common.getResource('ARCH_LAST_SEEN')}" paddingTop="5" />
+            <mx:HBox>
+              <mx:ComboBox id="orphanTime" dataProvider="{lastSeen}" width="80" enabled="{currentState=='orphan'}"/>
+              <mx:Label text="Days" />
+            </mx:HBox>
+            
+          </mx:VBox>          
+        </UxExtendedClass:UxGroupBoxCta>
+        
+        <UxExtendedClass:UxGroupBoxCta title="Sort Filter" width="260" height="100%">          
+          <mx:VBox paddingTop="10" paddingBottom="10" paddingLeft="10" width="100%">   
+            <mx:CheckBox id="filePathSortCB" label="Sort by File Path" paddingTop="5" textAlign="center" />   
+            <mx:HBox>
+              <mx:Image source="{warning}" visible="{filePathSortCB.selected}" includeInLayout="{filePathSortCB.selected}"/>
+              <mx:Text text="Processing your query may take&#13;a few moments." paddingLeft="0" visible="{filePathSortCB.selected}" includeInLayout="{filePathSortCB.selected}"/>  
+            </mx:HBox>            
+          </mx:VBox>          
+        </UxExtendedClass:UxGroupBoxCta>        
+      </mx:VBox>        
+      
+      
+      <mx:Panel id="archiveSourcePanel" title="{Common.getResource('ARCHIVE_SOURCES')}" layout="vertical" width="100%" height="100%" visible="true">
+        <table:ECUITAdvancedDataGrid id="archiveSource" initialize="gc.refresh();" sortableColumns="true" 
+                                     showHeaders="true" editable="false" useRollOver="false" allowMultipleSelection="false"
+                                     change="archiveSource_change(event)">
+          <table:dataProvider>
+            <mx:GroupingCollection2 id="gc" source="{rowData}">
+              <mx:grouping>
+                <mx:Grouping>
+                  <mx:GroupingField name="Server">
+                     <mx:summaries>
+                       <mx:SummaryRow summaryPlacement="group">
+                         <mx:fields>
+                           <mx:SummaryField2 dataField="ArchivedFilesCount" summaryOperation="SUM"/>
+                           <mx:SummaryField2 dataField="StubbedFilesCount" summaryOperation="SUM"/>
+                           <mx:SummaryField2 dataField="ArchivedFilesSize" summaryOperation="SUM"/>
+                           <mx:SummaryField2 dataField="StubbedFilesSize" summaryOperation="SUM"/>
+                         </mx:fields>
+                       </mx:SummaryRow>
+                     </mx:summaries>
+                  </mx:GroupingField>
+                  <!-- <mx:GroupingField name="Protocol"/> -->
+                </mx:Grouping>
+              </mx:grouping>
+            </mx:GroupingCollection2>
+          </table:dataProvider>  
+          <table:columns>
+            <table:ECUITAdvancedDataGridColumn dataField="Server" width="150" headerText="{Common.getResource('ARCHIVE_SOURCE_SERVER')}" />
+            <table:ECUITAdvancedDataGridColumn dataField="Protocol" width="80" headerText="{Common.getResource('ARCHIVE_SOURCE_PROTOCOL')}" />
+            <table:ECUITAdvancedDataGridColumn dataField="Resource" width="300" headerText="{Common.getResource('ARCHIVE_SOURCE_RESOURCE')}" />
+            <table:ECUITAdvancedDataGridColumn dataField="ArchivedFilesCount" width="130" headerText="{Common.getResource('ARCHIVE_SOURCE_AFCOUNT')}" styleFunction="alignRight" labelFunction="formatCount" />
+            <table:ECUITAdvancedDataGridColumn dataField="StubbedFilesCount" width="130" headerText="{Common.getResource('ARCHIVE_SOURCE_SFCOUNT')}" styleFunction="alignRight" labelFunction="formatCount" />
+            <table:ECUITAdvancedDataGridColumn dataField="ArchivedFilesSize" width="120" headerText="{Common.getResource('ARCHIVE_SOURCE_AFSIZE')}" styleFunction="alignRight" labelFunction="formatSize" />
+            <table:ECUITAdvancedDataGridColumn dataField="StubbedFilesSize" width="120" headerText="{Common.getResource('ARCHIVE_SOURCE_SFSIZE')}" styleFunction="alignRight" labelFunction="formatSize" />
+            <table:ECUITAdvancedDataGridColumn headerText=" " sortable="false" width="10"/>
+          </table:columns>
+        </table:ECUITAdvancedDataGrid>
+        <mx:Label color="#0000CC" text="{Common.getResource('ARCHIVE_SOURCE_ACCURACY_NOTE')}" />
+      </mx:Panel>
+      
+    </mx:HBox>
+    
+    <mx:HBox paddingBottom="10" paddingTop="10">
+      <buttons:UxButton id="getList" label="{Common.getResource('BUTTON_GET_LIST')}" click="getList_clickHandler(event)" enabled="false"/>
+      <buttons:UxButton id="logSR" label="{Common.getResource('BUTTON_LOG_STUB_RECOVERY')}" click="getLog_clickHandler('stubrecovery')" />
+      <buttons:UxButton id="logDO" label="{Common.getResource('BUTTON_LOG_DELETE_ORPHAN')}" click="getLog_clickHandler('deleteorphan')" />
+      <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)" />
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

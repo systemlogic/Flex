@@ -1,0 +1,20 @@
+package com.emc.fma.views.Schedule.Archiver
+{
+	import com.emc.efx.guitoolkit.components.table.UxAdvancedDataGrid;
+	
+	import mx.events.ListEvent;
+	
+	public class MyAdvancedDataGrid extends UxAdvancedDataGrid
+	{
+		public function MyAdvancedDataGrid()
+		{
+			super();
+		}
+		override protected function  itemClick(event:ListEvent):void{
+			
+		}
+		override protected function  itemDoubleClick(event:ListEvent):void{
+			
+		}
+	}
+}

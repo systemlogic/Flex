@@ -1,0 +1,116 @@
+/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.guitoolkit.components.boxes {
+    import com.emc.efx.guitoolkit.dataloading.IUxLoader;
+    import com.emc.efx.guitoolkit.dataloading.UxLoadingHandler;
+    import com.emc.efx.guitoolkit.events.UxViewEvent;
+    import com.emc.efx.utilities.automation.UxAutomationUtils;
+
+    import flash.display.DisplayObject;
+
+    import mx.containers.VBox;
+
+    /**
+     * The purpose of this class is to wrap the VBox class with a Ux class so that
+     * it can have a loading state and also initialize/uninitialize the child components.
+     *
+     */
+    public class UxVBox extends VBox implements IUxLoader {
+        /** Loading Handler for the Loading State **/
+        private var _loadingHandler:UxLoadingHandler;
+
+        /**
+         * Constructor
+         */
+        public function UxVBox() {
+            super();
+            _loadingHandler = new UxLoadingHandler();
+            addEventListener(UxViewEvent.INITIALIZE_DATA, onInitializeData,
+                false, 0, true);
+            addEventListener(UxViewEvent.UNINITIALIZE_DATA, onUnInitializeData,
+                false, 0, true);
+            automationName = UxAutomationUtils.DEFAULT_AN;
+        }
+
+        /**
+         * Function to handle UxViewEvent.INITIALIZE_DATA
+         */
+        private function onInitializeData(e:UxViewEvent):void {
+            initializeData();
+        }
+
+        /**
+         * Function to handle UxViewEvent.UNINITIALIZE_DATA
+         */
+        private function onUnInitializeData(e:UxViewEvent):void {
+            unInitializeData();
+        }
+
+        /**
+         * Function to perform initialization before displaying the Component.
+         * This method is called when UxViewEvent.INITIALIZE_DATA is dispatched on the component.
+         */
+        protected function initializeData():void {
+            var child:DisplayObject;
+            for (var nCount:int = 0; nCount < getChildren().length; nCount++) {
+                child = getChildAt(nCount);
+                if (child is IUxLoader) {
+                    _loadingHandler.addHandler(((child as IUxLoader)));
+                }
+            }
+            _loadingHandler.dispatchEvent(new UxViewEvent(UxViewEvent.
+                INITIALIZE_DATA));
+
+            for (nCount = 0; nCount < getChildren().length; nCount++) {
+                getChildAt(nCount).dispatchEvent(new UxViewEvent(UxViewEvent.
+                    INITIALIZE_DATA));
+            }
+        }
+
+        /**
+         * Function to perform unInitialization before moving away from the Component.
+         * This method is called when UxViewEvent.UNINITIALIZE_DATA is dispatched on the component.
+         */
+        protected function unInitializeData():void {
+            for (var nCount:int = 0; nCount < getChildren().length; nCount++) {
+                getChildAt(nCount).dispatchEvent(new UxViewEvent(UxViewEvent.
+                    UNINITIALIZE_DATA));
+            }
+            _loadingHandler.dispatchEvent(new UxViewEvent(UxViewEvent.
+                UNINITIALIZE_DATA));
+        }
+
+        /** Loading Handler for the Loading State **/
+        [Bindable]
+        public function get loadingHandler():UxLoadingHandler {
+            return _loadingHandler;
+        }
+
+        /** Loading Handler for the Loading State **/
+        public function set loadingHandler(handler:UxLoadingHandler):void {
+            _loadingHandler = handler;
+        }
+
+        /**
+         * @inheritDoc
+         */
+        public function get loadingState():int {
+            return loadingHandler.loadingState;
+        }
+
+        /**
+        * Automation name settings.
+        * override function to format automation name.
+        */
+        override public function set automationName(value:String):void {
+            super.automationName =
+                UxAutomationUtils.getFormattedAutomationName(this.className,
+                value, "_VBX");
+        }
+    }
+}

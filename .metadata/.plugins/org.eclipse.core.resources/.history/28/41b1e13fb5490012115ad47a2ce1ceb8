@@ -1,0 +1,135 @@
+package com.emc.fma.views.Schedule.model {
+	import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGrid;
+	import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+	import com.emc.efx.guitoolkit.components.table.UxAbstractAsyncTableDataLoader;
+	import com.emc.efx.guitoolkit.components.table.UxAdvancedDataGridColumn;
+	import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+	import com.emc.efx.guitoolkit.components.table.UxTableColumnViewInformation;
+	import com.emc.efx.guitoolkit.components.table.UxTableModel;
+	import com.emc.efx.guitoolkit.components.table.renderers.UxAdvancedDataGridHeaderRenderer;
+	import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+	import com.emc.efx.net.UxURL;
+	import com.emc.efx.net.http.UxHttpClient;
+	import com.emc.fma.views.Utility.Command;
+	
+	import flash.events.Event;
+	import flash.events.TimerEvent;
+	import flash.sampler.NewObjectSample;
+	import flash.utils.ByteArray;
+	import flash.utils.Timer;
+	
+	import mx.collections.ArrayCollection;
+	import mx.containers.HBox;
+	import mx.controls.Image;
+	import mx.core.ClassFactory;
+	import mx.resources.ResourceManager;
+	
+	/**
+	 * Sample class showing implementation of a ColumnDataLoader
+	 */
+	
+	public class ScheduleMultiTierModel extends UxTableModel {
+		
+		[Bindable]private var _client:UxHttpClient;
+		[Bindable]public var ServerList:XML;
+		[Bindable]private var _rowsObject:Object = new Object();
+		private var _timer:Timer;
+		
+		
+		/**
+		 * Constructor
+		 */
+		public function ScheduleMultiTierModel() {
+			super();
+			
+		}
+		
+		/**
+		 * @inheritDoc
+		 */
+		/*override protected function loadData():void {
+		_timer = new Timer(5000, 1);
+		_timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+		_timer.start();
+		}*/
+		
+		
+		
+		
+		override protected function loadColumns():void{
+			var col0:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','SCH_TSK_ID'), "Column0");
+			var col1:UxColumnIdentifier =
+				new UxColumnIdentifier("Tier Source", "Column1");
+			var col2:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','SCH_EST_STR_TME'), "Column2");
+			var col3:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','SCH_CUR_USG'), "Column3");
+			var col4:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','SCH_ARC_CAP'), "Column4");
+			var col5:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','SCH_POL_NAM'), "Column5");
+			var col6:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','SCH_STA'), "Column6");
+			columnIdentifiers = new ArrayCollection([col0,col1, col2, col3, col4,col5,col6]);
+			
+			//setGridColumns(columnIdentifiers);
+		} 
+		
+		private function onTimer(e:TimerEvent):void {
+			
+			var xml:XML = <REQUEST/>; 
+			xml.appendChild(<statusType>2</statusType>);
+			xml.appendChild(<taskType>multitier</taskType>);
+			var cmd:Command = new Command(_client,onComplete,xml,"getScheduleList.htm",null,loadingHandler);
+			_client = cmd.sendCommand();
+			
+		}
+		override protected function loadData():void{
+			_timer = new Timer(0, 1);
+			_timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+			_timer.start();
+		}
+		private function onComplete(event:Event):void {
+			ServerList = new XML(_client.response.body);
+			//setGridColumns(GridColumns);
+			_rowsObject = createRows4();
+			
+			modelData = _rowsObject as ArrayCollection;
+			
+			loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+				LOADING_COMPLETE));
+			_timer.stop();
+		}
+		private function createRows4():ArrayCollection {
+			var count:int = 0;
+			var row:Array =  new Array();
+			var item:XML;
+			for each(item in ServerList.Schedule) {
+				++count;
+				var source:String = item.source;
+				var StartTime:String = item.startTime;
+				var CurrentUsage:int = parseInt(item.usedPercent,10);
+				var ArcCapacity:int = parseInt(item.archiveThreshold,10);
+				var PolicyName:String = item.policyName;
+				var Summary:String ;
+				var simSummary:String ;
+				var Status:String = item.status;
+				var taskId:String = item.taskId ;
+				var obj:Object = {Column0:taskId, Column1:source, Column2:StartTime, Column3:CurrentUsage,
+					Column4:ArcCapacity, Column5:PolicyName, Column6:Status};
+				row.push(obj); 
+			}
+			var rows:ArrayCollection = new ArrayCollection(row);
+			loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+				LOADING_COMPLETE)); 
+			return rows; 
+			
+		}
+		
+		/**
+		 * Using timer to simulate time consuming network calls
+		 */
+		
+	}
+}

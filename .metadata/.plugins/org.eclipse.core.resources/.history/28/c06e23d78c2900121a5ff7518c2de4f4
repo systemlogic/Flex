@@ -1,0 +1,76 @@
+/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.alert {
+    import com.emc.efx.guitoolkit.components.table.renderers.UxLabelCellRenderer;
+    import com.emc.efx.guitoolkit.displaybuilders.UxResourceDisplayBuilder;
+
+    import mx.controls.Image;
+    import mx.events.ResizeEvent;
+
+    /**
+     * This class is used to apply customized renderer to columns
+     */
+    public class UxAlertsCellRenderer extends UxLabelCellRenderer {
+
+        /** Static const used for bundle name */
+        private static const _bundle:String = "alertservice";
+
+        /** variable to store critical severity image */
+        private static const _criticalImage:Image =
+            new UxResourceDisplayBuilder(_bundle,
+            "ALERT_SEVERITY_CRITICAL").image;
+
+        /** variable to store major severity image */
+        private static const _majorImage:Image =
+            new UxResourceDisplayBuilder(_bundle, "ALERT_SEVERITY_MAJOR").image;
+
+        /** variable to store warning severity image */
+        private static const _warningImage:Image =
+            new UxResourceDisplayBuilder(_bundle,
+            "ALERT_SEVERITY_WARNING").image;
+
+        /** variable to store information severity image */
+        private static const _infoImage:Image =
+            new UxResourceDisplayBuilder(_bundle,
+            "ALERT_SEVERITY_INFORMATION").image;
+
+        /** variable to store unknown severity image */
+        private static const _unknownImage:Image =
+            new UxResourceDisplayBuilder(_bundle,
+            "ALERT_SEVERITY_UNKNOWN").image;
+
+        /**
+         * Class Constructor
+         */
+        public function UxAlertsCellRenderer() {
+            super();
+        }
+
+        /**
+         * Override function
+         */
+        override protected function getDisplayedIcon(obj:Object):Image { //NO PMD
+            if (obj != null) {
+                if (obj.level == UxAlertSeverity.CRITICAL.level) { //NO PMD
+                    return _criticalImage;
+                } else if (obj.level == UxAlertSeverity.MAJOR.level) { //NO PMD
+                    return _majorImage;
+                } else if (obj.level == UxAlertSeverity.WARNING.level) { //NO PMD
+                    return _warningImage;
+                } else if (obj.level == UxAlertSeverity.INFORMATION.level) { //NO PMD
+                    return _infoImage;
+                } else if (obj.level == UxAlertSeverity.UNKNOWN.level) { //NO PMD
+                    return _unknownImage;
+                }
+            }
+
+            return new Image();
+        }
+
+    }
+}

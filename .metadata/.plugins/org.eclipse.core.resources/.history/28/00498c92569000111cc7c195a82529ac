@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Container having TestingViewBlock -->
+<ux:UxVBox xmlns:mx="http://www.adobe.com/2006/mxml"
+		   xmlns:ux="com.emc.efx.guitoolkit.components.boxes.*"
+		   xmlns:sample="com.emc.sample.*"
+		   width="100%" paddingLeft="10" paddingRight="10" 
+		   paddingBottom="10" paddingTop="10"
+		   height="100%"
+		   implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+		   xmlns:views="com.emc.efx.guitoolkit.components.views.*" 
+		   xmlns:section="com.emc.efx.services.layout.section.*" 
+		   xmlns:combobox="com.emc.efx.guitoolkit.components.combobox.*">
+	
+	<section:UxLazyLoadSection id="usrPage" key="USRPRO" headerText="@Resource(key='USRPRO', bundle='fma')" 
+							   contentClass="com.emc.fma.views.System.User"/>
+	
+		<mx:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.ecuit.flex.components.filter.FilterPanel;
+				import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGrid;
+				import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+				import com.emc.ecuit.flex.components.table.ECUITLinkButton;
+				import com.emc.ecuit.flex.components.table.LinkButtonClickEvent;
+				import com.emc.ecuit.flex.components.views.ViewBlock;
+				import com.emc.ecuit.flex.components.views.ViewTitleBarButtonEvent;
+				import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.guitoolkit.components.table.UxAdvancedDataGridColumn;
+				import com.emc.efx.guitoolkit.components.views.UxViewTitleButtonHandler;
+				import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+				import com.emc.efx.guitoolkit.displaybuilders.UxActionInformation;
+				import com.emc.efx.guitoolkit.events.UxViewEvent;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.UxURLRequest;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				import com.emc.fma.events.FileServerEventDispatcher;
+				import com.emc.fma.views.System.model.UserModel;
+				import mx.controls.Image;
+				import mx.controls.Menu;
+				import mx.core.BitmapAsset;
+				import mx.events.CloseEvent;
+				import mx.events.FlexEvent;
+				import mx.events.ListEvent;
+				import mx.events.MenuEvent;
+				import mx.managers.PopUpManager;
+				import mx.utils.ArrayUtil;
+				
+				[Bindable]private var _client:UxHttpClient;
+				[Bindable]public var ServerList:XML;
+				private var _section:UxLazyLoadSection ;
+				
+				protected function _addNASRepository(event:MouseEvent):void
+				{
+					_section = usrPage ;
+					fileServerActionHandler({key: "User Properties" },usrPage.key,"","","","")
+				}
+				
+				protected function _viewTitleBarButtonClickHandler(event:ViewTitleBarButtonEvent):void
+				{
+					/* if(event.viewTitleBarButton.id.toString() == FILTER_BTN_I){
+					
+					}else if(event.viewTitleBarButton.id.toString() == EXPORT_BTN_ID){
+					
+					}else if(event.viewTitleBarButton.id.toString() == REFRESH_BTN_ID){
+					
+					} */ 
+				}
+				private function fileServerActionHandler(dataObj:Object,pageType:String,name:String,type:String,enable:String,guid:String):void {
+					var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+					var map:UxHashMap = new UxHashMap();
+					map.put(pageType, dataObj);
+					map.put("Name", name);
+					map.put("Type", type);
+					map.put("Enable", enable);
+					map.put("Guid", guid);
+					var location:Array = new Array;
+					_section.headerText = dataObj["key"];
+					location = navService.currentLocation;
+					location.push(pageType)
+					navService.moveToChild(pageType, map);
+				}
+				
+				protected function _detailNAS(event:MouseEvent):void
+				{
+					if(nasRepoList.selectedItem == null ){
+						ECUITPopupDialog.showMessageDialog(this,"No User Selected","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					var name:String 		= nasRepoList.selectedItem.Column1 ;
+					var type:String 		= nasRepoList.selectedItem.Column2 ;
+					var enable:String 		= nasRepoList.selectedItem.Column3 ;
+					var guid:String 		= nasRepoList.selectedItem.Column4 ;
+					
+					_section = usrPage ;
+					fileServerActionHandler({key: name+ "(" + type + ")" },usrPage.key,name,type,enable,guid);
+				}
+				
+				protected function _deleteNAS(event:MouseEvent):void
+				{
+					if(nasRepoList.selectedItem == null ){
+						ECUITPopupDialog.showMessageDialog(this,"No User Selected","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					var name:String = nasRepoList.selectedItem.Column1 ;
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showConfirmDialog(this,"Are you Sure you want to delete " + name, "Delete", ECUITPopupDialog.YES_NO_OPTION );
+					dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleYesNoDeleteResult);
+				}
+				
+				private function handleYesNoDeleteResult(event:ECUITPopupDialogEvent) : void 
+				{
+					var name:String = nasRepoList.selectedItem.Column1 ;
+					var user_selection:String = event.resultLabel; 
+					if(user_selection == "Yes"){
+						_client = new UxHttpClient();
+						_client.addEventListener(Event.COMPLETE, onDelete);
+						var data:ByteArray = new ByteArray();
+						var xml:XML = <REQUEST/>; 
+						xml.appendChild(<action>delete</action>);
+						xml.appendChild(<Name>{name}</Name>);
+						xml.appendChild(<Password>*****</Password>);
+						xml.appendChild(<Type>SuperUser</Type>);
+						xml.appendChild(<enable>false</enable>);
+						xml.appendChild(<GUID>{nasRepoList.selectedItem.Column4}</GUID>);
+						data.writeUTFBytes(xml);
+						_client.sendPostRequest(new UxURL(resourceManager.getString('fma','ALLICATION_CONTEXT')+ "saveUser.htm"), data);
+						viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+						viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+					}  
+				}
+				private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+				{
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+					viewBlock.lastRefreshDate = new Date(); 
+				}
+				private function onDelete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+					dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+				}
+				
+				[Bindable]private var _rowsObject:Object = new Object();
+				public var iconSelection:int = 1;
+				
+				public function get workingPages():Array {
+					var workingPageArray:Array = new Array();
+					workingPageArray.push(usrPage);
+					return workingPageArray;
+				}
+				
+			]]>
+		</mx:Script>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+				 xmlns:mx="http://www.adobe.com/2006/mxml" id="viewBlock"
+				 title="User List" width="100%" height="100%"
+				 xmlns:fx="com.emc.efx.guitoolkit.components.table.filter.*"
+				 xmlns:table="com.emc.ecuit.flex.components.table.*" 
+				 xmlns:views="com.emc.ecuit.flex.components.views.*"
+				 showRefresh="true" showExport="true" showFind="false" 
+				 showPrint="false" showTools="false" showFilter="true"
+				 helpID="conf_flst" xmlns:tx="com.emc.efx.guitoolkit.components.table.*"
+				 viewTitleBarButtonClick="_viewTitleBarButtonClickHandler(event)"
+				 xmlns:filter="com.emc.efx.guitoolkit.components.filter.*"
+				 xmlns:filter1="com.emc.efx.guitoolkit.filter.*"
+				 xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+				 xmlns:rules="com.emc.efx.guitoolkit.components.table.rules.*">
+		<tx:UxTablePanel width="100%" height="100%">
+			<tx:filterPanel>
+				<fx:UxTableFilterPanel id="myTableFilterPanel">
+					<fx:filterGroups>
+						<mx:Array>
+							<filter:UxFilterComboxBox label="User Type">
+								<filter:filterOptions>
+									<mx:Array>
+										<filter1:UxAllFilter label="All">
+										</filter1:UxAllFilter>
+										
+										<fx:UxTableColumnFilter label="Super User">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Super User"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="Regular User">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Regular User"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+									</mx:Array>
+								</filter:filterOptions>
+							</filter:UxFilterComboxBox>
+							<filter:UxFilterComboxBox label="Enable">
+								<filter:filterOptions>
+									<mx:Array>
+										<filter1:UxAllFilter label="All">
+										</filter1:UxAllFilter>
+										
+										<fx:UxTableColumnFilter label="yes">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="2" searchValue="yes"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="no">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="2" searchValue="no"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+									</mx:Array>
+								</filter:filterOptions>
+							</filter:UxFilterComboxBox>
+						</mx:Array>
+					</fx:filterGroups>
+				</fx:UxTableFilterPanel>
+			</tx:filterPanel>
+			<tx:UxAdvancedDataGrid id="nasRepoList" tableModel="{new UserModel()}" 
+								   showHeaders = "true" 
+								   editable="false" useRollOver="false"	  			 
+								   allowMultipleSelection="false">
+				<tx:tableColumnViewInfo>
+					<mx:ArrayCollection>
+						<tx:UxTableColumnViewInformation columnKey="Column1" colWidth="350"/>
+						<tx:UxTableColumnViewInformation columnKey="Column2" colWidth="350"/>
+						<tx:UxTableColumnViewInformation columnKey="Column3" colWidth="350"/>
+						<tx:UxTableColumnViewInformation columnKey="Column4" colHidden="true"/>
+					</mx:ArrayCollection>
+				</tx:tableColumnViewInfo>
+				
+			</tx:UxAdvancedDataGrid>
+			<tx:commandPanel>
+				<tx:UxTableCommandPanel>
+					<!--<mx:PopUpMenuButton id="pb2" dataProvider="{createServerList}" labelField="@label"
+					showRoot="false" />-->
+					<!--<mx:PopUpButton id="popB" label="Edit" creationComplete="initMenu();" width="135" />-->
+					<buttons:UxButton label="Add" click="_addNASRepository(event)" />
+					<buttons:UxButton label="Edit" click="_detailNAS(event)" />
+					<buttons:UxButton label="Delete" click="_deleteNAS(event)"/>
+				</tx:UxTableCommandPanel>
+			</tx:commandPanel>
+		</tx:UxTablePanel>	
+		
+	</UxViewBlock>
+</ux:UxVBox>

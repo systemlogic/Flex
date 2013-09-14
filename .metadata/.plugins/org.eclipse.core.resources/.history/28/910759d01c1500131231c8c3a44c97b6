@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fx="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+        xmlns:table="com.emc.ecuit.flex.components.table.*"
+        xmlns:controls="com.emc.ecuit.flex.components.controls.*"
+        xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*" xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+  <fx:Declarations>
+    <mx:ArrayCollection id="GridColumnsCommunityString" >
+      <fx:Object Name="Column1" Title="{Common.getResource('SMP_SET_COM_STR')}" />
+      <fx:Object Name="Column2" Title="{Common.getResource('SMP_SET_SCR_TYP')}" />
+    </mx:ArrayCollection>
+    <mx:ArrayCollection id="GridColumnsNotifyString" >
+      <fx:Object Name="Column1" Title="{Common.getResource('SMP_SET_IP_ADD')}" />
+      <fx:Object Name="Column2" Title="{Common.getResource('SMP_SET_UDP_PRT')}" />
+      <fx:Object Name="Column3" Title="{Common.getResource('SMP_SET_COM_STR')}" />
+      <fx:Object Name="Column4" Title="{Common.getResource('SMP_SET_SCR_TYP')}" />
+    </mx:ArrayCollection>
+  </fx:Declarations>
+  <fx:Script source="SNMPSettings.mxml.as" />
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock"
+         title="{Common.getResource('SNMPSETTINGS')}" width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false"
+         helpServiceID="FMAHelpService" helpID="SNMPSettings"
+         keyDown="page_keyDownHandler(event)"
+         creationComplete="_creationCompleteHandler(event)">
+    <mx:HBox width="100%" height="100%">
+      <UxExtendedClass:UxGroupBoxCta id="cString" height="100%" title="{Common.getResource('SMP_SET_COM_STR')}" width="50%" >
+        <mx:VBox height="100%" width="100%">
+          <mx:Form>
+            <mx:FormItem label="{Common.getResource('SMP_SET_COM_STRC')}">
+              <mx:TextInput id="communityCString" restrict="{UtilityFunctionClass.UsernameRestrict}" change="communityCString_changeHandler(event)" maxChars="32"/>
+            </mx:FormItem>
+            <mx:FormItem label="{Common.getResource('SMP_SET_SCR_TYPC')}">
+              <mx:HBox>
+                <mx:ComboBox id="communitySType" dataProvider="{UtilityFunctionClass.SECURITYARRAY}" change="communitySType_changeHandler(event)"/>
+                <mx:Button  id="communityAddBtn" label="{Common.getResource('BUTTON_ADD')}" enabled="false"
+                      click="community_clickHandler(event)" width="{communityCString.width - communitySType.width -8}"
+                      />
+              </mx:HBox>
+            </mx:FormItem>
+            <mx:FormItem/>
+            <mx:FormItem/>
+          </mx:Form>
+
+          <table:ECUITAdvancedDataGrid id="communityString" dataProvider="{_rowsObjectCommunityString}" sortableColumns="false"
+                         showHeaders = "true" rowCount="20"
+                         editable="false" useRollOver="false"
+                         allowMultipleSelection="false" />
+          <mx:HBox>
+            <mx:Button click="delete_communityHandler(event)" label="{Common.getResource('BUTTON_DEL')}" enabled="{communityString.selectedItem == null ? false : true }"/>
+          </mx:HBox>
+
+        </mx:VBox>
+      </UxExtendedClass:UxGroupBoxCta>
+      <UxExtendedClass:UxGroupBoxCta id="notifyGBox" height="100%" title="{Common.getResource('SMP_SET_NTF_STR')}" width="50%" >
+        <mx:VBox height="100%" width="100%">
+          <mx:Form>
+            <mx:FormItem label="{Common.getResource('SMP_SET_IP_ADDC')}">
+              <controls:IPAddressControl id="ip" creationComplete="ip_creationCompleteHandler(event)" />
+            </mx:FormItem>
+            <mx:FormItem label="{Common.getResource('SMP_SET_UDP_PRTC')}">
+              <mx:TextInput id="udpPort" restrict="0-9" change="notify_changeHandler(event)"/>
+            </mx:FormItem>
+            <mx:FormItem label="{Common.getResource('SMP_SET_COM_STRC')}">
+              <mx:TextInput id="notifyCString" restrict="{UtilityFunctionClass.UsernameRestrict}" change="notify_changeHandler(event)" maxChars="32"/>
+            </mx:FormItem>
+            <mx:FormItem label="{Common.getResource('SMP_SET_SCR_TYPC')}">
+              <mx:HBox>
+                <mx:ComboBox id="notifySType" dataProvider="{UtilityFunctionClass.SECURITYARRAY}" change="notifySType_changeHandler(event)"/>
+                <mx:Button id="notifyBtn" label="{Common.getResource('BUTTON_ADD')}"
+                       click="notify_clickHandler(event)" width="{notifyCString.width - notifySType.width -8}"
+                       enabled="{notifyCString.text == '' ? false : udpPort.text == '' ? false : buttonEnable}"/>
+              </mx:HBox>
+            </mx:FormItem>
+          </mx:Form>
+          <table:ECUITAdvancedDataGrid id="notifyString" dataProvider="{_rowsObjectNotifyString}" sortableColumns="false"
+                         showHeaders = "true" rowCount="18"
+                         editable="false" useRollOver="false"
+                         allowMultipleSelection="false" />
+          <mx:HBox>
+            <mx:Button click="delete_notifyHandler(event)" label="{Common.getResource('BUTTON_DEL')}" enabled="{notifyString.selectedItem == null ? false : true }"/>
+          </mx:HBox>
+
+        </mx:VBox>
+      </UxExtendedClass:UxGroupBoxCta>
+    </mx:HBox>
+    <mx:HBox paddingBottom="10" paddingTop="10">
+      <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)" />
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

@@ -1,0 +1,120 @@
+package com.emc.fma.views.Policies.Policy.PolicyWizard
+{
+	import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardDialog;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+	import com.emc.ecuit.flex.components.wizards.ECUITWizardPanel;
+	import com.emc.ecuit.flex.services.rest.RestHTTPService;
+	import com.emc.efx.guitoolkit.components.wizards.UxWizardDialog;
+	
+	import flash.display.DisplayObject;
+	
+	import mx.resources.ResourceManager;
+	
+	public class PolicyWizard extends UxWizardDialog
+	{
+		// The following references all the classes that could be shown in
+		// the wizard. If these were not referenced here, they would not be
+		// included in the application SWF file and loading them at runtime
+		// would fail.
+		private var step0: PolicyParameters;
+		private var step1: PolicyRules;
+		private var step2: Summary;
+		
+		public static const  STEP        	:String = "Step";
+		
+		private var PolicyType:String;
+		private var PolicyName:String;
+		private var wizardXMLFlow:XML
+		private var _parent:DisplayObject;
+		public static var parentWizard:Object ;
+
+		public function PolicyWizard(obj:Object,policyType:String,policyName:String="")
+		{
+			super();
+			parentWizard = obj ;
+			PolicyType = policyType;
+			PolicyName = policyName;
+			
+			wizardXMLFlow = 
+				<UxWizard>
+					<type>SIMPLE</type>
+					<wizardResourceBundle>fma</wizardResourceBundle>
+					<title>Create Policy Wizard</title>
+					<cancelPrompt>CREATE_SHARE_WIZARD_CANCEL_PROMPT</cancelPrompt>
+					<width>{ResourceManager.getInstance().getString('fma','DHB_DHB_WIZ_WID')}</width>
+					<stepsWidth>{ResourceManager.getInstance().getString('fma','DHB_WIZ_STP_WID')}</stepsWidth>
+					<WizardSteps>
+						<WizardStep>
+							<stepClass>com.emc.fma.views.Policies.Policy.PolicyWizard.PolicyParameters</stepClass>
+							<id>policyParameters</id>
+							<title>{ResourceManager.getInstance().getString('fma','POLICY_PARAMETERS')}</title>
+							<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+							<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+							<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+							<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+							<stepAttributes>
+								<stepAttribute varName='_policyType' value={PolicyType}/>
+								<stepAttribute varName='_policyName' value={PolicyName}/>
+							</stepAttributes>
+						</WizardStep>
+						<WizardStep>
+							<stepClass>com.emc.fma.views.Policies.Policy.PolicyWizard.PolicyRules</stepClass>
+							<id>policyRules</id>
+							<title>{ResourceManager.getInstance().getString('fma','POLICY_RULES')}</title>
+							<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+							<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+							<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+							<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+							<stepAttributes>
+								<stepAttribute varName='_policyType' value={PolicyType}/>
+								<stepAttribute varName='_policyName' value={PolicyName}/>
+							</stepAttributes>
+						</WizardStep>
+						<WizardStep>
+							<stepClass>com.emc.fma.views.Policies.Policy.PolicyWizard.Summary</stepClass>
+							<id>summary</id>
+							<title>{ResourceManager.getInstance().getString('fma','POLICY_SUMMARY')}</title>
+							<width>{ResourceManager.getInstance().getString('fma','DHB_WIZ_WID')}</width>
+							<height>{ResourceManager.getInstance().getString('fma','DHB_WIZ_HGT')}</height>
+							<helpTitle>{ResourceManager.getInstance().getString('fma','FIL_SER_WIZ_INS_PNL')}</helpTitle>
+							<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+							<stepAttributes>
+								<stepAttribute varName='_policyName' value={PolicyName}/>
+							</stepAttributes>
+						</WizardStep>
+					</WizardSteps>
+				</UxWizard>;
+		}
+		
+		
+		public override function show (parent:DisplayObject):void
+		{
+			_parent = parent;
+			wizard.addEventListener(ECUITWizardEvent.ECUITWIZ_LOADCOMPLETE, loadComplete);
+			wizard.loadWizardFromXML(wizardXMLFlow);
+		}
+		
+		private function loadComplete(wizEvent:ECUITWizardEvent):void
+		{
+			if (wizEvent.reason == ECUITWizardEvent.ECUITWIZ_LOADSUCCESS)
+			{
+				super.show(_parent);
+				centerDialog();
+			}
+			else
+			{
+				ECUITPopupDialog.showMessageDialog(_parent, 
+					"Unable to create the data wizard.\n\n" + wizEvent.reason,
+					"Error",
+					ECUITPopupDialog.ERROR_MESSAGE);
+			}
+		} 
+	}
+}

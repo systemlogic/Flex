@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx"  
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+			  implements="com.emc.efx.services.navigation.IUxHasPayload" 
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+			  xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+			import com.emc.efx.UxConstants;
+			import com.emc.efx.core.extensionmgr.UxExtensionManager;
+			import com.emc.efx.guitoolkit.events.UxViewEvent;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.efx.services.navigation.IUxNavigationService;
+			import com.emc.efx.utilities.map.UxHashMap;
+			import com.emc.fma.views.Utility.Command;
+			import com.emc.fma.views.Utility.UtilityFunctionClass;
+			
+			import mx.resources.ResourceManager;
+			
+			private var _currentPayload:UxHashMap = null;
+			[Bindable] private var action:String;
+			
+			[Bindable]private var index:String 				;
+			[Bindable]private var pattern:String			;
+			[Bindable]private var desc:String 				;
+			[Bindable]private var status:String 			;
+			[Bindable]private var includeSummary:String 	;
+			[Bindable]private var defThr:String 			;
+			[Bindable]private var curThr:String 			;
+			
+			override protected function initializeData():void {
+				super.initializeData();
+				index = currentPayload.getValue(UtilityFunctionClass.INDEX);
+				pattern = currentPayload.getValue(UtilityFunctionClass.PATTERN);
+				desc = currentPayload.getValue(UtilityFunctionClass.DESCRIPTION);
+				status = currentPayload.getValue(UtilityFunctionClass.STATUS);
+				includeSummary = currentPayload.getValue(UtilityFunctionClass.INCLUDE_SUMMARY);
+				defThr = currentPayload.getValue(UtilityFunctionClass.DEFULT_THROTTLE);
+				curThr = currentPayload.getValue(UtilityFunctionClass.CURRENT_THROTTLE);
+			}
+			[Bindable]
+			public function set currentPayload(value:UxHashMap):void {
+				_currentPayload = value;
+			}
+			
+			public function get currentPayload():UxHashMap {
+				return _currentPayload;
+			}
+			
+			protected function default_clickHandler(event:MouseEvent):void
+			{
+				cTh.text = defThr ;
+				
+			}
+			private function onCanel(event:Event):void {
+				var navService:IUxNavigationService =
+					UxExtensionManager.getInstance().getService(UxConstants.
+						NAVIGATION_SERVICE) as IUxNavigationService;
+				var location:Array = new Array;
+				location = navService.currentLocation;
+				location.pop();
+				navService.navigate(location);
+			}
+			private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+			{
+				viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+				viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+				viewBlock.lastRefreshDate = new Date();
+				onCanel(event);
+			}
+			private function save(event:Event):void{
+				viewBlock.updateProgress(100, "default");
+				var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+				dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+			}
+			[Bindable]private var _client:UxHttpClient;
+			private function onOK(event:MouseEvent):void {
+				
+				
+				var xml:XML = <REQUEST/>;
+				//xml.appendChild(<action>save</action>);
+				xml.appendChild(<Index>{index}</Index>);
+				xml.appendChild(<Pattern>{pattern}</Pattern>);
+				xml.appendChild(<Description>{desc}</Description>);
+				xml.appendChild(<Enabled>{sta.selectedIndex == 0 ? UtilityFunctionClass.YES : UtilityFunctionClass.NO}</Enabled>);
+				xml.appendChild(<IncludedInSum>{ins.selectedIndex == 0 ? UtilityFunctionClass.YES : UtilityFunctionClass.NO}</IncludedInSum>);
+				xml.appendChild(<DefThrottleTimeMinute>{defThr}</DefThrottleTimeMinute>);
+				xml.appendChild(<CurrThrottleTimeMinute>{cTh.text}</CurrThrottleTimeMinute>);
+				var cmd:Command = new Command(_client,save,xml,"saveLogPattern.htm",viewBlock);
+				_client = cmd.sendCommand(); 
+			}
+			
+		]]>
+	</fx:Script>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 title="{ResourceManager.getInstance().getString('fma','PTRNPRO')}" width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 helpServiceID="FMAHelpService" helpID="logPatternEdit" 
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		<mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+				 paddingBottom="10" paddingTop="10"  
+				 height="100%">
+			<UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','PTRNPRO')}" width="50%">
+				<mx:Form>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','PTRN_EDT_INDX')}">
+						<mx:TextInput id="ind" editable="false" text="{index}"  width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+					</mx:FormItem>			
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','PTRN_EDT_ALR_NME')}" >
+						<mx:TextInput id="pet" editable="false" text="{pattern}"  width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','PTRN_EDT_STATUS')}">
+						<mx:ComboBox id="sta"  width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}">
+							<mx:ArrayCollection>
+								<fx:String>{UtilityFunctionClass.ENABLED}</fx:String>
+								<fx:String>{UtilityFunctionClass.DISABLED}</fx:String>
+							</mx:ArrayCollection>
+						</mx:ComboBox>
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','PTRN_EDT_THROTTLE_TME')}">
+						<mx:HBox>
+							<mx:TextInput id="cTh" text="{curThr}" restrict="0-9" maxChars="3"  width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+							<mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_DEFAULT')}" click="default_clickHandler(event)"/>
+						</mx:HBox>
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','PTRN_EDT_IN_SUMM')}">
+						<mx:ComboBox id="ins"  width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}">
+							<mx:ArrayCollection>
+								<fx:String>{UtilityFunctionClass.INCLUDED}</fx:String>
+								<fx:String>{UtilityFunctionClass.NOTINCLUDED}</fx:String>
+							</mx:ArrayCollection>
+						</mx:ComboBox>
+					</mx:FormItem>
+				</mx:Form>
+			</UxExtendedClass:UxGroupBoxCta>
+			<mx:HBox height="100%" />
+			<mx:HBox>
+				<buttons:UxButton id="commitChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="onOK(event)" />
+				<buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCanel(event)" />
+			</mx:HBox>
+		</mx:Box>
+	</UxViewBlock>
+</UxVBoxWindow>

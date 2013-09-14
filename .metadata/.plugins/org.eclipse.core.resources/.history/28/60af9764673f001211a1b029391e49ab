@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxDialog xmlns="com.emc.efx.guitoolkit.components.dialogs.*"
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  xmlns:s="library://ns.adobe.com/flex/spark"
+		  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+		  xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+		  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+		  width="600" height="400" title="Add NAS Repository"
+		  buttonMask="{UxDialog.OK_BUTTON|UxDialog.CANCEL_BUTTON}"		
+		  backgroundColor="#EAF5FE"
+		  creationComplete="creationCompleteHandler()" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.guitoolkit.components.buttons.UxButton;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.DataDomain.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard;
+			import com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard;
+			import com.emc.fma.views.Dashboard.ConfigurationWizard.Browse;
+			import com.emc.fma.views.Policies.Policy.RuleWizard.RuleSecondaryStorage;
+			import com.emc.fma.views.Utility.Command;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.collections.XMLListCollection;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			
+			private var _initialized:Boolean = false;
+			[Bindable]public var ref:Object;
+			private var _client:UxHttpClient;
+			private var response:XMLList ;
+			public var PathValue:String ;
+			private var myWatcher:ChangeWatcher ;
+			[Bindable]
+			private var listFileServers:XMLListCollection;
+			[Bindable]
+			private var protocolArray:ArrayCollection = new ArrayCollection(["CIFS","NFS"]);
+			[Bindable]
+			private var typeArray:ArrayCollection = new ArrayCollection(["Celerra","VNX","VNXe","Isilon","DataDomain","NetApp","Windows"]);
+			[Bindable]
+			private var listFileSystems:XMLListCollection;
+			[Bindable]
+			private var listPath:XMLListCollection;	
+			private var NetappServerList:XMLListCollection;
+			private var CelerraServerList:XMLListCollection;
+			private var VNXServerList:XMLListCollection;
+			private var VNXeServerList:XMLListCollection;
+			private var IsilonServerList:XMLListCollection;
+			private var DataDomainServerList:XMLListCollection;
+			private var WindowsServerList:XMLListCollection;
+			private var taskTypeState:String;
+			
+			[Embed(source="../../../../../../../resources/images/assets/Add_16.png")]
+			[Bindable]
+			public var add_22x22:Class;
+      private var setServerName:String = "";
+			
+			protected function creationCompleteHandler():void
+			{				
+				callLater(updateSelf);
+			}			
+			
+      public function updateSelf(name:String = ""):void
+			{	
+				var xml:XML = <REQUEST/>; 
+				var cmd:Command = new Command(_client,onComplete1,xml,"getFileServerList.htm",progress);
+				_client = cmd.sendCommand("POST");
+        setServerName = name;
+			}
+			
+			private function onComplete1(event:Event):void 
+			{
+				response = new XMLList(_client.response.body);				
+				CelerraServerList 	= new XMLListCollection(response.FileServer.(elements('Type') == 'Celerra').Name);
+				VNXServerList 		= new XMLListCollection(response.FileServer.(elements('Type') == 'VNX').Name);
+				VNXeServerList 		= new XMLListCollection(response.FileServer.(elements('Type') == 'VNXe').Name);
+				IsilonServerList	= new XMLListCollection(response.FileServer.(elements('Type') == 'Isilon').Name);
+				DataDomainServerList= new XMLListCollection(response.FileServer.(elements('Type') == 'DataDomain').Name);
+				NetappServerList 	= new XMLListCollection(response.FileServer.(elements('Type') == 'NetApp').Name);
+				WindowsServerList 	= new XMLListCollection(response.FileServer.(elements('Type') == 'Windows').Name);	
+				
+        if (setServerName == "")
+        {
+          primary.dataProvider = CelerraServerList;	
+        }
+        else
+        {
+          // Get Server Type & Set Combobox Dataprovider
+          var setServerType:String = (new XMLListCollection(response.FileServer.(elements('Name') == setServerName).Type))[0].toString();
+          
+          primary.dataProvider = new XMLListCollection(response.FileServer.(elements('Type') == setServerType).Name);
+          
+          var index:Number = -1;
+          for( var j:int = 0; j < primary.dataProvider.source.length(); j++)
+            if(primary.dataProvider.source[j].toString() == setServerName ){index = j;	break;}
+          if(index != -1)
+            primary.selectedIndex = index; 
+        }
+			
+				path.text = null;
+				protocol.selectedItem = "CIFS";
+				
+				validateNext();
+		
+				progress.updateProgress(100, "Default");
+			} 
+			
+			override protected function onOK(event:MouseEvent):void
+			{				
+				if( primary.selectedItem == null){
+					ECUITPopupDialog.showMessageDialog(this,"Provide Server Name","Name",ECUITPopupDialog.INFORMATION_MESSAGE);return ;
+				} 
+				if( path.text == ""){
+					ECUITPopupDialog.showMessageDialog(this,"Provide Repository Path","Path",ECUITPopupDialog.INFORMATION_MESSAGE);return ;
+				}
+				if( diskUsage.text == ""){
+					ECUITPopupDialog.showMessageDialog(this,"Provide Maximum Limit of Disk Usage","Disk",ECUITPopupDialog.INFORMATION_MESSAGE);return ;
+				}
+				
+				var path_value:String;
+				if(protocol.selectedLabel == "CIFS"){
+					path_value = "\\"+path.text ;
+				}else if(protocol.selectedLabel == "NFS"){
+					path_value = path.text ;
+				}
+				var xml:XML = <REQUEST/>;
+				xml.appendChild(<action>add</action>);
+				xml.appendChild(<Name>{repoName.text}</Name>);
+				xml.appendChild(<Protocol>{protocol.text}</Protocol>);
+				xml.appendChild(<Server>{primary.text}</Server>);
+				xml.appendChild(<Path>{path_value}</Path>);
+				xml.appendChild(<MaxArchivePercent>{diskUsage.text}</MaxArchivePercent>);
+				var cmd:Command = new Command(_client,onComplete2,xml,"actionNASRepository.htm",progress);
+				_client = cmd.sendCommand("POST"); 
+			}
+			
+			private function onComplete2(event:Event):void
+			{
+				if ((new XMLList(_client.response.body)).Result[0].toString() == "commited")	
+				{
+					ref.getNASRepository();
+					close();
+				}
+				else
+				{
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+				}	
+				
+				progress.updateProgress(100, "default");	
+			}
+			
+			private function changeType():void
+			{
+				if (type.selectedItem == "Celerra")
+					primary.dataProvider = CelerraServerList;
+				if (type.selectedItem == "VNX")
+					primary.dataProvider = VNXServerList;
+				if (type.selectedItem == "VNXe")
+					primary.dataProvider = VNXeServerList;
+				if (type.selectedItem == "Isilon")
+					primary.dataProvider = IsilonServerList;
+				if (type.selectedItem == "DataDomain")
+					primary.dataProvider = DataDomainServerList;
+				if (type.selectedItem == "NetApp")
+					primary.dataProvider = NetappServerList;
+				if (type.selectedItem == "Windows")
+					primary.dataProvider = WindowsServerList;
+				
+				path.text = null;
+				validateNext();
+			}
+			
+			private function changePrimary():void
+			{
+				path.text = null;
+				validateNext();
+			}
+			
+			private function changeProtocol():void
+			{
+				path.text = null;
+				validateNext();
+			}
+			
+			protected function clickHandler(event:MouseEvent):void
+			{
+				var dir:Browse = new Browse();
+				dir.fileServer = primary.selectedItem.toString();
+				dir.protocol = protocol.selectedItem.toString();
+				dir.ref = this ;
+				dir.disableTreeExpand = true;					
+				dir.centerDialog() ;
+				dir.show(this.parent);
+				myWatcher = ChangeWatcher.watch(dir, "PathValue", watchPath);
+				
+				/* 				var dir:DirectoryBrowser = new DirectoryBrowser();
+				dir.FileServer = primary.selectedItem.toString();
+				dir.protocal = protocol.selectedItem.toString();
+				dir.ref = this ;
+				dir.centerDialog() ;
+				dir.show(this.parent); 
+				myWatcher = ChangeWatcher.watch(dir, "PathValue", watchPath); */
+			}
+			
+			private function watchPath(event:Event):void {
+				path.text = PathValue ;
+				validateNext();
+				myWatcher.unwatch();
+			}
+			
+			private function validateNext():void {
+			
+				if (StringUtil.trim(path.text) != "")
+				{
+					if(protocol.selectedLabel == "CIFS")
+						repoName.text = "Repository at \\\\"+ primary.selectedLabel + "\\" + path.text;
+					else if(protocol.selectedLabel == "NFS")
+						repoName.text = "Repository at " + primary.selectedLabel + ":" + path.text;
+				}
+
+				
+				/* 				if (StringUtil.trim(path.text) != "")
+				enableButtons(true, UxDialog.OK_BUTTON);
+				else
+				enableButtons(false, UxDialog.OK_BUTTON); */
+			}		
+			
+			protected function addNewServerClickHandler(event:MouseEvent):void
+			{
+				var wizard:Object ;		
+				
+				if (type.selectedItem == "Celerra"){
+					wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('Celerra');
+					wizard.show(this);
+				}
+				if (type.selectedItem == "VNX"){
+					wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('VNX');
+					wizard.show(this);
+				}
+				if (type.selectedItem == "VNXe"){
+					wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('VNXe');
+					wizard.show(this);
+				}
+				if (type.selectedItem == "Isilon"){
+					wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard();
+					wizard.show(this);
+				}
+				if (type.selectedItem == "DataDomain"){
+					wizard = new com.emc.fma.views.Configuration.FileServer.wizard.DataDomain.ServerWizard();
+					wizard.show(this);
+				}
+				if (type.selectedItem == "NetApp"){
+					wizard = new com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard();
+					wizard.show(this);
+				}
+				if (type.selectedItem == "Windows"){
+					wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard();
+					wizard.show(this);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+		
+		<mx:Text text="Define NAS Repository. You can define the capacity on the file system to be used as the repository.&#13;When the repository reaches the limit specified, archiving stops to this destination and an alert&#13;message is sent to the user. Default value is 90 percent." paddingTop="10" />
+
+		<boxes:UxVBox id="UxVboxID" borderStyle="solid" height="100%" width="100%">
+			
+			<mx:Form label="fileSystemForm" width="100%" height="100%" paddingTop="20" >
+				
+				<mx:FormItem label="Type" styleName="ECUITWizardBodyText" required="true">
+					<mx:ComboBox id="type" dataProvider="{typeArray}" change="changeType()" width="150" />	
+				</mx:FormItem>
+				
+				<mx:FormItem label="Name" styleName="ECUITWizardBodyText" required="true">
+					<mx:ComboBox id="primary" change="changeProtocol()" width="150" />					
+				</mx:FormItem >
+				
+				<mx:FormItem label="Protocol" styleName="ECUITWizardBodyText" required="true">
+					<mx:ComboBox id="protocol" dataProvider="{protocolArray}" change="changeProtocol()" width="150" />				
+				</mx:FormItem>
+				
+				<mx:FormItem label="Path" styleName="ECUITWizardBodyText" required="true">
+					<mx:HBox>
+						<mx:TextInput id="path" width="150" change="validateNext()"/>	
+						<mx:Button label="Browse" click="clickHandler(event)" />
+					</mx:HBox>
+				</mx:FormItem>		
+				
+				<mx:FormItem label="Disk" styleName="ECUITWizardBodyText" required="true">
+					<mx:HBox>
+						<mx:TextInput id="diskUsage" text="90" width="60"/>	
+						<mx:Label text="%"/>
+					</mx:HBox>						
+				</mx:FormItem>	
+				
+				<mx:FormItem label="NAS" styleName="ECUITWizardBodyText" required="true">
+					<mx:Text id="repoName"/>	
+				</mx:FormItem>
+				
+			</mx:Form>	
+			
+			<mx:HBox paddingTop="5" paddingBottom="10" paddingLeft="15">
+				<mx:Button id="addButton" label="Add Server" toolTip="Add New Server" icon="{add_22x22}" width="110" click="addNewServerClickHandler(event)" />
+			</mx:HBox>
+			
+		</boxes:UxVBox>
+		
+	</views:UxProgressCanvas>
+	
+</UxDialog>

@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*" 
+					  width="500" height="250" creationComplete="_creationCompleteHandler(event)"
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*" 
+					  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+					  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+					  xmlns:views="com.emc.efx.guitoolkit.components.views.*" xmlns:forms="com.emc.efx.guitoolkit.components.forms.*">
+	<wizards:states>
+		<s:State name="centera"/>
+		<s:State name="nonCentera"/>
+	</wizards:states>
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.controls.IPAddressValidator;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.guitoolkit.components.wizards.UxWizard;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.views.Utility.Command;
+			import com.emc.fma.views.Utility.UtilityFunctionClass;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.events.FlexMouseEvent;
+			import mx.events.ListEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			
+			import spark.skins.spark.BorderContainerSkin;
+			private var _enableBackButton:Boolean = true;
+			private var _initialized:Boolean = false;
+			private static const ATTR_IPADDRESS        :String = "";
+			public static const ATTR_IPList_Static_List:String = "IPList";
+			public static const ATTR_NODECOUNT		   :String = "nodecount";
+			public static const  STEP_VALUE        	:String = "2";
+			public static const ATTR_CSIP        :String = "CSIP";
+			private var ATTR_IPList:ArrayCollection	= new ArrayCollection();
+			public var _defaultEnterName:String = "";
+			[Bindable] public var _defaultType:String = "";
+			
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					// Pull defaults from wizard data
+					var def:Object;
+					
+					def = getData(ATTR_IPADDRESS);
+					if (def != null) 
+					{
+						_defaultEnterName = String(def);
+					}
+					
+					_initialized = true;
+				} 
+				updateButtons();
+				setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+			}
+			override protected function save(): void
+			{
+				var address:String = ControlStationIP.address[0] + "." + 
+					ControlStationIP.address[1] + "." + 
+					ControlStationIP.address[2] + "." + 
+					ControlStationIP.address[3];
+				
+				if(address.length > 15 ){
+					address = "" ;
+				}
+				
+				setData(ATTR_CSIP,        StringUtil.trim(address));
+				
+				setData(ATTR_IPList_Static_List,ATTR_IPList);
+				setData(ATTR_NODECOUNT,ATTR_IPList.length);
+				//enableStep(TvShowSelection.STEP_NAME, true);
+				stepComplete = true;
+			}
+			// Override as we have step specific validation
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			private var _client:UxHttpClient ;
+			protected function _UpdateClickHandler(event:MouseEvent):void { 
+				var xml:XML = <REQUEST/>;
+				xml.appendChild(<Name>{getData(NameStep.ATTR_NAME)}</Name> );
+				var cmd:Command = new Command(_client,onCommitComplete,xml,"updateIP.htm",progress);
+				_client = cmd.sendCommand();
+				stepComplete = true;
+			}
+			private function onCommitComplete(event:Event):void{
+				progress.updateProgress(100, "default");
+				var ip:String = (new XMLList(_client.response.body)).Result[0].toString() ;
+				if(UtilityFunctionClass.IPAddresspattern.test(ip)){
+					IPAddress.address = ip.split(".");
+				}else{
+					ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+				}
+			}
+			protected function _AddClickHandler(event:MouseEvent):void {
+				var address:String = IPAddress.address1.text + "." + 
+					IPAddress.address2.text + "." + 
+					IPAddress.address3.text + "." + 
+					IPAddress.address4.text;
+				if(!ATTR_IPList.contains(address)){
+					ATTR_IPList.addItem(address);
+				}else{
+					ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','ALREADY_IP'),ResourceManager.getInstance().getString('fma','ALREADY_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				}
+				if(currentState == "nonCentera"){
+					nodeString.text = ATTR_IPList.toString();
+					nodeCount.text  = ATTR_IPList.length.toString();
+				}
+				
+			}
+			protected function _DeleteClickHandler(event:MouseEvent):void { 
+				if(ipList.selectedItem == null){
+					ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','SELECT_IP'),ResourceManager.getInstance().getString('fma','ALREADY_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+				}else{
+					ATTR_IPList.removeItemAt(ipList.selectedIndex);
+					if(currentState == "centera"){
+						nodeString.text = ATTR_IPList.toString();
+						nodeCount.text  = ATTR_IPList.length.toString();
+					}
+				}	
+			}
+			
+			protected function ipList_Handler(event:FlexEvent):void
+			{
+				if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+				updateButtons();
+				
+			}
+			private var ipValidator:IPAddressValidator ; 
+			protected function _creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				if(_defaultType == ResourceManager.getInstance().getString('fma','CENTERA') ){
+					currentState = 	"centera" ;
+				}else if(_defaultType != ResourceManager.getInstance().getString('fma','CENTERA') ){
+					currentState = 	"nonCentera" ;
+					ipValidator = new IPAddressValidator();
+					ipValidator.source = IPAddress ;
+					ipValidator.triggerEvent = "focusOut" ;
+				}
+			}
+			
+			protected function _centeraAddHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				if(host.text == ""){
+					ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','VALID_HOST'),ResourceManager.getInstance().getString('fma','VALID_HOST_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				}
+				if(!ATTR_IPList.contains(host.text)){
+					ATTR_IPList.addItem(host.text);
+					host.text = ""
+				}else{
+					ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','ALREADY_VALID_HOST'),ResourceManager.getInstance().getString('fma','VALID_HOST_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				}
+				nodeString.text = ATTR_IPList.toString();
+				nodeCount.text  = ATTR_IPList.length.toString();
+			}
+			
+			protected function ControlStationIP_creationCompleteHandler(event:FlexEvent):void
+			{
+				ControlStationIP.address1.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+				ControlStationIP.address2.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+				ControlStationIP.address3.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+				ControlStationIP.address4.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+			}
+			private function ipChangeHandler(event:KeyboardEvent):void 
+			{
+				updates();
+			}
+			private function updates():void{
+				if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+				updateButtons();
+			}
+			private function updateButtons():void{
+				var address:String = ControlStationIP.address1.text + "." + 
+					ControlStationIP.address2.text + "." + 
+					ControlStationIP.address3.text + "." + 
+					ControlStationIP.address4.text;
+				if((ipList.dataProvider as ArrayCollection).length > 0 && (address == "..." || address.search(UtilityFunctionClass.IPAddresspattern) == 0)){
+					enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);	
+				}else{
+					enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);	
+				}
+				enableButtons(_enableBackButton, UxWizard.ECUITWIZARD_BUTTONID_BACK);
+				trace(ATTR_IPList.length)
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!--<controls:IPAddressValidator id="ipValidator" 
+		source="{IPAddress}" property="id" triggerEvent="focusOut" />-->
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+		<mx:Form>
+			<mx:FormItem required="false" label="{ResourceManager.getInstance().getString('fma','FIL_SER_ACC_NOD_IP')}" includeIn="nonCentera">
+				<boxes:UxHBox>
+					<controls:IPAddressControl id="IPAddress" enabled="false"/>
+					<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_UPD')}" id="update" click="_UpdateClickHandler(event)"/>
+					<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="_AddClickHandler(event)" enabled="{IPAddress.address.toString() == '' ? false : true}"/>
+				</boxes:UxHBox>
+			</mx:FormItem>
+			<mx:FormItem required="false" label="{ResourceManager.getInstance().getString('fma','FIL_SER_ACC_NOD_IP')}" includeIn="centera">
+				<boxes:UxHBox>
+					<forms:UxTextInput id="host"/>
+					<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="_centeraAddHandler(event)" />
+				</boxes:UxHBox>
+			</mx:FormItem>
+			<mx:FormItem  label="{ResourceManager.getInstance().getString('fma','FIL_SER_IP_ADD_LST')}"  required="true">
+				<boxes:UxHBox>
+					<mx:List width="{IPAddress.width}" id="ipList" height="100" dataProvider="{ATTR_IPList}" updateComplete="ipList_Handler(event)"/>
+					<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="_DeleteClickHandler(event)" enabled="{ipList.selectedItem == null ? false : true }" />
+				</boxes:UxHBox>
+			</mx:FormItem>
+			<mx:FormItem includeIn="nonCentera" required="false" label="{ResourceManager.getInstance().getString('fma','FIL_SER_CTR_IPA')}">
+				<controls:IPAddressControl id="ControlStationIP"  creationComplete="ControlStationIP_creationCompleteHandler(event)"/>
+			</mx:FormItem>
+			<mx:FormItem  label="{ResourceManager.getInstance().getString('fma','FIL_SER_ACC_NOD')}" required="false" includeIn="centera">
+				<mx:Label id="nodeString"/>
+			</mx:FormItem>
+			<mx:FormItem  label="{ResourceManager.getInstance().getString('fma','FIL_SER_NUM_ACC')}" required="false" includeIn="centera">
+				<mx:Label id="nodeCount"/>
+			</mx:FormItem>
+		</mx:Form>
+		
+	</views:UxProgressCanvas>
+</wizards:UxWizardStep>

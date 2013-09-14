@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" creationComplete="_creationCompleteHandler(event)"
+               xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
+  <fx:Script>
+    <![CDATA[
+      import mx.collections.ArrayCollection;
+      import mx.controls.Alert;
+      import mx.events.FlexEvent;
+      import mx.rpc.events.FaultEvent;
+      import mx.rpc.events.ResultEvent;
+      
+      protected function service_resultHandler(event:ResultEvent):void
+      {
+        // TODO Auto-generated method stub
+        deptList.dataProvider = deptservice.lastResult.deptList.dept;
+        list.dataProvider = new ArrayCollection();
+        for each(var obj:Object in deptList.dataProvider)
+        list.dataProvider.addItem(obj.department);
+        
+        
+        deptList.selectedIndex = 0;
+        empservice.method = "GET";
+        empservice.url = "http://restapp.systemlogic.cloudbees.net/empList/" + deptList.selectedItem.department;
+        empservice.send();
+      }
+      
+      protected function _creationCompleteHandler(event:FlexEvent):void
+      {
+        // TODO Auto-generated method stub
+        deptservice.send();
+      }
+      
+      protected function empservice_resultHandler(event:ResultEvent):void
+      {
+        // TODO Auto-generated method stub
+        trace(event.result);
+        if((event.result.Response.Result != null))
+          Alert.show(empservice.lastResult.Response.Result);
+        else if(empservice.lastResult.Response.Employees != null)
+          empList.dataProvider = empservice.lastResult.Response.Employees.Employee;
+        else  
+          empList.dataProvider = new ArrayCollection();
+      }
+      
+      protected function deptList_clickHandler(event:MouseEvent):void
+      {
+        // TODO Auto-generated method stub
+        empservice.method = "GET";
+        empservice.url = "http://restapp.systemlogic.cloudbees.net/empList/" + deptList.selectedItem.department;
+        empservice.send();
+      }
+      
+      protected function Add_clickHandler(event:MouseEvent):void
+      {
+        // http://restapp.systemlogic.cloudbees.net/emp/{id}/{firstName}/{lastName}/{dept}
+        empservice.method = "POST";
+        empservice.url = "http://restapp.systemlogic.cloudbees.net/emp/" + empid.text + "/" + fname.text + "/" + lname.text + "/" + list.selectedItem;
+        empservice.resultFormat="e4x";
+        empservice.useProxy = false;
+        var obj:Object = new Object()
+          obj.name = "text";
+        empservice.send(obj);
+        
+      }
+      
+      protected function _faultHandler(event:FaultEvent):void
+      {
+        // TODO Auto-generated method stub
+        empservice.lastResult;
+        trace(event.message);
+      }
+      
+    ]]>
+  </fx:Script>
+  <fx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+    <s:HTTPService id="deptservice" url="http://restapp.systemlogic.cloudbees.net/dept"  method="GET" result="service_resultHandler(event)"/>
+    <s:HTTPService id="empservice"   method="GET" result="empservice_resultHandler(event)" fault="_faultHandler(event)"/>
+  </fx:Declarations>
+
+  <mx:HBox>
+    <mx:AdvancedDataGrid id="deptList" click="deptList_clickHandler(event)">
+      <mx:columns>
+        <mx:AdvancedDataGridColumn dataField="department" width="100"/>
+        <mx:AdvancedDataGridColumn dataField="deptDesc" width="200"/>
+      </mx:columns>
+    </mx:AdvancedDataGrid>
+    <mx:AdvancedDataGrid id="empList" >
+      <mx:columns>
+        <mx:AdvancedDataGridColumn dataField="EmpID" width="100"/>
+        <mx:AdvancedDataGridColumn dataField="FirstName" width="200"/>
+        <mx:AdvancedDataGridColumn dataField="LastName" width="100"/>
+      </mx:columns>
+    </mx:AdvancedDataGrid>
+    <s:Form>
+      <s:FormItem label="First Name">
+        <s:TextInput id="fname"/>
+      </s:FormItem>
+      <s:FormItem label="Last Name">
+        <s:TextInput id="lname"/>
+      </s:FormItem>
+      <s:FormItem label="Emp Id">
+        <s:TextInput id="empid"/>
+      </s:FormItem>
+      <s:FormItem label="department">
+        <s:DropDownList id="list"/>
+      </s:FormItem>
+      <s:FormItem>
+        <s:Button label="Add" click="Add_clickHandler(event)"/>
+      </s:FormItem>
+    </s:Form>
+  </mx:HBox>
+</s:Application>

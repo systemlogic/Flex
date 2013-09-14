@@ -1,0 +1,22 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.navigation {
+
+    /**
+     * IUxWorkingPageContainer is the interface to be implemented
+     * if a working page is to contain other working page sections within it.
+     *
+     */
+    public interface IUxWorkingPageContainer {
+
+        /**
+         * Array of UxWorkingPageSections that are contained in this container
+         */
+        function get workingPages():Array;
+    }
+}

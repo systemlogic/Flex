@@ -1,0 +1,204 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.views.ProgressCanvas;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.ecuit.flex.services.rest.RestHTTPService;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+import com.emc.efx.guitoolkit.events.UxViewEvent;
+import com.emc.efx.net.UxURL;
+import com.emc.efx.net.UxURLRequest;
+import com.emc.efx.net.http.UxHttpClient;
+import com.emc.efx.net.http.UxHttpResponse;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import flash.sampler.NewObjectSample;
+
+import mx.collections.ArrayCollection;
+import mx.controls.AdvancedDataGrid;
+import mx.controls.Button;
+import mx.events.CloseEvent;
+import mx.events.FlexEvent;
+import mx.managers.PopUpManager;
+import mx.resources.ResourceManager;
+
+[Bindable]public var Server:String;
+[Bindable]public var ServerType:String;
+[Bindable]private var _client:UxHttpClient;
+[Bindable] private var isilonIPs:ArrayCollection = new ArrayCollection();
+[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+[Bindable] private var response:XMLList ;
+[Bindable] private var ipStr:String ;
+private var action:String ;
+private var _currentPayload:UxHashMap = null;
+private var oldDomainName:String = "";
+private var oldIP:String = "";
+
+override protected function initializeData():void
+{
+  super.initializeData();
+
+  ok.enabled = false;
+
+  RESTClient.sendGetRequest("/api/domain", OnGetDomainListStatus, viewBlock);
+}
+
+private function OnGetDomainListStatus(event:RESTEvent):void
+{
+  if ( Common.showResponseMessage(this, event) )
+    return;
+
+  Name.text = event.response.KDomain.Name.toString();
+
+  if (Name.text != "")
+  {
+    ipStr = event.response.KDomain.DCIP.toString();
+    // For sending PUT request
+    oldDomainName = event.response.KDomain.Name.toString();
+    oldIP = event.response.KDomain.DCIP.toString();
+  }
+}
+
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+
+private function init():void
+{
+
+}
+
+private function onOK(event:MouseEvent):void
+{
+  var address:String =  ip.address1.text + "." +
+  ip.address2.text + "." +
+  ip.address3.text + "." +
+  ip.address4.text;
+  //ipStr = address ;
+
+  var name:String = Name.text;
+
+  // Clear
+  if (name == "" && address == "...")
+  {
+    if (oldDomainName == "" && oldIP == "...")
+      return;
+    else
+      RESTClient.sendDeleteRequest("/api/domain/" + oldDomainName, OnComplete, viewBlock);
+  }
+  else
+  {
+    var xml:XML = <REQUEST/>;
+    var tmpxml:XML = <KDomain/>;
+    tmpxml.appendChild(<Name> {Name.text}</Name>);
+    tmpxml.appendChild(<DCIP> {address}</DCIP>);
+    xml.appendChild(tmpxml);
+
+    // POST for first time or after clear
+    if (oldDomainName == "")
+      RESTClient.sendPostRequest("/api/domain", xml, OnComplete, viewBlock);
+
+    // PUT if name or ip is changed
+    else if (oldDomainName != name || oldIP !=  address)
+      RESTClient.sendPutRequest("/api/domain/" + name, xml, OnComplete, viewBlock);
+  }
+}
+
+private function OnComplete(event:RESTEvent):void
+{
+  var confirmationHandler:Function = (event.hasStandardResponse && event.response.Code == 0)? OnMessageSuccess:OnMessageFailure;
+
+  // Show response message if available
+  if ( Common.showResponseMessage(this, event, confirmationHandler) )
+    return;
+
+  // Show the XML string as response
+  Common.showErrorDialog(this, event.response.toXMLString(), confirmationHandler);
+}
+
+private function OnMessageSuccess(event:Event):void
+{
+	RESTClient.sendGetRequest("/api/domain", OnGetDomainListStatus, viewBlock);
+  /*oldDomainName = Name.text;
+  oldIP = ipStr;
+
+  if (oldDomainName == "")
+  {
+    ip.address1.text ="";
+    ip.address2.text ="";
+    ip.address3.text ="";
+    ip.address4.text ="";
+  }*/
+}
+
+private function OnMessageFailure(event:Event):void
+{
+
+}
+
+private function onCanel(event:Event):void
+{
+  var navService:IUxNavigationService =
+  UxExtensionManager.getInstance().getService(UxConstants.
+  NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}
+
+protected function ip_creationCompleteHandler(event:FlexEvent):void
+{
+  // TODO Auto-generated method stub
+  ip.address1.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  ip.address2.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  ip.address3.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  ip.address4.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+}
+
+private function ipAddressChangeHandler(event:KeyboardEvent):void
+{
+  checkUpdate();
+}
+
+private function checkUpdate():void
+{
+  var address:String = ip.address1.text + "." +
+  ip.address2.text + "." +
+  ip.address3.text + "." +
+  ip.address4.text;
+  trace(address.search(UtilityFunctionClass.IPAddresspattern)) ;
+
+  if (address == "..." && Name.text == "")
+  {
+    ok.enabled = true ;
+  }
+  else  if ((address.search(UtilityFunctionClass.IPAddresspattern) == 0 )&&
+  (Name.text.search(UtilityFunctionClass.DotSeprated) == 0 ))
+  {
+    ok.enabled = true ;
+  }
+  else {
+    ok.enabled = false ;
+  }
+}
+protected function Name_changeHandler(event:Event):void
+{
+  // TODO Auto-generated method stub
+  checkUpdate();
+}
+
+

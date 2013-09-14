@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fx="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+        xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+        xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+        implements="com.emc.efx.services.navigation.IUxHasPayload"
+        xmlns:fxe="com.emc.efx.guitoolkit.components.table.filter.*"
+        xmlns:datetime="com.emc.ecuit.flex.components.datetime.*"
+        xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+        preinitialize="_preinitializeHandler(event)"
+        xmlns:Schedule="com.emc.fma.views.Schedule.*"
+        xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+
+
+  <!--,com.emc.efx.services.navigation.IUxWorkingPageContainer-->
+
+  <states>
+
+    <s:State name="archiver"/>
+    <s:State name="multitier"/>
+    <s:State name="multitierstub"/>
+    <s:State name="importarchive"/>
+    <s:State name="stubscanner"/>
+    <s:State name="deleteorphan"/>
+    <s:State name="deletestub"/>
+    <s:State name="backup"/>
+    <s:State name="repositorymigration"/>
+    <s:State name="repositorymigrationEncryption"/>
+    <s:State name="filemigration"/>
+    <s:State name="runOncearchiver"/>
+    <s:State name="runOncemultitier"/>
+    <s:State name="runOncemultitierstub"/>
+    <s:State name="runOncedeleteOrphan"/>
+    <s:State name="runOncedeleteStub"/>
+    <s:State name="runOnceImportArchive"/>
+    <s:State name="runOnceFileMigration"/>
+
+
+  </states>
+  <fx:Declarations>
+  </fx:Declarations>
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+         xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+         width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false"
+         xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+         helpServiceID="FMAHelpService" helpID="EditScheduleTask"
+         xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+
+
+    <fx:Script source="EditScheduleTask.mxml.as" />
+    <mx:HBox   width="100%" height="100%" >
+      <boxes:UxVBox width="100%">
+        <mx:HBox  id="containerBox" width="100%">
+          <UxExtendedClass:UxGroupBoxCta id="sttype" title="{ResourceManager.getInstance().getString('fma','EDT_TAK_TYp')}" height="100%" width="50%">
+            <mx:RadioButtonGroup id="taskType" />
+            <mx:Form>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_IMP_ARC_FIL')}" includeIn="importarchive,runOnceImportArchive">
+                <mx:HBox>
+                  <mx:CheckBox id="importCheck"/>
+                </mx:HBox>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_ARC_WTH_POL')}" includeIn="importarchive,runOnceImportArchive,archiver,runOncearchiver">
+                <mx:HBox>
+                  <mx:RadioButton id="awp" groupName="taskType" includeIn="importarchive,runOnceImportArchive"/>
+                  <mx:ComboBox  id="arch_combo" dataProvider="{archive}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) - awp.width*1.5}"/>
+                </mx:HBox>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_MLT_TIR_WIT_POL')}" includeIn="importarchive,runOnceImportArchive,multitier,runOncemultitier">
+                <mx:HBox>
+                  <mx:RadioButton id="mtwp" groupName="taskType" includeIn="importarchive,runOnceImportArchive"/>
+                  <mx:ComboBox id="multTier_combo" dataProvider="{multiTier}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) - mtwp.width*1.5}" />
+                </mx:HBox>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_MLT_TIR_STB_WIT_POL')}" includeIn="importarchive,runOnceImportArchive,multitierstub,runOncemultitierstub">
+                <mx:HBox>
+                  <mx:RadioButton id="mtswp" groupName="taskType" includeIn="importarchive,runOnceImportArchive"/>
+                  <mx:ComboBox id="multiTierStub_combo" dataProvider="{multiTierStub}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) }"/>
+                </mx:HBox>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_DEL_ORP_WIT_POL')}" includeIn="runOncedeleteOrphan,deleteorphan">
+                <mx:HBox>
+                  <mx:ComboBox id="deleteOrphan_combo" dataProvider="{deleteOrphan}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+                </mx:HBox>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_DEL_STB_WIT_POL')}" includeIn="runOncedeleteStub,deletestub">
+                <mx:HBox>
+                  <mx:ComboBox id="deletestub_combo" dataProvider="{deleteStub}"/>
+                </mx:HBox>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_FIL_MIG_WIT_POL')}" includeIn="filemigration,runOnceFileMigration">
+                <mx:HBox>
+                  <mx:ComboBox id="fileMigration_combo" dataProvider="{fileMigration}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH')) }"/>
+                </mx:HBox>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_REPO_MIG')}" includeIn="repositorymigration,repositorymigrationEncryption">
+                <!--<mx:HBox>
+                  <mx:RadioButton id="rmigration" groupName="taskType"/>
+                </mx:HBox>-->
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_SCN_STB')}" includeIn="stubscanner" >
+                <!--<mx:HBox>
+                  <mx:RadioButton id="scanStub" groupName="taskType"/>
+                </mx:HBox>-->
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_BCK_UP')}" includeIn="backup">
+                <!--<mx:HBox>
+                  <mx:RadioButton id="backup" groupName="taskType"/>
+                </mx:HBox>-->
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_TSK_NAM')}" includeIn="runOnceImportArchive,importarchive">
+                <mx:Label id="taskName"/>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_PVD')}" includeIn="runOnceImportArchive,importarchive">
+                <mx:Label id="providers"/>
+              </mx:FormItem>
+              <!--<mx:FormItem label="Source :" includeIn="runOnceFileMigration,repositorymigration,repositorymigrationEncryption">
+              </mx:FormItem>-->
+              <!--<mx:FormItem label="Source Option:" includeIn="repositorymigration,repositorymigrationEncryption">
+              </mx:FormItem>-->
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_DLY_PRD')}" includeIn="repositorymigration,repositorymigrationEncryption">
+                <mx:Label id="delayPeriod" />
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_MVE_ORP')}" includeIn="repositorymigration,repositorymigrationEncryption">
+                <mx:Label id="orphanFiles" />
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_AUT_REC_FIL_MIG')}" includeIn="runOnceFileMigration,filemigration">
+                <mx:CheckBox id="recursiveFileMigration" change="recursiveFileMigration_changeHandler(event)"/>
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_FIL_THR_LMT')}" includeIn="runOnceFileMigration,filemigration">
+                <mx:TextInput id="fileThresholdLimit" restrict="0-9" maxChars="2" width="{fileMigration_combo.width }"/>
+              </mx:FormItem>
+            </mx:Form>
+
+          </UxExtendedClass:UxGroupBoxCta>
+          <UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','EDT_ARC_CND')}" width="50%" id="archCond" height="100%">
+            <Schedule:EditScheduleTime id="timeSchedule" />
+          </UxExtendedClass:UxGroupBoxCta>
+
+        </mx:HBox>
+        <boxes:UxHBox width="100%">
+          <mx:Box width="50%" height="100%" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub,archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration,repositorymigration,repositorymigrationEncryption">
+            <UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','EDT_SOURCE')}" height="100%">
+              <mx:Form>
+                <mx:FormItem id="sourcerepoLabel" includeIn="repositorymigration,repositorymigrationEncryption">
+                  <mx:Label id="sourceRepoValue" />
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','NAS_REPO_FSC')}" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub">
+                  <mx:Label id="filesServer" />
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','NAS_REPO_PRTC')}" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub">
+                  <mx:Label id="protocol"/>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDY_SRC_PTH')}" includeIn="runOnceFileMigration,stubscanner,runOncearchiver,runOncemultitier,runOncemultitierstub,runOncedeleteOrphan,runOncedeleteStub">
+                  <mx:Label id="sourcePath"/>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','NAS_REPO_FSC')}" includeIn="archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration">
+                  <mx:ComboBox id="fileServer_combo" change="fileServer_combo_changeHandler(event)" dataProvider="{fileServer_array}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','NAS_REPO_PRTC')}" includeIn="archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration">
+                  <mx:ComboBox id="protocol_combo" change="protocol_combo_changeHandler(event)" dataProvider="{protoArray}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','NAS_REPO_PTHC')}" includeIn="archiver,multitier,multitierstub,deleteorphan,deletestub,filemigration">
+                  <mx:HBox>
+                    <mx:TextInput id="fsBrowse" editable="false" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"  />
+                    <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_BRO')}" click="browse_clickHandler(event)"/>
+                  </mx:HBox>
+                </mx:FormItem>
+              </mx:Form>
+            </UxExtendedClass:UxGroupBoxCta>
+          </mx:Box>
+          <mx:Box width="50%" includeIn="filemigration,runOnceFileMigration,repositorymigration,repositorymigrationEncryption" height="100%">
+            <UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','EDT_DES')}" height="100%">
+              <mx:Form>
+                <mx:FormItem id="destRepoLabel" includeIn="repositorymigration,repositorymigrationEncryption">
+                  <mx:Label id="destRepoValue" />
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_DES_OPT')}" includeIn="repositorymigrationEncryption">
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_DES_COMP')}" includeIn="repositorymigrationEncryption">
+                  <mx:Label id="compression" />
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_ENCY')}" includeIn="repositorymigrationEncryption">
+                  <mx:Label id="encryption" />
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','NAS_REPO_FSC')}" includeIn="runOnceFileMigration">
+                  <mx:Label id="destFilesServer" />
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','NAS_REPO_PTHC')}" includeIn="runOnceFileMigration">
+                  <mx:Label id="destPath"/>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_NTW_BWT')}" includeIn="runOnceFileMigration">
+                  <mx:HBox>
+                    <mx:Label id="networkBand"/>
+                    <mx:Label text="Mbytes/sec"/>
+                  </mx:HBox>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_SID_TNS_FIL')}" includeIn="runOnceFileMigration">
+                  <mx:Label id="sidTranslation"/>
+                </mx:FormItem>
+
+
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_DST_FS')}" includeIn="filemigration">
+                  <mx:ComboBox id="destFileServer_combo" change="destFileServer_combo_changeHandler(event)" dataProvider="{destFileServer_array}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_DST_PTH')}" includeIn="filemigration">
+                  <mx:HBox>
+                    <mx:TextInput id="destfsBrowse" editable="false" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"  />
+                    <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_BRO')}" click="dest_browse_clickHandler(event)"/>
+                  </mx:HBox>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_NTW_BWT')}" includeIn="filemigration">
+                  <mx:HBox>
+                    <mx:TextInput restrict="0-9" id="networkBandTextInput" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}" />
+                    <mx:Label text="Mbytes/sec"/>
+                  </mx:HBox>
+                </mx:FormItem>
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_SID_TNS_FIL')}" includeIn="filemigration">
+                  <mx:ComboBox id="sidTranslation_combo" dataProvider="{sidTranslation_array}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+                </mx:FormItem>
+              </mx:Form>
+            </UxExtendedClass:UxGroupBoxCta>
+          </mx:Box>
+        </boxes:UxHBox>
+      </boxes:UxVBox>
+    </mx:HBox>
+    <mx:Box height="100%" />
+    <mx:HBox paddingBottom="10">
+      <buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" id="Commit" click="Commit_clickHandler(event)" />
+      <buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="cancelChanges_clickHandler(event)"/>
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

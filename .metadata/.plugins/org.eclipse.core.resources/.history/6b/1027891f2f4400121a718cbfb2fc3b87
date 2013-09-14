@@ -1,0 +1,23 @@
+package com.emc.fma.model.SchemaManager.vo
+{
+	import mx.collections.ArrayCollection;
+    
+	[Bindable]
+	public class CenteraVO
+	{
+		public var Name:String;
+		public var ConnectionString:String;
+		public var ProfilePath:String;
+		public var ArchiveThreads:int;
+		public var ProfileMD5Hash:String ;
+		public var ProfileCredential:ProfileCredentialVO ;
+
+		public function CenteraVO()
+		{
+			ProfilePath = "";
+			ProfileMD5Hash = "";			
+			ProfileCredential = new ProfileCredentialVO();
+		}
+		
+	}
+}

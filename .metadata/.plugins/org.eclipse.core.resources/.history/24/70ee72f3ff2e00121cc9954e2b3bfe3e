@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extensions>
+  <plugin id="SAMPLE_APP_ID">
+    <versionInformation name="Sample Application 12" version="Dorado 12" vendor="EMC - Ux UxFramework Group 12"/>
+  </plugin>
+  <extension id="fma" pluginId="SAMPLE_APP_ID">
+        
+  <runtimeProperties>
+     <property name="offArray" value="false"/>
+  </runtimeProperties>
+
+		<module>fma/fma.swf</module>
+		<helpSystem  path="fma/webHelp/help" title="Cloud Tiering Applience" homepage="welcome.htm" resourceBundle="fma" />
+
+        <resourceModule locale="en_US" url="fma/fmaResources.swf" />
+
+        <versionInformation version="8.0" name="File Management" vendor="EMC" />
+        
+       
+        <service id="FMAService" classname="com.emc.fma.services.FMAService" priority="5000"/>
+        <service id="FMAHelpService" classname="com.emc.fma.services.FMAHelpService" priority="5001" />
+        <service id="FMAScopeService" priority="1500" classname="com.emc.efx.services.scope.UxScopeService"/>
+        <service id="FMALoginService" priority="4002" lazyStart="false" classname="com.emc.efx.services.login.UxLoginService"/>
+    </extension>
+</extensions>

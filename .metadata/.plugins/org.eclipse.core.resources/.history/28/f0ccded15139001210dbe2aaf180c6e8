@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:mx="http://www.adobe.com/2006/mxml" 
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+			  implements="com.emc.efx.services.navigation.IUxHasPayload"
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+			  xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" 
+			  xmlns:controls="com.emc.ecuit.flex.components.controls.*" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+				 xmlns:mx="http://www.adobe.com/2006/mxml" id="viewBlock"
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 creationComplete="init()" 
+				 title="{ResourceManager.getInstance().getString('fma','QDNPRO')}" width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 helpServiceID="FMAHelpService" helpID="QualifiedDomain" 
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		
+		
+		<mx:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.ecuit.flex.components.views.ProgressCanvas;
+				import com.emc.ecuit.flex.events.ECUITEvent;
+				import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+				import com.emc.ecuit.flex.services.rest.RestHTTPService;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+				import com.emc.efx.guitoolkit.events.UxViewEvent;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.UxURLRequest;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.net.http.UxHttpResponse;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				import com.emc.fma.views.Utility.Command;
+				import com.emc.fma.views.Utility.UtilityFunctionClass;
+				
+				import flash.sampler.NewObjectSample;
+				
+				import mx.collections.ArrayCollection;
+				import mx.controls.AdvancedDataGrid;
+				import mx.controls.Button;
+				import mx.events.CloseEvent;
+				import mx.managers.PopUpManager;
+				import mx.resources.ResourceManager;
+				
+				[Bindable]public var Server:String;
+				[Bindable]public var ServerType:String;
+				[Bindable]private var _client:UxHttpClient;
+				private var action:String ;
+				
+				private var _currentPayload:UxHashMap = null;
+				override protected function initializeData():void {
+					super.initializeData();
+					
+					var xml:XML = <REQUEST/>; 
+					xml.appendChild(<action>GetKDomain</action>);
+					var cmd:Command = new Command(_client,onComplete,xml,"qualifiedDomain.htm",viewBlock);
+					_client = cmd.sendCommand("POST"); 
+				}
+				[Bindable]
+				public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				
+				private function init():void{
+					
+				}
+				[Bindable] private var isilonIPs:ArrayCollection = new ArrayCollection();
+				[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+				[Bindable] private var response:XMLList ;
+				[Bindable] private var passwordStr:String ;
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					response = new XMLList(_client.response.body);
+					if(response.error[0] != "" ){
+						ECUITPopupDialog.showMessageDialog(this,response.error[0],ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+				}
+				
+				private function onOK(event:MouseEvent):void {
+					var address:String =  ip.address1.text + "." + 
+						ip.address2.text + "." + 
+						ip.address3.text + "." + 
+						ip.address4.text;
+					trace(address.search(UtilityFunctionClass.IPAddresspattern)) ;
+					if(address.search(UtilityFunctionClass.IPAddresspattern) == -1){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_IP'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					
+					var xml:XML = <REQUEST/>;
+					xml.appendChild(<action>edit</action>);
+					xml.appendChild(<Name>{Name.text}</Name>);
+					xml.appendChild(<DCIP>{address}</DCIP>);
+					trace();
+					trace(address.search(UtilityFunctionClass.IPAddresspattern)) ;
+					
+					var cmd:Command = new Command(_client,onComplete,xml,"qualifiedDomain.htm",viewBlock);
+					_client = cmd.sendCommand("POST");
+				}
+				private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+				{
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+					viewBlock.lastRefreshDate = new Date();
+					onCanel(event);
+				}
+				private function onCanel(event:Event):void {
+					var navService:IUxNavigationService =
+						UxExtensionManager.getInstance().getService(UxConstants.
+							NAVIGATION_SERVICE) as IUxNavigationService;
+					var location:Array = new Array;
+					location = navService.currentLocation;
+					location.pop();
+					navService.navigate(location);
+				}
+				private function onCommitComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var message:String = (new XMLList(_client.response.body)).Result[0].toString() ;
+					if(message == "Commited"){
+						var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+						dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+					}else{
+						ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+					}
+					
+				}
+				
+				
+			]]>
+		</mx:Script>
+		<mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+				 paddingBottom="10" paddingTop="10"  
+				 height="100%">
+			<UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','FQD')}" width="50%">
+				<mx:Form label="Web Service Specific Settings">
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FQDN_DOMIAN_NAME')}">
+						<mx:TextInput id="Name"  text="{response.Name[0]}"/>
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FQDN_IP_ADDC')}">
+						<controls:IPAddressControl id="ip" address="{response != null ? response.DCIP[0].split('.') : ''}"/>
+					</mx:FormItem>
+				</mx:Form>
+			</UxExtendedClass:UxGroupBoxCta>
+			<mx:HBox height="100%" />
+			<mx:HBox>
+				<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="onOK(event)" enabled="{Name.text.search(UtilityFunctionClass.DotSeprated) == -1 ? false : true}"/>
+				<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCanel(event)" />
+			</mx:HBox>
+			
+		</mx:Box>
+	</UxViewBlock>
+</UxVBoxWindow>

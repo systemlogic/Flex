@@ -1,0 +1,37 @@
+package com.emc.fma.model.SchemaManager.vo
+{
+import mx.resources.ResourceManager;
+    
+	[Bindable]
+	public class NdmpVO
+	{
+		public var User:String;
+		public var Password:String;
+		public var Port:String;
+
+		public function NdmpVO()
+		{
+			User = "";
+			Password = "";
+			Port = "";
+		}
+
+    public function validate():String
+    {
+      var statusMsg:String = null;
+
+      if ( (this.User == "" && this.Password == "") ||
+           (this.User != "" && this.Password != "" && this.Port != "" ) )
+         return statusMsg;
+
+      if ( this.User == "" )
+        statusMsg = ResourceManager.getInstance().getString('fma','MISSING_NDMP_USERNAME')
+      else if ( this.Password == "" )
+        statusMsg = ResourceManager.getInstance().getString('fma','MISSING_NDMP_PASSWORD')
+      else if ( this.Port == "" )
+        statusMsg = ResourceManager.getInstance().getString('fma','MISSING_NDMP_PORT')
+
+      return statusMsg;
+    }
+	}
+}

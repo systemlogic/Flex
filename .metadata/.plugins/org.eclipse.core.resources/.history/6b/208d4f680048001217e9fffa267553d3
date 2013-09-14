@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxBigButtonContainer xmlns="com.emc.efx.services.layout.containers.*"
+            xmlns:mx="http://www.adobe.com/2006/mxml" horizontalGap="0"
+            xmlns:section="com.emc.efx.services.layout.section.*"
+            xmlns:ArchivedReport="com.emc.fma.views.Archived.ArchivedReport.*" >
+  <sections>
+    <section:UxLazyLoadSection key="CHANGEPASSWORD" sortOrder="1"
+                   headerText="@Resource(key='CHANGEPASS', bundle='fma')"
+                   description="@Resource(key='CHANGEPASS_DISC', bundle='fma')"
+                   iconSource="@Resource(key='CHANGE_PASSWORD_56', bundle='fma')"
+                   smallIconSource="@Resource(key='CHANGE_PASSWORD_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.ResetPassword"/>
+
+    <section:UxLazyLoadSection key="ADDUSR" sortOrder="2"
+                   headerText="@Resource(key='ADDUSER', bundle='fma')"
+                   description="@Resource(key='ADDUSER_DISC', bundle='fma')"
+                   iconSource="@Resource(key='MANAGE_USERS_56', bundle='fma')"
+                   smallIconSource="@Resource(key='MANAGE_USERS_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.AddUser"/>
+    <section:UxLazyLoadSection key="LOGSTNG" sortOrder="3"
+                   headerText="@Resource(key='LOGSETTINGS', bundle='fma')"
+                   description="@Resource(key='LOGSETTINGS_DISC', bundle='fma')"
+                   iconSource="@Resource(key='MANAGE_LOGS_56', bundle='fma')"
+                   smallIconSource="@Resource(key='MANAGE_LOGS_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.LogSettings"/>
+    <section:UxLazyLoadSection key="ALERTSTNG" sortOrder="4"
+                   headerText="@Resource(key='ALERTSETTINGS', bundle='fma')"
+                   description="@Resource(key='ALERTSETTINGS_DISC', bundle='fma')"
+                   iconSource="@Resource(key='ALERT_SETTINGS_56', bundle='fma')"
+                   smallIconSource="@Resource(key='ALERT_SETTINGS_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.AlertSettings"/>
+    <section:UxLazyLoadSection key="SYSSECURITY" sortOrder="5"
+                   headerText="@Resource(key='SYSTEMSETTINGS', bundle='fma')"
+                   description="@Resource(key='SYSTEMSETTINGS_DISC', bundle='fma')"
+                   iconSource="@Resource(key='SYSTEM_SECURITY_SETTINGS_56', bundle='fma')"
+                   smallIconSource="@Resource(key='SYSTEM_SECURITY_SETTINGS_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.SystemSecurity"/>
+    <section:UxLazyLoadSection key="CMDHISTORY" sortOrder="6"
+                   headerText="@Resource(key='COMMANDHISTORY', bundle='fma')"
+                   description="@Resource(key='COMMANDHISTORY_DISC', bundle='fma')"
+                   iconSource="@Resource(key='COMMAND_HISTORY_56', bundle='fma')"
+                   smallIconSource="@Resource(key='COMMAND_HISTORY_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.CommandHistory"/>
+    <section:UxLazyLoadSection key="SNMPSTNG" sortOrder="7"
+                   headerText="@Resource(key='SNMPSETTINGS', bundle='fma')"
+                   description="@Resource(key='SNMPSETTINGS_DISC', bundle='fma')"
+                   iconSource="@Resource(key='MANAGE_SNMP_TRAP_56', bundle='fma')"
+                   smallIconSource="@Resource(key='MANAGE_SNMP_TRAP_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.SNMPSettings"/>
+    <section:UxLazyLoadSection key="RESETSYSTEM" sortOrder="8"
+                   headerText="@Resource(key='REBOOT', bundle='fma')"
+                   description="@Resource(key='REBOOT_DISC', bundle='fma')"
+                   iconSource="@Resource(key='REBOOT_56', bundle='fma')"
+                   smallIconSource="@Resource(key='REBOOT_56', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.ResetSystem"/>
+    <section:UxLazyLoadSection key="" sortOrder="9"/>
+    <section:UxLazyLoadSection key="" sortOrder="10"/>
+  </sections>
+</UxBigButtonContainer>
+
+

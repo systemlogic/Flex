@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+               xmlns:s="library://ns.adobe.com/flex/spark" 
+               xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600"
+               creationComplete="_loadData(event)">
+  <fx:Script>
+    <![CDATA[
+      import mx.events.FlexEvent;
+      
+      import org.osmf.utils.URL;
+      var METHOD_PUT:String = "PUT";
+      var METHOD_DELETE:String = "DELETE";
+      
+      protected function _loadData(event:FlexEvent):void
+      {
+        var request:URLRequest = new URLRequest();
+        var destination:String = "http://localhost:8080/dept"
+        request.url = destination;
+        request.method = URLRequestMethod.POST;
+        var loader:URLLoader = new URLLoader();
+        loader.dataFormat = URLLoaderDataFormat.VARIABLES;
+        loader.addEventListener(Event.COMPLETE, completeHandler);
+        
+        if ( request.method == METHOD_PUT || request.method == METHOD_DELETE )  // Flex supports only GET and POST to override it
+        {                                                                        //use this code of snippet
+          destination = destination + "?_method=" + request.method;
+          request.requestHeaders = [new URLRequestHeader("X-HTTP-Method-Override", request.method)];
+          request.method = URLRequestMethod.POST;
+          request.url = destination;
+        }
+        try
+        {
+          loader.load(request);
+        }
+        catch (error:Error)
+        {
+          trace("Unable to load URL");
+        }
+        
+      }
+      function completeHandler(event:Event):void
+      {
+        trace(event.target.data.welcomeMessage);
+        dept.dataProvider = event.target.data.Departmets
+      }
+      
+    ]]>
+  </fx:Script>
+  <fx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+  </fx:Declarations>
+  <mx:AdvancedDataGrid id="dept">
+    <mx:columns>
+      <mx:AdvancedDataGridColumn dataField="Dept"/>
+      <mx:AdvancedDataGridColumn dataField="DeptCode" headerText="Department Code"/>
+      <mx:AdvancedDataGridColumn dataField="EmpID"
+                                 headerText="Employee ID"/>
+      <mx:AdvancedDataGridColumn dataField="FirstName" headerText="First Name"/>
+      <mx:AdvancedDataGridColumn dataField="LastName" headerText="Last Name"/>
+    </mx:columns>
+  </mx:AdvancedDataGrid>
+</s:Application>

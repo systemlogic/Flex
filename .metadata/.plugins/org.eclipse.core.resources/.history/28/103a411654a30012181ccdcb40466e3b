@@ -1,0 +1,224 @@
+package com.emc.fma.controller;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.util.Properties;
+
+import javax.mail.Message;
+import javax.mail.Session;
+import javax.mail.Transport;
+import javax.mail.internet.InternetAddress;
+import javax.mail.internet.MimeMessage;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.ModelMap;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.servlet.mvc.AbstractController;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Node;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.emc.fma.legacy.RainStorageProxyAdapter;
+import com.emc.fma.util.CTAConstant;
+import com.emc.fma.util.Common;
+import com.rainfinity.mng.util.DOMWalker;
+
+@Controller
+public class ProductRegistration extends AbstractController implements CTAConstant
+{
+	@Override
+	protected ModelAndView handleRequestInternal(HttpServletRequest arg0, HttpServletResponse arg1) throws Exception
+	{
+		return null;
+	}
+
+	/////////////////////////////////////////////////////////////////////////////
+	//
+	// Product Registration input/output xml
+	//
+	// <Response>
+	//   <CTAVersion>value</CTAVersion>
+	//   <TLASerialNumber>value</TLASerialNumber>
+	//	 <SMTPServer>value</SMTPServer>
+	// </Request>
+	//
+	// <Request>
+	//	 <SMTPServer>value</SMTPServer>
+	//	 <CompanyName>value</CompanyName>
+	//	 <ContactName>value</ContactName>
+	//	 <BusinessEmail>value</BusinessEmail>
+	//	 <BusinessPhone>value</BusinessPhone>
+	//	 <BusinessAddressLine1>value</BusinessAddressLine1>
+	//	 <BusinessAddressLine2>value</BusinessAddressLine2>
+	//	 <City>value</City>
+	//	 <Country>value</Country>
+	//	 <State>value</State>
+	//	 <PostalCode>value</PostalCode>
+	//	 <ServiceActivity>value</ServiceActivity>
+	//	 <ActivityDate>value</ActivityDate>
+	//	 <SoftwareLevel>value</SoftwareLevel>
+	//	 <TLASerialNumber>value</TLASerialNumber>
+	// </Request>
+	//
+	/////////////////////////////////////////////////////////////////////////////
+	@RequestMapping(value="/registration", method = RequestMethod.GET)
+	public String systemInfo(HttpServletRequest request, ModelMap model) throws Exception
+	{
+		String result;
+		try
+		{
+			Document doc = get();
+			result = DOMWalker.toString(doc.getDocumentElement());
+		}
+		catch (Exception err)
+		{
+			result = Common.makeErrorResponse(err.getMessage());
+		}
+		model.addAttribute("result", result);
+		return "result";
+	}   
+
+	@RequestMapping(value="/registration", method = RequestMethod.POST)
+	public String save(HttpServletRequest request, HttpServletResponse response, ModelMap model) throws Exception
+	{
+		String result;
+		try
+		{
+			result = Common.makeSuccessResponse(save(Common.getData(request)));
+		}
+		catch (Exception err)
+		{
+			result = Common.makeErrorResponse(err.getMessage());
+		}
+
+		model.addAttribute("result", result);
+		return "result";
+	}
+
+	/////////////////////////////////////////////////////////////////////////////
+	//
+	// Put all method implementation here
+	//
+	/////////////////////////////////////////////////////////////////////////////
+	/** Logger for this class and subclasses */
+	protected final Log LOG = LogFactory.getLog(getClass());
+
+	private Document get() throws Exception
+	{
+		Document doc = DOMWalker.create("Response");
+		Node parentNode = doc.getDocumentElement();
+
+		// 1. Get CTA Version
+		String[] cmd = {"/bin/sh", "-c", "/usr/bin/rs -vv"};
+		Process proc = Runtime.getRuntime().exec(cmd);
+		proc.waitFor();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
+		DOMWalker.append(parentNode, "CTAVersion", reader.readLine());
+		reader.close();
+		
+		// 2. Get EMC Serial Number
+		Node rsConfig = Common.getConfigNode();
+		if ( rsConfig == null )
+			throw new Exception("EMC Serial Number not found in configuration");
+		String serialNumber = DOMWalker.getValue(rsConfig, "EmcSerialNumber");
+		DOMWalker.append(parentNode, "TLASerialNumber", serialNumber);
+
+		// 3. Get SMTP IP
+		Node rsConfigApp = RainStorageProxyAdapter.getConfiguration(CTAConstant.APPLIANCE);
+		if ( rsConfigApp == null )
+			throw new Exception("Appliance Configuration Missing.");
+		Node node = XP_SENDMAIL.evaluateSingleNode(rsConfigApp);
+		DOMWalker.append(parentNode, "SMTPServer", DOMWalker.getValue(node, "SMTPServer"));
+		DOMWalker.append(parentNode, "BusinessEmail", DOMWalker.getValue(node, "SenderAddr"));
+
+		return doc;
+	}
+
+	private String save(String xml) throws Exception
+	{
+		Node guiNode = DOMWalker.parseXML(new StringReader(xml)).getDocumentElement();
+		if ( guiNode == null )
+			throw new Exception("Could not get document node");
+
+		// 1. Set EMC Serial Number (Check for AlphaNumeric before saving)
+		Node rsConfig = Common.getConfigNode();
+		if ( rsConfig == null )
+			throw new Exception("EMC Serial Number not found in configuration");
+		String serialNumber = DOMWalker.getValue(guiNode, "TLASerialNumber");		
+		if (!isAlphaNumeric(serialNumber))
+			throw new Exception("TLA Serial Number has to be Alpha Numeric Value.");		
+		DOMWalker.setNodeValue(rsConfig, "EmcSerialNumber", serialNumber);
+		RainStorageProxyAdapter.setConfiguration(rsConfig);
+		
+		// 2. Send Registration Email
+		String host = DOMWalker.getValue(guiNode, "SMTP"); 
+		String from = DOMWalker.getValue(guiNode, "BusinessEmail"); 
+		// HARDCODING THIS VALUE FOR TESTING, BEFORE RELEASE NEED TO CHANGE TO "IBGroup@emc.com"		
+		String to = "bhatna2@emc.com";		
+
+		// Get system properties
+		Properties properties = System.getProperties(); 
+
+		// Setup mail server
+		properties.setProperty("mail.smtp.host", host); 
+
+		// Get the default Session object.
+		Session session = Session.getDefaultInstance(properties); 
+
+		// Create a default MimeMessage object.
+		MimeMessage message = new MimeMessage(session); 
+
+		// Set the RFC 822 "From" header field using the
+		// value of the InternetAddress.getLocalAddress method.
+		message.setFrom(new InternetAddress(from));
+
+		// Add the given addresses to the specified recipient type.
+		message.addRecipient(Message.RecipientType.TO, new InternetAddress(to));
+
+		// Set the "Subject" header field.
+		message.setSubject("Cloud Tiering Appliance (CTA) Registration"); 
+
+		// Sets the given String as this part's content,with a MIME type of "text/plain".
+		String body = "<html><body><p>The mail is enlcosed with Cloud Tiering Appliance (CTA) System Registration details  :</p>";
+		body +="<table><tr><td><b>Company Name</b></td><td> : " 	+  DOMWalker.getValue(guiNode, "CompanyName") + "</td></tr>";
+		body +="<tr><td><b>Contact Name</b></td><td> : "						+  DOMWalker.getValue(guiNode, "ContactName") + "</td></tr>";	
+		body +="<tr><td><b>Business Email</b></td><td> : " 					+  DOMWalker.getValue(guiNode, "BusinessEmail") + "</td></tr>";
+		body +="<tr><td><b>Business Address Line 1</b></td><td> : " +  DOMWalker.getValue(guiNode, "BusinessAddressLine1") + "</td></tr>";
+		body +="<tr><td><b>Business Address Line 2</b></td><td> : " +  DOMWalker.getValue(guiNode, "BusinessAddressLine2") + "</td></tr>";
+		body +="<tr><td><b>City</b></td><td> : " 										+  DOMWalker.getValue(guiNode, "City") + "</td></tr>";
+		body +="<tr><td><b>Country</b></td><td> : " 								+  DOMWalker.getValue(guiNode, "Country") + "</td></tr>";
+		body +="<tr><td><b>State</b></td><td> : " 										+  DOMWalker.getValue(guiNode, "State") + "</td></tr>";
+		body +="<tr><td><b>Postal Code</b></td><td> : " 							+  DOMWalker.getValue(guiNode, "PostalCode") + "</td></tr>";
+		body +="<tr><td><b>Service Activity</b></td><td> : " 				+  DOMWalker.getValue(guiNode, "ServiceActivity") + "</td></tr>";
+		body +="<tr><td><b>Activity Date</b></td><td> : "						+  DOMWalker.getValue(guiNode, "ActivityDate") + "</td></tr>";
+		body +="<tr><td><b>Software Level</b></td><td> : " 					+  DOMWalker.getValue(guiNode, "SoftwareLevel") + "</td></tr>";
+		body +="<tr><td><b>TLA Serial Number</b></td><td> : " 			+  DOMWalker.getValue(guiNode, "TLASerialNumber") + "</td></tr>";
+		body += "</table></body></html>";
+
+		message.setText(body, "UTF-8", "html");
+
+		// Send message 
+		try{
+			Transport.send(message);
+			System.out.println("Message Send Successfully... \n" +  xml);
+		}catch(Exception e){
+			throw new Exception("Registration Failed: Possible reasons would be Invalid Business Email or SMTP Server Details.");
+		}
+
+		return "Message Send";
+	}
+	
+	private boolean isAlphaNumeric(String s){
+		String pattern = "^[a-zA-Z0-9]*$";
+		if (s.matches(pattern)){
+			return true;
+		}
+		return false;
+	}
+}

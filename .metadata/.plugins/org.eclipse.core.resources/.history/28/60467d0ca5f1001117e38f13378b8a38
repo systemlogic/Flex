@@ -1,0 +1,122 @@
+package com.emc.fma.views.Configuration.FileServer.model {
+
+    
+    import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+    import com.emc.efx.guitoolkit.components.table.UxTableModel;
+    import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+    import com.emc.efx.net.UxURL;
+    import com.emc.efx.net.UxURLLoader;
+    import com.emc.efx.net.UxURLRequest;
+    import com.emc.efx.net.http.UxHttpClient;
+    
+    import flash.events.Event;
+    import flash.events.TimerEvent;
+    import flash.sampler.NewObjectSample;
+    import flash.utils.ByteArray;
+    import flash.utils.Timer;
+    
+    import mx.collections.ArrayCollection;
+    import mx.containers.HBox;
+    import mx.controls.Image;
+    import mx.core.ClassFactory;
+    import mx.resources.ResourceManager;
+
+    /**
+     * Sample class showing implementation of a ColumnDataLoader
+     */
+	
+    public class FileServerModel extends UxTableModel {
+		
+		[Bindable]private var _loader:UxURLLoader ;
+		[Bindable]private var _client;
+		[Bindable]public var ServerList:XML;
+		[Bindable]private var _rowsObject:Object = new Object();
+        private var _timer:Timer;
+		
+
+        /**
+         * Constructor
+         */
+        public function FileServerModel() {
+            super();
+			_loader = new UxURLLoader();
+        }
+
+        /**
+         * @inheritDoc
+         */
+       /*override protected function loadData():void {
+            _timer = new Timer(5000, 1);
+            _timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+            _timer.start();
+        }*/
+		
+		
+		
+		
+			
+		override protected function loadColumns():void{
+			var col1:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','FIL_SER_SER_NAM'), "Column1");
+			var col2:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','FIL_SER_SER_TYP'), "Column2");
+			var col3:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','FIL_SER_IS_SOUR'), "Column3");
+			var col4:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','FIL_SER_NET_ADD'), "Column4");
+			var col5:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','FIL_SER_CTR_IP'), "Column5");
+			columnIdentifiers = new ArrayCollection([col1, col2, col3, col4,col5]);
+			
+		} 
+		private function onTimer(e:TimerEvent):void {
+			
+			_client = new CtaHttpClient();
+			_client.addEventListener(Event.COMPLETE, onComplete);
+			var data:ByteArray = new ByteArray();
+			var xml:XML = <REQUEST/>; 
+			data.writeUTFBytes(xml);
+			_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "verifyFileServer.htm"), data);
+			
+			/*_loader.addEventListener(Event.COMPLETE, onComplete);
+			_loader.load(new UxURLRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "getFileServerList.htm")));*/
+		}
+		override protected function loadData():void{
+			_timer = new Timer(0, 1);
+			_timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+			_timer.start();
+		}
+		private function onComplete(event:Event):void {
+			trace(_loader.data.toString()) ;
+			ServerList = new XML(_loader.data.toString());
+			//setGridColumns(GridColumns);
+			_rowsObject = createRows4();
+			
+			modelData = _rowsObject as ArrayCollection;
+			
+			loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+				LOADING_COMPLETE));
+			_timer.stop();
+		}
+		private function createRows4():ArrayCollection {
+			var count:int = 0;
+			var row:Array =  new Array();
+			var item:XML;
+			for each(item in ServerList.FileServer) {
+				++count;
+				var name:String = item.Name ;
+				var type:String = item.Type ;
+				var IsSource:String = item.Source == "true" ? "yes" : "" ;
+				var IP:String = item.IP ;
+				var csip:String = item.ControlStation ;
+				var obj:Object = {Column1:name, Column2:type,Column3:IsSource, Column4:IP,Column5:csip};
+				row.push(obj); 
+			}
+			var rows:ArrayCollection = new ArrayCollection(row);
+			loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+				LOADING_COMPLETE)); 
+			return rows
+			
+		}
+    }
+}

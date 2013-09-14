@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+    xmlns:fx="http://ns.adobe.com/mxml/2009"
+    xmlns:s="library://ns.adobe.com/flex/spark"
+    xmlns:mx="library://ns.adobe.com/flex/mx"
+    implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+    xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+    xmlns:table="com.emc.ecuit.flex.components.table.*"
+    xmlns:controls="com.emc.ecuit.flex.components.controls.*"
+    xmlns:section="com.emc.efx.services.layout.section.*" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+  <fx:Declarations>
+    <section:UxLazyLoadSection id="logPet" key="PTRNPRO" headerText="@Resource(key='PTRNPRO', bundle='fma')"
+                   contentClass="com.emc.fma.views.System.logPattern"/>
+  </fx:Declarations>
+
+  <fx:Script source="AlertSettings.mxml.as" />
+
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock"
+         title="{Common.getResource('ALERTSETTINGS')}"
+         width="100%" height="100%" showRefresh="false"
+         showFilter="false" showFind="false" showExport="false"
+         showPrint="false" showTools="false"
+         helpServiceID="FMAHelpService" helpID="AlertSettings"
+         keyDown="page_keyDownHandler(event)"
+         creationComplete="viewBlock_creationCompleteHandler(event)">
+    <mx:HBox width="100%" height="100%">
+      <UxExtendedClass:UxGroupBoxCta id="cString" title="{Common.getResource('ALR_SET_ALLERTS')}" width="50%">
+        <mx:VBox height="100%" width="100%">
+          <mx:Form>
+            <mx:FormItem label="{Common.getResource('ALR_SET_TYPE')}">
+              <mx:VBox>
+                <mx:RadioButtonGroup id="alertType" itemClick="alertType_itemClickHandler()"/>
+                <mx:HBox>
+                  <mx:RadioButton id="enAlert" label="{Common.getResource('ALR_SET_ALL_ALR')}" groupName="alertType" paddingLeft="15"  selected="true"/>
+                  <mx:RadioButton id="emailAlert" label="{Common.getResource('ALR_SET_EML_ALR')}" groupName="alertType" paddingLeft="15" />
+                  <mx:RadioButton id="snmpAlert" label="{Common.getResource('ALR_SET_SMP_ALR')}" groupName="alertType" paddingLeft="15"/>
+                </mx:HBox>
+                <mx:HBox>
+                  <mx:RadioButton id="disAlert" label="{Common.getResource('ALR_SET_DIS_ALR')}" groupName="alertType" paddingLeft="15"/>
+                </mx:HBox>
+              </mx:VBox>
+            </mx:FormItem>
+            <mx:FormItem label="{Common.getResource('ALR_SET_NEW_EML')}">
+              <mx:HBox>
+                <mx:TextInput id="email" change="email_changeHandler(event)"/>
+                <mx:Button id="add" label="{Common.getResource('BUTTON_ADD')}"  click="add_clickHandler(event)"/>
+              </mx:HBox>
+            </mx:FormItem>
+            <mx:FormItem>
+              <mx:HBox>
+                <mx:List id="emailList" height="50" dataProvider="{emails}" width="{email.width}" change="change_emailSelection(event)" />
+                <mx:Button id="del" label="{Common.getResource('BUTTON_DEL')}" click="delIP()" />
+              </mx:HBox>
+            </mx:FormItem>
+          </mx:Form>
+        </mx:VBox>
+      </UxExtendedClass:UxGroupBoxCta>
+      <UxExtendedClass:UxGroupBoxCta id="notifyGBox" title="{Common.getResource('ALR_SET_ALR_SUM')}" width="50%" height="{cString.height}">
+        <mx:VBox height="100%" width="100%">
+          <mx:Form>
+            <mx:FormItem label="{Common.getResource('ALR_SET_LOG_SUM')}">
+              <mx:CheckBox id="enable"/>
+            </mx:FormItem>
+            <mx:FormItem label="{Common.getResource('ALR_SET_TME_HUR')}">
+              <mx:NumericStepper id="time" minimum="1" maximum="100"/>
+            </mx:FormItem>
+            <mx:FormItem label="{Common.getResource('ALR_SET_SZE_KB')}">
+              <mx:NumericStepper id="size" minimum="10" maximum="1000"/>
+            </mx:FormItem>
+          </mx:Form>
+        </mx:VBox>
+      </UxExtendedClass:UxGroupBoxCta>
+    </mx:HBox>
+    <mx:HBox paddingBottom="10" paddingTop="10">
+      <mx:Button label="{Common.getResource('PTRNPRO')}" click="logPattern_Handler(event)"/>
+      <mx:Button label="{Common.getResource('BUTTON_COMMIT')}" click="commit_clickHandler(event)" enabled="{((enAlert.selected || emailAlert.selected) ? (emailList.dataProvider.length > 0 ? true : false) : true) }"/>
+      <mx:Button label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)"/>
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

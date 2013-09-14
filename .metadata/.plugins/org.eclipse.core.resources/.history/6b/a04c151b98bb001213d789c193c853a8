@@ -1,0 +1,77 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.utils.Common;
+
+import mx.events.FlexEvent;
+import mx.events.FlexMouseEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+public static const ATTR_USERNAME        :String = "UserProfileUser";
+public static const ATTR_PASSWORD        :String = "UserProfilePass";
+
+public var _defaultEnterName:String = "";
+public var _defaultEnterpassword:String = "";
+public var _defaultEnterport:String = "";
+
+
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    // Pull defaults from wizard data
+    var def:Object;
+    def = getData(ATTR_USERNAME);
+
+    if (def != null)
+    {
+      _defaultEnterName = String(def);
+    }
+
+    def = getData(ATTR_PASSWORD);
+
+    if (def != null)
+    {
+      _defaultEnterpassword = String(def);
+    }
+    introText.text = Common.getResource('FILESERVER_WIZARD_STEP_4_USERPROFILE_INTROTEXT');
+    _initialized = true;
+  }
+
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+  updates();
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+private function updates():void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+
+  updateButtons();
+}
+override protected function save(): void
+{
+  setData(ATTR_USERNAME,        StringUtil.trim(userName.text));
+  setData(ATTR_PASSWORD,        StringUtil.trim(password.text));
+  parentWizard.enableStep(Optional.STEP_PEAFILE, false);
+  //enableStep(TvShowSelection.STEP_NAME, true);
+  stepComplete = true;
+}
+// Override as we have step specific validation
+override protected function validate(): Boolean
+{
+  return true;
+}
+
+protected function updateButtons():void
+{
+  if (StringUtil.trim(userName.text) != "" && StringUtil.trim(password.text) != "")
+  {
+    enableButtons(validate(), ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else  {
+    enableButtons(!validate(), ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  // TODO Auto-generated method stub
+}
+

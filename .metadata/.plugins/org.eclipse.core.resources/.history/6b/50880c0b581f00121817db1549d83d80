@@ -1,0 +1,122 @@
+package com.emc.fma.views.Policies.Policy.model{
+
+    
+    import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+    import com.emc.efx.guitoolkit.components.table.UxTableModel;
+    import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+    import com.emc.efx.net.UxURL;
+    import com.emc.efx.net.UxURLRequest;
+    import com.emc.efx.net.http.UxHttpClient;
+    import com.emc.fma.views.Utility.Command;
+    
+    import flash.events.Event;
+    import flash.events.TimerEvent;
+    import flash.sampler.NewObjectSample;
+    import flash.utils.ByteArray;
+    import flash.utils.Timer;
+    
+    import mx.collections.ArrayCollection;
+    import mx.resources.ResourceManager;
+
+    /**
+     * Sample class showing implementation of a ColumnDataLoader
+     */
+	
+    public class PolicyModel extends UxTableModel {
+		
+		[Bindable]private var _client:UxHttpClient;
+		[Bindable]public var Response:XML;
+		[Bindable]private var _rowsObject:Object = new Object();
+		[Bindable]public var ruleNameList:ArrayCollection = new ArrayCollection();
+        private var _timer:Timer;
+		
+        public function PolicyModel() {
+            super();
+			
+        }
+		override protected function loadColumns():void{
+			var col1:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','POL_NAM'), "Column1");
+			var col2:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','POL_TYP'), "Column2");
+			var col3:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','POL_DES'), "Column3");
+			columnIdentifiers = new ArrayCollection([col1, col2,col3]);
+			
+		} 
+		
+		private function onTimer(e:TimerEvent):void {
+			
+			var xml:XML = <REQUEST/>; 
+			xml.appendChild(<action>getExpressionList</action>);
+			var cmd:Command = new Command(_client,onComplete,xml,"getPolicyList.htm",null,loadingHandler);
+			_client = cmd.sendCommand();  
+		}
+		
+		override protected function loadData():void{
+			_timer = new Timer(0, 1);
+			_timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+			_timer.start();
+		}
+		
+		[Bindable] private var policy_Array:XML = new XML();
+		private function onComplete(event:Event):void {
+			policy_Array = new XML(_client.response.body);
+			_rowsObject = createRows4();
+			
+			modelData = _rowsObject as ArrayCollection;
+			
+			loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+				LOADING_COMPLETE));
+			_timer.stop();
+		}
+		
+		private function createRows4():ArrayCollection {
+			var count:int = 0;
+			var row:Array =  new Array();
+			var item:XML;
+			trace(policy_Array.Provider);
+			for each(item in policy_Array.Policy) {
+				++count;
+				var name:String = item.name;
+				var tid:int = int(item.type);
+				var Type:String= "" ;
+				switch (tid) {
+					case 0:
+						Type = "Archive" ;
+						break;
+					case 1:
+						Type = "Multi Tier" ;
+						break;
+					case 2:
+						Type = "Multi Tier Stub" ;
+						break;
+					case 3:
+						Type = "Delete Stub" ;
+						break;
+					case 4:
+						Type = "Delete Orphan" ;
+						break;
+					case 5:
+						break;
+					case 6:
+						break;
+					case 7:
+						break;
+					case 8:
+						Type = "Migrate files" ;
+						break;
+				}
+				
+				
+				var destination:String = item.destination;
+				var obj:Object = { Column1:name,Column2:Type,Column3:destination};
+				row.push(obj); 
+				trace(name);
+				trace(count);
+			}
+			var rows:ArrayCollection = new ArrayCollection(row);
+			return rows;
+		}
+    }
+}

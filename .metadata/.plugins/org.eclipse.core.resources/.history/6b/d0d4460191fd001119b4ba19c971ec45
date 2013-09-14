@@ -1,0 +1,104 @@
+package com.emc.fma.views.System.model {
+
+    
+    import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+    import com.emc.efx.guitoolkit.components.table.UxTableModel;
+    import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+    import com.emc.efx.net.UxURL;
+    import com.emc.efx.net.UxURLLoader;
+    import com.emc.efx.net.UxURLRequest;
+    import com.emc.efx.net.http.UxHttpClient;
+    import com.emc.fma.views.Utility.Command;
+    import com.emc.fma.views.Utility.UtilityFunctionClass;
+    
+    import flash.events.Event;
+    import flash.events.TimerEvent;
+    import flash.sampler.NewObjectSample;
+    import flash.utils.ByteArray;
+    import flash.utils.Timer;
+    
+    import mx.collections.ArrayCollection;
+    import mx.containers.HBox;
+    import mx.controls.Image;
+    import mx.core.ClassFactory;
+    import mx.resources.ResourceManager;
+
+    /**
+     * Sample class showing implementation of a ColumnDataLoader
+     */
+	
+    public class LogPattern extends UxTableModel {
+		
+		[Bindable]private var _client:UxHttpClient ;
+		[Bindable]public var Response:XML;
+		[Bindable]private var _rowsObject:Object = new Object();
+        private var _timer:Timer;
+		
+
+        /**
+         * Constructor
+         */
+        public function LogPattern() {
+            super();
+			
+        }
+			
+		override protected function loadColumns():void{
+			var col0:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','LOG_PTRN_INDEX'), "Column0");
+			var col1:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','LOG_PTRN_PATTERN'), "Column1");
+			var col2:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','LOG_PTRN_DESC'), "Column2");
+			var col3:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','LOG_PTRN_STATUS'), "Column3");
+			var col4:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','LOG_PTRN_INC_SUM'), "Column4");
+			var col5:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','LOG_PTRN_DFLT_THROTTLE'), "Column5");
+			var col6:UxColumnIdentifier =
+				new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','LOG_PTRN_CURR_THROTTLE'), "Column6");
+			columnIdentifiers = new ArrayCollection([col0, col1, col2, col3, col4, col5, col6]);
+			
+		} 
+		private function onTimer(e:TimerEvent):void {
+			
+			
+			var xml:XML = <REQUEST/>;
+			var cmd:Command = new Command(_client,onComplete,xml,"logPattern.htm",null,loadingHandler);
+			_client = cmd.sendCommand();
+		}
+		override protected function loadData():void{
+			_timer = new Timer(0, 1);
+			_timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+			_timer.start();
+		}
+		private function onComplete(event:Event):void {
+			trace(_client.response.body) ;
+			Response = new XML(_client.response.body);
+			//setGridColumns(GridColumns);
+			_rowsObject = createRows4();
+			
+			modelData = _rowsObject as ArrayCollection;
+			
+			loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+				LOADING_COMPLETE));
+			_timer.stop();
+		}
+		private function createRows4():ArrayCollection {
+			var row:Array =  new Array();
+			var item:XML;
+			for each(item in Response.log) {
+				var obj:Object = {Column0:item.index,Column1:item.Pattern, Column2:item.Description,Column3:(item.Enabled.toString() == "yes" ? UtilityFunctionClass.ENABLED : UtilityFunctionClass.DISABLED),
+					Column4:(item.IncludedInSum.toString() == "yes" ? UtilityFunctionClass.INCLUDED : UtilityFunctionClass.NOTINCLUDED),
+					Column5:item.DefThrottleTimeMinute,Column6:item.CurrThrottleTimeMinute };
+				row.push(obj); 
+			}
+			var rows:ArrayCollection = new ArrayCollection(row);
+			loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+				LOADING_COMPLETE)); 
+			return rows
+			
+		}
+    }
+}

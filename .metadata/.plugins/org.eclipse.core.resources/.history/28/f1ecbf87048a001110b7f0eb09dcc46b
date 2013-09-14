@@ -1,0 +1,261 @@
+package com.emc.ecuit.flex.components.filter
+{
+	import com.emc.ecuit.flex.utils.UITrace;
+	import com.emc.ecuit.flex.components.datetime.ECUITDateField;
+	import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+	import com.emc.ecuit.flex.managers.ECUITResourceManager;
+	
+	import flash.events.*;
+	
+	import mx.collections.ArrayCollection;
+	import mx.containers.HBox;
+	import mx.containers.VBox;
+	import mx.controls.Alert;
+	import mx.controls.ComboBox;
+	import mx.controls.Label;
+	import mx.controls.Menu;
+	import mx.events.DropdownEvent;
+	import mx.events.FlexEvent;
+	import mx.events.MenuEvent;
+	import mx.validators.ValidationResult;
+
+	/*************************************************************************
+	 * The Datetime Editor is a date value editor.  The first value (index 0)
+	 * turns off the filter criterion. The other values filters the rows 
+	 * based on selected date criterion. The date criterion can either be 
+	 * either pre-defined such as "Last 24 hours" "Last Week", "Last month" 
+	 * or custom date selection. When custom is selected an editor is 
+	 * displayed where the user can select an operator from the drop down 
+	 * and specify the date or a date range depending upon the operator 
+	 * selected.
+	 */
+	public class DateEditor extends BaseTimeEditor
+	{
+		/** Custom date panel for selecting the date(s) */
+		protected var _customDatePanel:VBox = new VBox();
+		/** Start date chooser. Also used as the date chooser in case of a single date */
+		protected var _startDateChooser:ECUITDateField = new ECUITDateField();
+		/** End date chooser */
+		protected var _endDateChooser:ECUITDateField = new ECUITDateField();
+		
+		private var _customOpr:int = FilterConstants.OP_UNKNOWN;
+
+		/*********************************************************************
+		 * Constructor creates and adds default editor to be displayed when the 
+		 * custom menu is selected.
+		 * 
+		 * @param filterDef FilterDefinition associated with this editor
+		 */
+		public function DateEditor(filterDef:FilterDefinition=null)
+		{
+			super(filterDef);
+
+			createCustomDatePanel();
+			addChild(_customDatePanel);
+			
+			//add creationComplete event handler
+			_customDatePanel.addEventListener(FlexEvent.CREATION_COMPLETE, customPanelCreated);
+		}
+		
+		/**
+		 * Handler for the custom panel creationComplete event. Adds range panel to the 
+		 * parent custom panel. 
+		 */
+		protected function customPanelCreated(event:FlexEvent):void
+		{
+			//Add Start date chooser
+			if (!_rangePanel.contains(_startDateChooser))
+				_rangePanel.addChildAt(_startDateChooser, 0);
+			//Add range panel
+			_customDatePanel.addChild(_rangePanel);
+
+			// set the defaults
+			try
+			{
+				updateFromDefault();
+			}
+			catch (e:Error)
+			{
+				UITrace.doTrace(this, "Error \"" + e.message + "\" loading " + 
+								"default filter date for " + _filterDef.name, 
+							UITrace.LEVEL_ERROR);
+			}
+		}
+		
+		/**
+		 * Creates the custom date panel. Custom date panel includes an operator selector
+		 * combobox and a date chooser control
+		 */ 
+		protected function createCustomDatePanel():void
+		{
+			_customDatePanel.id = "customDatePanel";
+			var filterBylabel:Label = new Label();
+			filterBylabel.text = _resMgr.getString("FILTER_BY");
+			filterBylabel.styleName = "FilterEditorLabel";
+			_customDatePanel.addChild(filterBylabel);
+			
+			//Add operator combo
+			_opCtrl.addEventListener(DropdownEvent.CLOSE , handleComboBox);
+			_opCtrl.filterDefinition = filterDefinition;
+			_customDatePanel.addChild(_opCtrl);
+			
+			_andLabel.text = _resMgr.getString("FILTER_AND");
+
+			//set the automationName for all controls
+			_startDateChooser.automationName = "startDateChooser" + filterDefinition.name;
+			_endDateChooser.automationName = "endDateChooser" + filterDefinition.name;
+
+			applyExclusion(_startDateChooser);
+			applyExclusion(_endDateChooser);
+		}
+
+		/**
+		 * Handles the cancel operation custom dialog. Restores the old values.
+		 */ 
+		public function handleCancelOperation():void
+		{
+			if (_customOpr == FilterConstants.OP_IS_BETWEEN)
+			{
+				_startDateChooser.selectedDate = (value as ValueRange).start as Date;
+				_endDateChooser.selectedDate = (value as ValueRange).end as Date;
+			}
+			else if (_customOpr != FilterConstants.OP_UNKNOWN)
+			{
+				_startDateChooser.selectedDate = value  as Date;
+			}
+		}
+
+		/*********************************************************************
+		 * @inheritDoc
+		 * 
+		 * Make sure the end date/time is greater than the start date/time. 
+		 */
+		public override function isValid():Boolean
+		{
+			if (_opCtrl.operator == FilterConstants.OP_IS_BETWEEN)
+			{
+				var range:ValueRange = new ValueRange;
+				range.start = _startDateChooser.selectedDate;
+				range.end = _endDateChooser.selectedDate;
+				
+				if ((range.start as Date).getTime() >= (range.end as Date).getTime())
+				{
+					ECUITPopupDialog.showMessageDialog(null, 
+							_resMgr.getString("FILTER_INVALID_DATE_RANGE"), 
+							_resMgr.getString("FILTER_INVALID_RANGE_DLG_TITLE"));
+					return false;
+				}
+
+				_value = range;
+			}
+			else
+				_value = _startDateChooser.selectedDate;
+
+			//set the operators
+			_operator = _opCtrl.operator;
+			_customOpr = _operator;
+			_valueSet = true;
+
+			updateDescription();
+
+			return true;			
+		}
+
+		/*********************************************************************
+		 * @private
+		 * Handler for the operator combobox.
+		 * Displays an appropriate editor based on the selected operator in the operator combobox.
+		 */
+		protected override function handleComboBox(event:DropdownEvent = null):void
+		{
+			//set custom data
+			_customData = _opCtrl.customData;
+			//remove the range selector
+			if (_rangePanel.contains(_endDateChooser))
+			{
+				_rangePanel.removeChild(_andLabel);
+				_rangePanel.removeChild(_endDateChooser);
+			}
+			//_operator = _opCtrl.operator;
+			if (_opCtrl.operator == FilterConstants.OP_IS_BETWEEN)
+			{
+				if (!_rangePanel.contains(_startDateChooser))
+					_rangePanel.addChildAt(_startDateChooser, 0);
+				_rangePanel.addChildAt(_andLabel, 1);
+				_rangePanel.addChildAt(_endDateChooser, 2);
+			}
+			//initialize the value field in case the user choses to use the pre-selected date(s)
+			if (_opCtrl.operator == FilterConstants.OP_IS_BETWEEN)
+			{
+				var range:ValueRange = new ValueRange();
+				range.start = _startDateChooser.selectedDate;
+				range.end = _endDateChooser.selectedDate;
+			}
+		}
+
+		protected override function setCustomPanel():void
+		{
+			if (!_rangePanel.contains(_startDateChooser))
+				_rangePanel.addChildAt(_startDateChooser, 0);
+			_rangePanel.addChildAt(_andLabel, 1);
+			_rangePanel.addChildAt(_endDateChooser, 2);
+		}
+
+		protected override function resetCustomPanel():void
+		{
+			if (_rangePanel.contains(_endDateChooser))
+			{
+				_rangePanel.removeChild(_andLabel);
+				_rangePanel.removeChild(_endDateChooser);
+			}
+		}
+
+		/*********************************************************************
+		 * The dates not allowed by the date pickers used in this editor.
+		 * <p/>
+		 * This property accepts an Array of objects as a parameter. Each 
+		 * object in this array is a Date object, specifying a single day to 
+		 * disable; or an object containing either or both of the rangeStart 
+		 * and rangeEnd properties, each of whose values is a Date object. 
+		 * The value of these properties describes the boundaries of the date 
+		 * range. If either is omitted, the range is considered unbounded in 
+		 * that direction. If you specify only rangeStart, all the dates after 
+		 * the specified date are disabled, including the rangeStart date. If 
+		 * you specify only rangeEnd, all the dates before the specified date 
+		 * are disabled, including the rangeEnd date. To disable a single day, 
+		 * use a single Date object specifying a date in the Array. Time values 
+		 * are zeroed out from the Date object if they are present.
+		 * <p/>
+		 * The following example, disables the following dates: January 11 
+		 * 2006, the range January 23 - February 10 2006, and March 1 2006 and 
+		 * all following dates.
+		 * <p/>
+		 * disabledRanges="{[ new Date(2006,0,11), 
+		 * 					{rangeStart: new Date(2006,0,23), 
+		 * 						rangeEnd: new Date(2006,1,10)}, 
+		 * 					{rangeStart: new Date(2006,2,1)} ]}"
+		 */
+		public override function set disabledRanges(value:Array):void
+		{
+			super.disabledRanges = value;
+
+			if (_startDateChooser != null)
+				_startDateChooser.disabledRanges = value;
+			if (_endDateChooser != null)
+				_endDateChooser.disabledRanges = value;
+		} 
+
+		protected override function set startDate(date:Date):void
+		{
+			super.startDate = date;
+
+			_startDateChooser.selectedDate = date; 
+		}
+		protected override function set endDate(date:Date):void
+		{
+			super.endDate = date;
+
+			_endDateChooser.selectedDate = date; 
+		}
+	}
+}

@@ -1,0 +1,86 @@
+package com.emc.fma.views.Utility
+{
+	import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+	import com.emc.ecuit.flex.managers.ECUITResourceManager;
+	
+	import mx.collections.ArrayCollection;
+	import mx.resources.ResourceManager;
+
+	public class UtilityFunctionClass
+	{
+		public static const TRUE:String 								= "true" ;
+		public static const YES:String 								= "yes" ;
+		public static const NO:String 								= "no" ;
+		public static const DETAILED:String 							= "detailed" ;
+		public static const IMPORTLOGS:String 						= "importLog" ;
+		public static const EXITFAILURECOUNT:String 					= "1000" ;
+		public static const ATMOS:String 								= "atmos" ;
+		public static const AMAZON:String 							= "amazons3" ;
+		public static const AZURE:String 							= "azure" ;
+		public static const ALL:String								= "all"
+		public static const EMAIL:String								= "emailOnly"
+		public static const SNMP:String								= "snmpOnly"
+		public static const EDIT:String								= "edit" ;
+		public static const SAVE:String								= "Save" ;
+		public static const ENABLED:String							= "enabled" ;
+		public static const DISABLED:String							= "disabled" ;
+		public static const INCLUDED:String							= "included" ;
+		public static const NOTINCLUDED:String						= "not included" ;
+		public static const INDEX:String								= "Index" ;
+		public static const PATTERN:String							= "Pattern" ;
+		public static const DESCRIPTION:String						= "Description" ;
+		public static const STATUS:String								= ResourceManager.getInstance().getString('fma','SCH_STA') ;
+		public static const INCLUDE_SUMMARY:String					= "Included in Summary" ;
+		public static const DEFULT_THROTTLE:String					= "Default Throttle Time" ;
+		public static const CURRENT_THROTTLE:String					= "Current Throttle Time" ;
+		public static const PENDING_KEY:String						= "pending" ;
+		public static const UsernameRestrict:String					= "A-Za-z0-9" ;
+		public static const DomainRestrict:String						= "A-Za-z0-9.-" ;
+		public static const PortRestrict:String						= "0-9" ;
+		public static const DaysRestrict:String						= "0-9" ;
+		public static const AccessBucketRestrict:String				= "A-Za-z0-9.-"
+		public static const URLRestrict:String						= "A-Za-z0-9.-:/"
+		
+		public static const IPAddresspattern:RegExp = /\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/;  
+		public static const UnixPath:RegExp = /^((\/)|(\/[^\/]+)+)$/ ; 				// /\/(\w)*/ ;
+		public static const DotSeprated:RegExp = /^[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)+$/;  /*/(([^\.]+)+)$/ ;*/ 				// /\/(\w)*/ ;
+		public static const Domain:RegExp = /^(([a-zA-Z0-1]+)|([a-zA-Z0-9]+(\.[a-zA-Z0-9]+)+))$/;
+		public static const URL:RegExp = /(ftp|http|https|file):\/\/[\S]+(\b|$).(com|org|net|mil|edu|COM|ORG|NET|MIL|EDU)/i;
+		
+		public static const TWELE:int		=	12 ;
+		public static const SECURITYARRAY:ArrayCollection = new ArrayCollection(new Array("v1","v2c"));
+		
+		public function UtilityFunctionClass()
+		{
+		}
+		public static function formatDate(number:int):String{
+			var str:String = number.toString();
+			if(str.length == 1){
+				return "0" + str ;
+			}else{
+				return str ;
+			}
+		}
+		public static function formatMonth(number:int):String{
+			var str:String = (number +1 ).toString();
+			if(str.length == 1){
+				return "0" + str ;
+			}else{
+				return str ;
+			}
+		}
+		public static function formatTime(number:int):String{
+			var str:String = number.toString();
+			if(str.length == 1){
+				return "0" + str ;
+			}else{
+				return str ;
+			}
+		}
+		public static function formatHour(am_pm:String,hourText:String):int{
+			return parseInt((am_pm == ECUITResourceManager.getInstance().getString("AM")) ? 
+				((parseInt(hourText) == TWELE ) ? (parseInt(hourText) - TWELE).toString() : parseInt(hourText).toString()) :
+				((parseInt(hourText) == TWELE ) ? parseInt(hourText).toString()  : (parseInt(hourText) + TWELE).toString())  ) ;
+		}
+	}
+}

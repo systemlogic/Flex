@@ -1,0 +1,72 @@
+package com.emc.fma.views.Utility
+{
+	import com.emc.ecuit.flex.components.application.ProgressMonitor;
+	import com.emc.efx.guitoolkit.components.views.UxViewBlock;
+	import com.emc.efx.net.UxURL;
+	import com.emc.efx.net.UxURLRequest;
+	import com.emc.efx.net.http.UxHttpClient;
+	import com.emc.efx.net.http.events.UxHttpTimeoutEvent;
+	
+	import flash.events.Event;
+	import flash.utils.ByteArray;
+	
+	import mx.resources.ResourceManager;
+	public class Command
+	{
+		public var TYPE_WIZARD = "wizard"	;
+		public var TYPE_NORMAL = "normal"	;
+		private var GET = "GET"			;
+		private var POST = "POST"			;
+		private var _client:UxHttpClient 	;
+		private var funct:Function 		; 
+		private var data:ByteArray 		;
+		private var viewBlock:Object		;
+		private var isWizard:Boolean 		;
+		private var request:UxURLRequest 	;
+		private var destination:String		;
+		public function Command(funct:Function,xml:XML,viewBlock:Object,isWizard:Boolean,destination:String)
+		{
+			this._client	= 	new UxHttpClient(10*60*1000)	;
+			this.request 	= 	new UxURLRequest()				;
+			this.funct		= 	funct 							;
+			this.data		= 	this.data.writeUTFBytes(xml);							;
+			this.viewBlock	=	viewBlock 						;
+			this.isWizard	=	isWizard						;
+			this.destination=	ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT') + destination			;
+			
+		}
+		public function sendCommand():UxHttpClient{
+			request.method 	= POST ;
+			request.url		= new UxURL(destination);
+			request.data	= data ;
+			/*if (!Delegator.DEBUGSESSION)
+			{
+				cookieStr = ExternalInterface.call("function(){return document.cookie}");
+				cookieHeader = new URLRequestHeader("Cookie", cookieStr);
+				if (cookieStr.length != 0)
+				{
+					request.requestHeaders.push(cookieHeader);
+				}
+			}
+			else
+			{
+				cookieHeader = new URLRequestHeader("Cookie", "JSESSIONID=" + Delegator.JSESSIONID);
+				request.requestHeaders.push(cookieHeader);
+			}*/
+			_client.addEventListener(UxHttpTimeoutEvent.HTTP_TIMEOUT,_timerExpire);
+			_client.addEventListener(Event.COMPLETE, funct);
+			_client.sendRequest(request);
+			if(isWizard){
+				viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+				viewBlock.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+			}else if(!isWizard){
+				viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+				viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+			}
+			return _client ;
+		}
+		public function _timerExpire(event:UxHttpTimeoutEvent):void{
+			viewBlock.updateProgress(100, "default");
+		}
+	}
+}

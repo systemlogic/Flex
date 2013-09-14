@@ -1,0 +1,4 @@
+pamsample {
+	ch.odi.jaaspam.PamLoginModule required service=login;
+};
+

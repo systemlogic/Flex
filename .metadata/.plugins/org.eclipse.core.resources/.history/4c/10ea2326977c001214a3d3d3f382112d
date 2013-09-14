@@ -1,0 +1,26 @@
+package com.emc.fma.model.SchemaManager.vo
+{
+	import mx.collections.ArrayCollection;
+    
+	[Bindable]
+	public class NetAppVO
+	{
+		public var Name:String;
+		public var Protocols:String;
+		public var IP:ArrayCollection;
+		public var HostIP:String;
+		public var Cifs:CifsVO;
+		public var Ndmp:NdmpVO;
+		public var Source:SourceVO;
+
+		public function NetAppVO()
+		{
+			Protocols = "";
+			Cifs = new CifsVO();
+			Ndmp = new NdmpVO();
+			Source = new SourceVO();
+			HostIP = "";
+		}
+		
+	}
+}

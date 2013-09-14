@@ -1,0 +1,284 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fxs="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx"
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+			  implements="com.emc.efx.services.navigation.IUxHasPayload"
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+			  xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+				 id="viewBlock"
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 title="Create NAS Repository" width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 helpServiceID="FMAHelpService" helpID="NasRepository" 
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		<fxs:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.ecuit.flex.components.views.ProgressCanvas;
+				import com.emc.ecuit.flex.events.ECUITEvent;
+				import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+				import com.emc.ecuit.flex.services.rest.RestHTTPService;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+				import com.emc.efx.guitoolkit.events.UxViewEvent;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.UxURLRequest;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.net.http.UxHttpResponse;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				
+				import flash.sampler.NewObjectSample;
+				
+				import mx.collections.ArrayCollection;
+				import mx.controls.AdvancedDataGrid;
+				import mx.controls.Button;
+				import mx.events.CloseEvent;
+				import mx.events.FlexEvent;
+				import mx.managers.PopUpManager;
+				import mx.resources.ResourceManager.getInstance();
+				
+				[Bindable]public var NASValue:String;
+				[Bindable]public var typeValue:String   ;
+				[Bindable]public var serverValue:String ;
+				[Bindable]public var pathValue:String   ;
+				[Bindable]public var maxArchiveValue:String ;
+				[Bindable]private var _client:UxHttpClient;
+				[Bindable]public var server_array:ArrayCollection = new ArrayCollection();
+				[Bindable]public var protocol_array:ArrayCollection = new ArrayCollection();
+				[Bindable]public var path_array:ArrayCollection = new ArrayCollection();
+				[Bindable]public var Name_text:String = "";
+				[Bindable]public var maxUsage_text:String = "";
+				
+				private var _currentPayload:UxHashMap = null;
+				[Bindable] private var action:String;
+				override protected function initializeData():void {
+					super.initializeData();
+					if (currentPayload != null) {
+						var NASValue:String = currentPayload.getValue("NASValue");
+						if (NASValue != "") {
+							typeValue 		= currentPayload.getValue("TYPEValue");
+							serverValue 	= currentPayload.getValue("SERVERValue");
+							pathValue 		= currentPayload.getValue("PATHValue");
+							maxArchiveValue	= currentPayload.getValue("MAXARCValue");
+							if(NASValue == "")
+								viewBlock.title=NASValue + " Properties" ;
+							else 
+								viewBlock.title="NAS Properties" ;
+							Name_text = NASValue;
+							protocol_array.addItem(typeValue);
+							server_array.addItem(serverValue);
+							path_array.addItem(pathValue);
+							maxUsage_text = maxArchiveValue; 
+							action = "edit" ;
+						}else{
+							createNew();
+							action = "add" ;
+						}
+					}
+				}
+				[Bindable]
+				public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				
+				private function getItem():void{
+					
+					
+				}
+				private function createNew():void{
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, getList);
+					var xml:XML = <REQUEST/>;
+					xml.appendChild(<action>getList_fma</action>);
+					var data:ByteArray = new ByteArray();
+					data.writeUTFBytes(xml);
+					_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "listNASRepository.htm"), data);
+					viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+					viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+				}
+				
+				/* private function init():void{
+				if(NASValue == ""){
+				createNew();
+				viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+				viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+				}else{
+				
+				}
+				} */
+				[Bindable] private var isilonIPs:ArrayCollection = new ArrayCollection();
+				[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+				[Bindable] private var response:XMLList
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					response = new XMLList(_client.response.body);
+					/* nameForm.FileServerName.text = response.Name[0];
+					
+					UserAccount.text = response.UID[0];
+					Password.text = response.SharedSecret[0];
+					DNS.text = response.DNSName[0];
+					port.text	= response.Port[0];
+					if(response.WEBProtocol[0] == "HTTP"){
+					protocol.selectedIndex = 0 ;
+					}else if(response.WEBProtocol[0] == "HTTPS"){
+					protocol.selectedIndex = 1 ;
+					} */
+					
+				}
+				
+				private function onOK(event:MouseEvent):void {
+					
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, save);
+					
+					if(maxUsage.text== ""){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getInstance().getString('fma','INVALID_MAXUSAGE'),ResourceManager.getInstance().getInstance().getString('fma','INVALID_MAXUSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					} 
+					var path_value:String;
+					if(protocal.selectedLabel == "CIFS"){
+						path_value = "\\"+path.selectedLabel ;
+					}else if(protocal.selectedLabel == "NFS"){
+						path_value = path.selectedLabel ;
+					}
+					
+					var xml:XML = <REQUEST/>;
+					
+					
+					xml.appendChild(<action>{action}</action>);
+					xml.appendChild(<Name>{Name.text}</Name>)
+					xml.appendChild(<Protocol>{protocal.selectedLabel}</Protocol>)
+					xml.appendChild(<Server>{server.selectedLabel}</Server>)
+					xml.appendChild(<Path>{path_value}</Path>)
+					xml.appendChild(<MaxArchivePercent>{maxUsage.text}</MaxArchivePercent>)
+					var data:ByteArray = new ByteArray();
+					data.writeUTFBytes(xml);
+					_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "actionNASRepository.htm"), data); 
+					viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+					viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+				}
+				private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+				{
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+					viewBlock.lastRefreshDate = new Date();
+					onCanel(event);
+				}
+				private function save(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+					dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+				}
+				private function onCanel(event:Event):void {
+					var navService:IUxNavigationService =
+						UxExtensionManager.getInstance().getService(UxConstants.
+							NAVIGATION_SERVICE) as IUxNavigationService;
+					var location:Array = new Array;
+					location = navService.currentLocation;
+					location.pop();
+					navService.navigate(location);
+				}
+				protected function CreateNAS_creationCompleteHandler(event:FlexEvent):void
+				{
+					
+					
+					// TODO Auto-generated method stub
+				}
+				private function getList(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					response = new XMLList(_client.response.body);
+					for each (var nas:XML in response.NASRepository){
+						if(!server_array.contains(nas.Server.toString()))
+							server_array.addItem(nas.Server.toString());
+					}
+					server.enabled = true ;
+					protocal.enabled = true ;
+					path.enabled = true ;
+				}
+				private function fileServer_handler(event:Event):void {
+					protocol_array = new ArrayCollection();
+					path_array = new ArrayCollection();
+					Name.text = "";
+					maxUsage.text = "" ;
+					for each(var nas:XML in response.NASRepository){
+						if( server_array.contains(server.selectedLabel) &&  
+							!protocol_array.contains(nas.Protocol.toString())){
+							protocol_array.addItem(nas.Protocol.toString());
+						}
+					}  
+				}
+				private function protocol_handler(event:Event):void {
+					path_array = new ArrayCollection();
+					Name.text = "";
+					maxUsage.text = "" ;
+					for each(var nas:XML in response.NASRepository){
+						if( server.selectedLabel == nas.Server.toString() &&  
+							protocal.selectedLabel == nas.Protocol.toString() &&
+							!path_array.contains(nas.Name.toString()) ){												
+							path_array.addItem(nas.Name.toString());
+						}
+					}
+					
+				}
+				
+				private function path_handler(event:Event):void {
+					Name.text = "";
+					maxUsage.text = "" ;
+					for each(var nas:XML in response.NASRepository){
+						if( server.selectedLabel == nas.Server.toString() &&  
+							protocal.selectedLabel == nas.Protocol.toString() &&
+							path.selectedLabel == nas.Name.toString()) {												
+							if(protocal.selectedLabel == "CIFS")
+								Name.text = "Repository at \\\\"+ server.selectedLabel + "\\" + nas.Name.toString();
+							else if(protocal.selectedLabel == "NFS")
+								Name.text = "Repository at " + server.selectedLabel + ":" + nas.Name.toString();
+							maxUsage.text = nas.MaxArchivePercent.toString();
+							
+						}
+					}
+				}
+				
+			]]>
+		</fxs:Script>
+		<mx:Box  width="100%" paddingLeft="10" paddingRight="10" paddingBottom="10" id="tabContainer" height="100%">
+			<UxExtendedClass:UxGroupBoxCta title="NAS Repository" width="100%" ><!--   -->
+				<mx:Form>
+					<mx:FormItem label="File Server:">
+						<mx:ComboBox id="server" dropdownWidth="{Name.width}" width="{Name.width}" dataProvider="{server_array}" close="fileServer_handler(event)" enabled="{NASValue == ''}"/>
+					</mx:FormItem>
+					<mx:FormItem label="Protocol:">
+						<mx:ComboBox id="protocal" dropdownWidth="{Name.width}" width="{Name.width}" dataProvider="{protocol_array}" close="protocol_handler(event)" enabled="{NASValue == ''}"/>
+					</mx:FormItem>
+					<mx:FormItem label="Path:">
+						<mx:ComboBox id="path" dropdownWidth="{Name.width}" width="{Name.width}" dataProvider="{path_array}" close="path_handler(event)" enabled="{NASValue == ''}"/>
+					</mx:FormItem>
+					<mx:FormItem label="Name:">
+						<mx:TextInput id="Name" text="{Name_text}" editable="false" />
+					</mx:FormItem>
+					<mx:FormItem label="Maximum Limit of Disk Usage:">
+						<mx:TextInput id="maxUsage" text="{maxUsage_text}" restrict="0-9" maxChars="2" />
+					</mx:FormItem>
+				</mx:Form>
+			</UxExtendedClass:UxGroupBoxCta>
+			<mx:HBox height="100%" />
+			<mx:HBox>
+				<buttons:UxButton id="commitChanges" label="Save" click="onOK(event)" />
+				<buttons:UxButton id="cancelChanges" label="Cancel" click="onCanel(event)" />
+			</mx:HBox>
+		</mx:Box>
+	</UxViewBlock>
+</UxVBoxWindow>

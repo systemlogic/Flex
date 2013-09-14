@@ -1,0 +1,121 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.help {
+	import com.emc.ecuit.flex.services.ECUITHelpService;
+	import com.emc.ecuit.flex.services.HelpSystem;
+	import com.emc.efx.core.resourcemanager.UxResourceManager;
+	import com.emc.efx.utilities.errors.UxError;
+
+
+	/**
+	 * A helper class to intialize help system.
+	 * You must creat a
+	 *
+	 */
+	public class UxRoboESAConfigHelper {
+		/**
+		 * the configuration XML.
+		 * <helpConfig>
+			   <helpSystemName>frameworkHelp</helpSystemName>
+			   <defaultHelpID>frmwk_2001</defaultHelpID>
+			   <snippetDir> UxFramework/webHelp/snippets/ </snippetDir>
+			   <initialSnippets> sample_views.xml </initialSnippets>
+			   <helpDir>UxFramework/webHelp/help/</helpDir>
+			   <homepage>welcome.htm</homepage>
+			   <contextMapFile>frmwk_basics_helpmap-map.xml </contextMapFile>
+			   <contextMapFormat>xml</contextMapFormat>
+			   <keyAttribute>target</keyAttribute>
+			   <valueAttribute>url</valueAttribute>
+			   <showHelpIDTips>true</showHelpIDTips>
+			   <mapIDTag>mapID</mapIDTag>
+		   </helpConfig>
+		 */
+		public var configXML:XML;
+
+		/**
+		 * constructor 
+		 * @param configXMLIn
+		 * 
+		 */
+		public function UxRoboESAConfigHelper(configXMLIn:XML):void {
+			configXML=configXMLIn;
+		}
+
+		/**
+		 * get help Name of the ESA or Robo help name
+		 * @return
+		 *
+		 */
+		public function get helpName():String {
+			var name:String;
+			if (configXML != null) {
+				name=configXML.helpSystemName;
+			}
+			return name;
+		}
+
+		/**
+		 * get the default help ID. The default help ID should be
+		 * from the configXML
+		 * @return
+		 *
+		 */
+		public function get defaultHelpID():String {
+			var id:String;
+			if (configXML != null) {
+				id=configXML.defaultHelpID;
+			}
+			return id;
+		}
+
+
+		/**
+		 * intialized the help system based on the configXML 
+		 * 
+		 */
+		public function intializeHelpSystem():void {
+			if (configXML != null) {
+				// new help system instance
+				var name:String = configXML.helpSystemName;
+				var helpSystem:HelpSystem = new UxHelpSystem(name);
+				
+				// locale
+				var locale:String=UxResourceManager.getInstance().locale;
+
+				// snippet
+				helpSystem.snippetHelpDir=configXML.snippetDir + locale;
+				helpSystem.initialSnippets=configXML.initialSnippets;
+
+				// Initialize the Help System url
+				helpSystem.helpURL=configXML.helpDir + locale + "/" + configXML.homepage;
+				helpSystem.contextMapFile=configXML.helpDir + locale + "/" + configXML.contextMapFile;
+				
+				// Initialize the context map
+				if (configXML.contextMapFormat == "xml") {
+					helpSystem.contextMapFormat=ECUITHelpService.XML_FORMAT;
+				} else {
+					helpSystem.contextMapFormat=ECUITHelpService.PROPERTIES_FORMAT;
+				}
+				helpSystem.mapIdTag=configXML.mapIDTag;
+				helpSystem.keyAttribute=configXML.keyAttribute;
+				helpSystem.valueAttribute=configXML.valueAttribute;
+				if (configXML.showHelpIDTips == "true") {
+					ECUITHelpService.showHelpIdTips=true;
+				} else {
+					ECUITHelpService.showHelpIdTips=false;
+				}
+				
+				// Add the help system				
+				ECUITHelpService.getInstance().addHelpSystem(helpSystem);
+				
+			} else {
+				throw UxError("configuration XML isn't set, No configuration will be performed.");
+			}
+		}
+	}
+}

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250">
+	<wizards:states>
+		<s:State name="empty"/>
+		<s:State name="import"/>
+	</wizards:states>
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			
+			import mx.collections.ArrayCollection;
+			import mx.resources.ResourceManager;
+			private var _enableBackButton:Boolean = true;
+			private var _initialized:Boolean = false;
+			public var _defaultEnterName:String = "";
+			public static const ATTR_IMPORT_CHECK     :String = "importCheck";
+			public static const ATTR_POLICY_SELECTION     :String = "POLICY_SELECTION";
+			
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					var def:Object;
+					def = getData(ATTR_IMPORT_CHECK);
+					if (def != null) 
+					{
+						importCheck.selected = String(def) as Boolean;
+					}
+				}
+				enableButtons(validate(), ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+				currentState = "empty";
+				if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_ARCHIVE){
+					policySelection.dataProvider = getData(TaskType.ATTR_ARCHIVE) as ArrayCollection ;
+					currentState = "import";
+					importCheck.selected = getData(ATTR_IMPORT_CHECK);
+					change_handler();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_MULTITIER){
+					policySelection.dataProvider = getData(TaskType.ATTR_MULTI_TIER) as ArrayCollection ;
+					currentState = "import";
+					importCheck.selected = getData(ATTR_IMPORT_CHECK);
+					change_handler();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_MULTITIERSTUB){
+					policySelection.dataProvider = getData(TaskType.ATTR_MULTI_TIER_STUB) as ArrayCollection ;
+					currentState = "import";
+					importCheck.selected = getData(ATTR_IMPORT_CHECK);
+					change_handler();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_DELETEORPHAN){
+					policySelection.dataProvider = getData(TaskType.ATTR_DELETE_ORPHAN) as ArrayCollection ;
+					includeSteps();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_DELETESTUB){
+					policySelection.dataProvider = getData(TaskType.ATTR_DELETE_STUB) as ArrayCollection ;
+					includeSteps();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_SCANSTUB){
+					includeSteps();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_BACKUP){
+					includeSteps();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_REPOMIGRATION){
+					policySelection.dataProvider = getData(TaskType.ATTR_FILE_MIGRATION) as ArrayCollection ;
+					parentWizard.enableStep(Optional.STEP_SOURCE, validate());
+					parentWizard.enableStep(Optional.STEP_DESTINATION, validate());
+					parentWizard.enableStep(Optional.STEP_IMPORT_FILE, !validate());
+					refreshStepTitle();
+				}else if(getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_FILEMIGRATION){
+					policySelection.dataProvider = getData(TaskType.ATTR_FILE_MIGRATION) as ArrayCollection ;
+					parentWizard.enableStep(Optional.STEP_SOURCE, validate());
+					parentWizard.enableStep(Optional.STEP_DESTINATION, validate());
+					parentWizard.enableStep(Optional.STEP_IMPORT_FILE, !validate());
+					refreshStepTitle();
+				}
+				
+				var index:int = (policySelection.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_POLICY_SELECTION));
+				if(index > -1){
+					policySelection.selectedIndex = index ;
+				}
+			}
+			private function updates():void{
+				if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+				updateButtons(); 
+			}
+			private function updateButtons():void{
+				
+			}
+			override protected function save(): void
+			{
+				if(currentState == "import"){
+					setData(ATTR_IMPORT_CHECK,importCheck.selected);
+				}
+				setData(ATTR_POLICY_SELECTION,policySelection.selectedLabel); 
+				//enableStep(TvShowSelection.STEP_NAME, true);
+				stepComplete = true;
+			}
+			// Override as we have step specific validation
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			
+			private function includeSteps():void{
+				parentWizard.enableStep(Optional.STEP_SOURCE, validate());
+				parentWizard.enableStep(Optional.STEP_DESTINATION, !validate());
+				parentWizard.enableStep(Optional.STEP_IMPORT_FILE, !validate());
+				refreshStepTitle();
+			}
+			protected function change_handler():void{
+				if(importCheck.selected){
+					parentWizard.enableStep(Optional.STEP_SOURCE, !validate());
+					parentWizard.enableStep(Optional.STEP_DESTINATION, !validate());
+					parentWizard.enableStep(Optional.STEP_IMPORT_FILE, validate());
+				}else if(!importCheck.selected){
+					parentWizard.enableStep(Optional.STEP_SOURCE, validate());
+					parentWizard.enableStep(Optional.STEP_DESTINATION, !validate());
+					parentWizard.enableStep(Optional.STEP_IMPORT_FILE, !validate());
+				}
+				refreshStepTitle();
+			}
+			protected function importCheck_changeHandler(event:Event):void
+			{
+				change_handler();
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<mx:Form>
+		<mx:FormItem label="Policy" >
+			<mx:ComboBox selectedIndex="0" id="policySelection"/>
+		</mx:FormItem>		
+		<mx:FormItem label="Import" includeIn="import">
+			<mx:CheckBox id="importCheck" change="importCheck_changeHandler(event)"/>
+		</mx:FormItem>
+	</mx:Form>
+</wizards:UxWizardStep>

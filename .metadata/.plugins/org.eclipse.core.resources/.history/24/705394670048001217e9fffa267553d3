@@ -1,0 +1,189 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.fma.services {
+	import com.emc.efx.UxConstants;
+	import com.emc.efx.core.extensionmgr.UxDefaultService;
+	import com.emc.efx.core.extensionmgr.UxExtensionManager;
+	import com.emc.efx.core.extensionmgr.UxServiceInformation;
+	import com.emc.efx.core.extensionmgr.events.UxExtensionManagerEvent;
+	import com.emc.efx.core.resourcemanager.UxResourceManager;
+	import com.emc.efx.guitoolkit.components.application.UxIconAppNavArea;
+	import com.emc.efx.guitoolkit.components.application.UxScopeSelector;
+	import com.emc.efx.guitoolkit.components.application.events.UxScopeSelectorEvent;
+	import com.emc.efx.guitoolkit.displaybuilders.UxDefaultDisplayBuilder;
+	import com.emc.efx.guitoolkit.menu.UxContextMenu;
+	import com.emc.efx.guitoolkit.menu.UxContextMenuItem;
+	import com.emc.efx.services.layout.IUxLayoutService;
+	import com.emc.efx.services.layout.section.UxAreaSection;
+	import com.emc.efx.services.login.IUxLoginService;
+	import com.emc.efx.services.login.UxLoginService;
+	import com.emc.efx.services.login.events.UxLoginCandidateEvent;
+	import com.emc.efx.services.login.events.UxLoginServiceEvent;
+	import com.emc.efx.services.menu.IUxContextMenuService;
+	import com.emc.efx.services.scope.UxScope;
+	import com.emc.efx.services.scope.UxScopeService;
+	import com.emc.fma.views.FMAAreaContainer;
+	
+	import mx.controls.Image;
+	import mx.core.UIComponent;
+	
+	
+	/**
+	 * The example demonstrates how to add a custom area with full control of the Right panel.
+	 */
+	public class FMAService extends UxDefaultService {
+		
+		private var fmaArea:FMAAreaContainer;
+		
+		private var systemNumber:int = 0;
+		private var loginService:IUxLoginService;
+		
+		/**
+		 * This method is called by the startup manager. The sample module and it's services
+		 * are defined in the config\extension_def\UxSampleExtension.xml file. Note: The startup manager is not complete
+		 * and all API's and features are subject to change.
+		 */
+		override public function start(service:UxServiceInformation):void {
+			super.start(service);
+			UxExtensionManager.getInstance().
+				addEventListener(UxExtensionManagerEvent.
+					ALL_EXTENSIONS_STARTUP_COMPLETE, onStartupComplete);
+			
+			// register the login candidate with the login service
+			loginService =
+				UxExtensionManager.getInstance().
+				getService("FMALoginService") as IUxLoginService;
+			loginService.registerLoginCandidate(new FMALoginCandidate);
+			
+			loginService.addEventListener(UxLoginServiceEvent.LOGIN_STATE_CHANGED,handleLoginStateEvent);
+		}
+		
+		/**
+		 * Handle ALL_EXTENSIONS_STARTUP_COMPLETE event
+		 */
+		public function onStartupComplete(event:UxExtensionManagerEvent):void {
+			registerMenus();
+		}
+		
+		/**
+		 * Function to register menus with UxMenuService
+		 *
+		 */
+		public function registerMenus():void {
+			var contextMenuService:IUxContextMenuService =
+				UxExtensionManager.getInstance().getService(UxConstants.
+					CONTEXTMENU_SERVICE) as IUxContextMenuService;
+			/*if (contextMenuService != null) {
+				contextMenuService.registerMenu(new SampleContextMenu1(),
+					"sampleExtension");
+			}*/
+		}
+		
+		private function handleLoginStateEvent(event:UxLoginServiceEvent):void{
+			// This is an example of how to create a custom area. This is normally not 
+			// required by a UEM plugin. 
+			createCustomArea();
+		}
+		
+		/**
+		 *  Used to create a custom area pane
+		 */
+		private function createCustomArea():void {
+			
+			/*var image:Image = new Image();
+			// reuse an icon from the framework for now.
+			image.source =
+				UxResourceManager.getInstance().getObject("UEMResources",
+					"ENTERPRISE56x56");*/
+			
+			var fmaArea:FMAAreaContainer = fmaContainer();
+			fmaArea.addScopeSelector(scopeService);
+			fmaArea.scopeSelector.includeInLayout = false;
+			fmaArea.scopeSelector.includeEnterpriseSection = false;
+			fmaArea.scopeSelector.addEventListener(UxScopeSelectorEvent.SCOPE_SELECTOR_ITEM_SELECTED, itemSelected)
+			
+			// Create our custom area
+			var areaSection:UxAreaSection =
+				UxAreaSection.createSection("CTA", fmaArea,
+					"Cloud Tiering Appliance", null, 100, false, null, null, null, null, null);
+			
+			layoutService.addArea(areaSection) as UxIconAppNavArea;
+			
+			addScopes();
+		}
+		
+		private function itemSelected(event:UxScopeSelectorEvent):void {
+			/*if (event.menuItem.id == UxScopeSelector.ADD_SYSTEM) {
+				addScope();
+			}
+			if (event.menuItem.id == UxScopeSelector.FIND_SYSTEM) {
+				var findSystem:SampleFindSystemDialog =
+					new SampleFindSystemDialog();
+				findSystem.show(layoutService.layoutContainer.currentSection.
+					contentView);
+			}*/
+		}
+		
+		private function addScope():UxScope {
+			var db:UxDefaultDisplayBuilder =
+				new UxDefaultDisplayBuilder("Cloud Tiering Appliance" + systemNumber);
+			db.localizedName = "Cloud Tiering Applience" + systemNumber;
+			var scope:UxScope = new UxScope("Cloud Tiering Appliance" + systemNumber++, db);
+			scope.isHidden = false;
+			scope.isSelectable = true;
+			scopeService.addScope(scope);
+			
+			return scope;
+		}
+		
+		private function addScopes():void {
+			/*var scope:UxScope;
+			addScope();
+			addScope();
+			scope = addScope();
+			addScope();
+			addScope();
+			addScope();
+			addScope();
+			addScope();
+			
+			// set the selected stop to the first scope
+			scopeService.selectedScope = scope;*/
+		}
+		
+		/**
+		 * Helper method to define some content for the sample area.
+		 * This also shows how to use a few of the navigation containers such
+		 * as the UxNavigationBarContainer and UxBigButtonContainer.
+		 * These containers still need work and will look much better in the
+		 * near future. These containers have build it navigation support and
+		 * can be controlled by the back forward browser button.
+		 */
+		private function fmaContainer():FMAAreaContainer {
+			var myContainer:FMAAreaContainer = new FMAAreaContainer();
+			return myContainer;
+		}
+		
+		/**
+		 * Helper method to get the core layout service. (Add Areas)
+		 * @return
+		 *
+		 */
+		private function get layoutService():IUxLayoutService {
+			return UxExtensionManager.getInstance().getService(UxConstants.
+				LAYOUT_SERVICE) as IUxLayoutService;
+		}
+		
+		private function get scopeService():UxScopeService {
+			return UxExtensionManager.getInstance().
+				getService("FMAScopeService") as UxScopeService;
+		}
+	}
+}
+
+

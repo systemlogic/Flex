@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+		xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx" 
+		xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+		xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+		xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+		implements="com.emc.efx.services.navigation.IUxHasPayload"
+		xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+		xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" 
+		xmlns:table="com.emc.ecuit.flex.components.table.*">
+	<fx:Declarations>
+		<mx:ArrayCollection id="GridColumns" >
+			<fx:Object Name="Column0" Title="Id" />
+			<fx:Object Name="Column1" Title="File Path" />
+			<fx:Object Name="Column2" Title="Destination" />
+			<fx:Object Name="Column3" Title="Retention Expiration" />
+			<fx:Object Name="Column4" Title="Modify Time" />
+			<fx:Object Name="Column5" Title="Archived Time" />
+			<fx:Object Name="Column6" Title="fs" />
+		</mx:ArrayCollection>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+			import com.emc.ecuit.flex.components.views.ProgressCanvas;
+			import com.emc.ecuit.flex.events.ECUITEvent;
+			import com.emc.ecuit.flex.services.rest.RestHTTPService;
+			import com.emc.efx.UxConstants;
+			import com.emc.efx.core.extensionmgr.UxExtensionManager;
+			import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.efx.net.http.UxHttpResponse;
+			import com.emc.efx.services.navigation.IUxNavigationService;
+			import com.emc.efx.utilities.map.UxHashMap;
+			import com.emc.fma.views.Utility.Command;
+			
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.AdvancedDataGrid;
+			import mx.controls.Button;
+			import mx.events.CloseEvent;
+			import mx.managers.PopUpManager;
+			import mx.resources.ResourceManager;
+			
+			[Bindable]public var Server:String;
+			[Bindable]public var ServerType:String;
+			[Bindable]private var _client:UxHttpClient;
+			
+			private var _currentPayload:UxHashMap = null;
+			override protected function initializeData():void {
+				super.initializeData();
+				if (currentPayload != null) {
+					 viewBlock.title=currentPayload.getValue("historyType") + " List" ;
+					
+					var xml:XML = <REQUEST/>; 
+					xml.appendChild(<action>getList</action>);
+					xml.appendChild(<Server>{currentPayload.getValue("serverName")}</Server>);
+					xml.appendChild(<Path>{currentPayload.getValue("path")}</Path>);
+					xml.appendChild(<DaysMissing>{currentPayload.getValue("moreThan")}</DaysMissing>);
+					var stateSet:String = currentPayload.getValue("orphanSelected")
+					if(stateSet == "true"){
+						currentState = "orphan" ; 
+					}
+					xml.appendChild(<orphanSelected>{stateSet}</orphanSelected>);
+					xml.appendChild(<archStartTime>{currentPayload.getValue("startTime")}</archStartTime>);
+					xml.appendChild(<archEndTime>{currentPayload.getValue("endTime")}</archEndTime>);
+					var cmd:Command = new Command(_client,onComplete,xml,"getArchivedFileList.htm",viewBlock);
+					_client = cmd.sendCommand();
+					setGridColumns(GridColumns); 
+				}
+			}
+			public function setGridColumns (columns:ArrayCollection):void
+			{
+				if (columns == null) return;
+				trace(columns);
+				var tableColumns:ArrayCollection = new ArrayCollection();
+				
+				for (var i:int = 0; i < GridColumns.length; i++){
+					var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+					var precision:int = 0; //default precision
+					type = ECUITAdvancedDataGridColumn.TEXT;
+					
+					var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+					
+					// This conditional builds an instance of a Severity object through a class factory.
+					
+					column.dataField = GridColumns[i].Name;
+					column.headerText = GridColumns[i].Title;
+					if(i == 1 || i == 2){
+						column.width = viewBlock.width/3  ;
+					}else{
+						column.width = viewBlock.width/10;
+					}
+					
+					if(i==0 || i==6){
+						column.visible = false ;
+					}
+					tableColumns.addItem(column);
+				}	
+				logList.columns = tableColumns.toArray();
+			}
+			
+			[Bindable]
+			public function set currentPayload(value:UxHashMap):void {
+				_currentPayload = value;
+			}
+			
+			public function get currentPayload():UxHashMap {
+				return _currentPayload;
+			}
+			
+			private function init():void{
+				
+			}
+			[Bindable] private var isilonIPs:ArrayCollection = new ArrayCollection();
+			[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var response:XMLList;
+			[Bindable]public var _rowsObject:Object = new Object();
+			private function onComplete(event:Event):void{
+				viewBlock.updateProgress(100, "default");
+				response = new XMLList(_client.response.body);
+				_rowsObject = createRows4();
+				trace(response);
+				
+			}
+			
+			private function createRows4():ArrayCollection {
+				var count:int = 0;
+				var row:Array =  new Array();
+				var item:XML;
+				for each(item in response.Archive) {
+					var obj:Object = { Column0:item.id, 
+						Column1:item.originalPath,Column2:item.destination,
+						Column3:item.retentionExpiration,Column4:item.modifyTime,
+						Column5:item.archivedTime,Column6:item.fileSystem};
+					++count;
+					row.push(obj); 
+				}
+				var rows:ArrayCollection = new ArrayCollection(row);
+				return rows;
+			}
+			private function onCanel(event:MouseEvent):void {
+				var navService:IUxNavigationService =
+					UxExtensionManager.getInstance().getService(UxConstants.
+						NAVIGATION_SERVICE) as IUxNavigationService;
+				var location:Array = new Array;
+				location = navService.currentLocation;
+				location.pop();
+				navService.navigate(location);
+			}
+		
+			
+			protected function selAll_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				var selection =logList.dataProvider.source ;
+				logList.selectedItems = new Array();
+				for each(var obj:Object in logList.dataProvider.source)
+					logList.selectedItems.push(obj) ;
+			}
+			
+			protected function clrAll_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				logList.selectedItems = new Array();
+			}
+			
+			protected function rcvStb_clickHandler(event:MouseEvent):void
+			{
+				
+				var xml:XML = <REQUEST/>; 
+				xml.appendChild(<action>recoverStub</action>);
+				xml.appendChild(<Server>{currentPayload.getValue("serverName")}</Server>);
+				xml.appendChild(<Path>{currentPayload.getValue("path")}</Path>);
+				xml.appendChild(<DaysMissing>{currentPayload.getValue("moreThan")}</DaysMissing>);
+				var stateSet:String = currentPayload.getValue("orphanSelected")
+				if(stateSet == "true"){
+					currentState = "orphan" ; 
+				}
+				xml.appendChild(<orphanSelected>{stateSet}</orphanSelected>);
+				xml.appendChild(<archStartTime>{currentPayload.getValue("startTime")}</archStartTime>);
+				xml.appendChild(<archEndTime>{currentPayload.getValue("endTime")}</archEndTime>);
+				var write:int = 0;
+				if(recoverStub.selected){
+					write = 1 ;
+				}
+				xml.appendChild(<makewritable>{write}</makewritable>);
+				for each(var obj:Object in logList.selectedItems ){
+					var node:XML = <stubNode/>;
+					node.appendChild(<ID>{obj.Column0.toString()}</ID>);
+					node.appendChild(<filepath>{obj.Column1.toString()}</filepath>);
+					node.appendChild(<fs>{obj.Column6.toString()}</fs>);
+					xml.appendChild(node);
+				}
+				var cmd:Command = new Command(_client,onComplete,xml,"getArchivedFileList.htm",viewBlock);
+				_client = cmd.sendCommand();
+			}
+			
+			protected function delOrp_clickHandler(event:MouseEvent):void
+			{
+				
+				var xml:XML = <REQUEST/>; 
+				xml.appendChild(<action>deletestub</action>);
+				xml.appendChild(<Server>{currentPayload.getValue("serverName")}</Server>);
+				xml.appendChild(<Path>{currentPayload.getValue("path")}</Path>);
+				xml.appendChild(<DaysMissing>{currentPayload.getValue("moreThan")}</DaysMissing>);
+				var stateSet:String = currentPayload.getValue("orphanSelected")
+				if(stateSet == "true"){
+					currentState = "orphan" ; 
+				}
+				xml.appendChild(<orphanSelected>{stateSet}</orphanSelected>);
+				xml.appendChild(<archStartTime>{currentPayload.getValue("startTime")}</archStartTime>);
+				xml.appendChild(<archEndTime>{currentPayload.getValue("endTime")}</archEndTime>);
+				var write:int = 0;
+				if(recoverStub.selected){
+					write = 1 ;
+				}
+				xml.appendChild(<makewritable>{write}</makewritable>);
+				for each(var obj:Object in logList.selectedItems ){
+					var node:XML = <stubNode/>;
+					node.appendChild(<ID>{obj.Column0.toString()}</ID>);
+					xml.appendChild(node);
+				}
+				var cmd:Command = new Command(_client,onComplete,xml,"getArchivedFileList.htm",viewBlock);
+				_client = cmd.sendCommand();
+			}
+			
+		]]>
+	</fx:Script>
+	<states>
+		<mx:State name="nonorphan"/>
+		<mx:State name="orphan"/>
+	</states>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+				 id="viewBlock" title="{ResourceManager.getInstance().getString('fma','VIEWARCHIVE')}" 
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 creationComplete="init()" 
+				 width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+				 helpServiceID="FMAHelpService" helpID="CmdHistroyDisplay">
+		
+		
+		<mx:Box width="100%" id="tabContainer"  height="100%">
+			<table:ECUITAdvancedDataGrid id="logList" dataProvider="{_rowsObject}" sortableColumns="false"
+										 showHeaders = "true" 
+										 editable="false" useRollOver="false"	  			 
+										 allowMultipleSelection="true" rowCount="3">
+			</table:ECUITAdvancedDataGrid>
+		</mx:Box>
+		<mx:Form>
+			<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_REC_STUB')}">
+				<mx:CheckBox id="recoverStub"/>
+			</mx:FormItem>
+		</mx:Form>
+		<mx:HBox paddingBottom="10" paddingTop="10">
+			<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_SELALL')}" click="selAll_clickHandler(event)" />
+			<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_CLRALL')}" click="clrAll_clickHandler(event)" />
+			<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_RECSTB')}" click="rcvStb_clickHandler(event)" />
+			<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_DELORP')}" includeIn="orphan" click="delOrp_clickHandler(event)" />
+		</mx:HBox>
+	</UxViewBlock>
+</UxVBoxWindow>

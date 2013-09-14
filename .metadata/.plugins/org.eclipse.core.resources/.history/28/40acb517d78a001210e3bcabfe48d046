@@ -1,0 +1,431 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.utils.BrowseEvent;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard;
+import com.emc.fma.views.Configuration.ImportProvider.AddImportProvider;
+import com.emc.fma.views.Schedule.ScheduleWizard.TaskType;
+
+import mx.collections.ArrayCollection;
+import mx.collections.XMLListCollection;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+private var _initialized:Boolean = false;
+private var NetappServerList:XMLListCollection;
+private var CelerraServerList:XMLListCollection;
+private var VNXServerList:XMLListCollection;
+private var WindowsServerList:XMLListCollection;
+private var ImportProviderList:XMLListCollection;
+private var taskTypeState:String = "";
+private var setServerName:String = "";
+private var setImportProviderName:String = "";
+[Bindable]private var protocolArray:ArrayCollection = new ArrayCollection(["CIFS","NFS"]);
+[Bindable]private var typeArray:ArrayCollection = new ArrayCollection();
+private var response:XMLList;
+private var _timer:Timer;
+private var sendRequestFlag:Boolean;
+private var set1:ArrayCollection = new ArrayCollection(["Archive","Multi Tier","Multi Tier Stub","Delete Orphans","Delete Stubs","Stub Scan"]);
+
+// Public Variables
+[Embed(source="../../../../../../../resources/images/assets/Add_16.png")]
+[Bindable]
+public var add_22x22:Class;
+[Embed(source="../../../../../../../resources/images/assets/Edit_16.png")]
+[Bindable]
+public var edit_22x22:Class;
+
+protected function creationCompleteHandler():void
+{  
+  if (taskTypeState != getData(TaskType.ATTR_TASK_TYPE).toString())
+  {
+    if (getData(TaskType.ATTR_TASK_TYPE) != "Repository Migration" && getData(TaskType.ATTR_IS_IMPORT).toString() != "true")
+    {
+      if (set1.getItemIndex(getData(TaskType.ATTR_TASK_TYPE)) == -1 || set1.getItemIndex(taskTypeState as Object) == -1)
+      {
+        if (getData(TaskType.ATTR_TASK_TYPE) == "File Migration")
+        {
+          typeArray.removeAll();
+          typeArray = new ArrayCollection(["NetApp","Windows","Celerra","VNX"]);
+        }
+        else
+        {
+          typeArray.removeAll();
+          typeArray = new ArrayCollection(["Celerra","VNX","NetApp"]);
+        }
+        sendRequestFlag = true;
+        taskTypeState = getData(TaskType.ATTR_TASK_TYPE).toString();
+      }
+    }    
+  }
+}
+
+override public function postDisplay():void
+{
+  
+  // Check for Archive, Multi Tier, Multi Tier Stub, Delete Orphans, Delete Stubs and Stub Scan
+  if (getData(TaskType.ATTR_TASK_TYPE) == "Archive" ||
+    getData(TaskType.ATTR_TASK_TYPE) == "Multi Tier" ||
+    getData(TaskType.ATTR_TASK_TYPE) == "Multi Tier Stub" ||
+    getData(TaskType.ATTR_TASK_TYPE) == "Delete Orphans" ||
+    getData(TaskType.ATTR_TASK_TYPE) == "Delete Stubs" ||
+    getData(TaskType.ATTR_TASK_TYPE) == "Stub Scan")
+  {
+    // Check for Import Task
+    if (getData(TaskType.ATTR_IS_IMPORT).toString() == "true")
+    {
+      this.setStepTitle(Common.getResource("SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_3_TITLE"));
+      this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_3_SNIPPET_ID";
+      VBox1.visible = false;VBox1.includeInLayout = false;
+      SourceOptionsVBox.visible = false;SourceOptionsVBox.includeInLayout = false;
+      VBox2.visible = false;VBox2.includeInLayout = false;
+      VBox3.visible = true;VBox3.includeInLayout = true;
+    }
+    else
+    {
+      this.setStepTitle(Common.getResource("SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_1_TITLE"));
+      this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_1_SNIPPET_ID";
+      VBox1.visible = true;VBox1.includeInLayout = true;
+      SourceOptionsVBox.visible = false;SourceOptionsVBox.includeInLayout = false;
+      VBox2.visible = false;VBox2.includeInLayout = false;
+      VBox3.visible = false;VBox3.includeInLayout = false;
+    }    
+  }
+  else if (getData(TaskType.ATTR_TASK_TYPE) == "File Migration")
+  {
+    this.setStepTitle(Common.getResource("SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_1_TITLE"));
+    this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_1_SNIPPET_ID";
+    VBox1.visible = true;VBox1.includeInLayout = true;
+    SourceOptionsVBox.visible = false;SourceOptionsVBox.includeInLayout = false;
+    VBox2.visible = false;VBox2.includeInLayout = false;
+    VBox3.visible = false;VBox3.includeInLayout = false;    
+  }
+  else if (getData(TaskType.ATTR_TASK_TYPE) == "Repository Migration")
+  {
+    this.setStepTitle(Common.getResource("SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_2_TITLE"));
+    this.stepHelpSnippet = "SCHEDULE_WIZARD_STEP_PRIMARYSERVERSELECTION_STATE_2_SNIPPET_ID";
+    VBox1.visible = false;VBox1.includeInLayout = false;
+    SourceOptionsVBox.visible = true;SourceOptionsVBox.includeInLayout = true;
+    VBox2.visible = true;VBox2.includeInLayout = true;
+    VBox3.visible = false;VBox3.includeInLayout = false;      
+  }
+  
+  
+  if (!_initialized)
+  {
+    _initialized = true;
+    if (getData(TaskType.ATTR_TASK_TYPE) == "Repository Migration")
+    {
+      _timer = new Timer(0, 1);
+      _timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+      _timer.start();
+    }
+  }
+  
+  if (VBox1.visible)
+  {
+    creationCompleteHandler();
+    if(sendRequestFlag)
+      callLater(updateSelf);
+  }
+  else if (VBox2.visible)
+  {
+  }
+  else if (VBox3.visible)
+  {
+    callLater(updateImportSelf);
+  }
+  
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  validateNext();
+  
+}
+
+private function onTimer(e:TimerEvent):void
+{
+  
+  VBox2.getNASRepository();
+}
+
+override protected function save():void
+{
+  if (!isCurrentStep())return;
+  
+  if (VBox1.visible)
+  {
+    setData(TaskType.ATTR_PRIMARYTYPE,type.selectedItem.toString());
+    setData(TaskType.ATTR_PRIMARYSERVER,primary.selectedItem.toString());
+    setData(TaskType.ATTR_PROTOCOL,protocol.selectedItem.toString());
+    setData(TaskType.ATTR_PRIMARYFILESYSTEM,StringUtil.trim(path.text));
+  }
+    // For Repository Migration
+  else if (VBox2.visible)
+  {
+    if (VBox2.secondaryGroup.selectedValue == "Cloud")
+      setData(TaskType.ATTR_PRIMARYSTORAGECLOUDTYPE,VBox2.cloud.selectedItem.toString().toLowerCase());
+    
+    setData(TaskType.ATTR_PRIMARYSTORAGETYPE,VBox2.secondaryGroup.selectedValue);
+    setData(TaskType.ATTR_PRIMARYSTORAGE,VBox2.getSecondaryValue());
+    setData(TaskType.ATTR_PRIMARYSTORAGEDELAYPERIOD,delayPeriod.text);
+    setData(TaskType.ATTR_PRIMARYSTORAGEMOVEORPHANS,moveOrphanCheckBox.selected);
+    
+    if (VBox2.secondaryGroup.selectedValue == "NAS")
+      setData(TaskType.ATTR_PROTOCOL,VBox2.nasProtocol.selectedItem.toString());
+    
+  }
+    // For Import Task
+  else if (VBox3.visible)
+  {
+    setData(TaskType.ATTR_IMPORTTASKNAME,importTaskName.text);
+    setData(TaskType.ATTR_IMPORTPROVIDER,importProvider.selectedItem.toString());
+  }
+  
+  stepComplete = true;
+}
+
+public function updateSelf(name:String = ""):void
+{
+  if (VBox1.visible)
+  {
+    RESTClient.sendGetRequest("/api/server", onComplete1, progress);
+    setServerName = name;
+    sendRequestFlag = false;
+  }
+  else if (VBox2.visible)
+  {
+    VBox2.updateSelf(name);
+  }
+  else if (VBox3.visible)
+  {
+    
+  }
+}
+
+public function updateImportSelf(name:String = ""):void
+{
+  RESTClient.sendGetRequest("/api/settings/importprovider", onComplete2, progress);
+  setImportProviderName = name;
+}
+
+private function onComplete1(event:RESTEvent):void
+{
+  response = new XMLList(event.response);
+  CelerraServerList   = new XMLListCollection(response.FileServer.(elements('Type') == 'Celerra' && elements('Source') == 'true').Name);
+  VNXServerList       = new XMLListCollection(response.FileServer.(elements('Type') == 'VNX' && elements('Source') == 'true').Name);
+  NetappServerList    = new XMLListCollection(response.FileServer.(elements('Type') == 'NetApp' && elements('Source') == 'true').Name);
+  WindowsServerList   = new XMLListCollection(response.FileServer.(elements('Type') == 'Windows').Name);
+  
+  if (setServerName == "")
+  {
+    if (getData(TaskType.ATTR_TASK_TYPE) == "Archive" ||
+      getData(TaskType.ATTR_TASK_TYPE) == "Multi Tier" ||
+      getData(TaskType.ATTR_TASK_TYPE) == "Multi Tier Stub" ||
+      getData(TaskType.ATTR_TASK_TYPE) == "File Migration" ||
+      getData(TaskType.ATTR_TASK_TYPE) == "Delete Orphans" ||
+      getData(TaskType.ATTR_TASK_TYPE) == "Delete Stubs" ||
+      getData(TaskType.ATTR_TASK_TYPE) == "Stub Scan")
+    {
+      if (getData(TaskType.ATTR_TASK_TYPE) == "File Migration")
+        primary.dataProvider = NetappServerList;
+      else
+        primary.dataProvider = CelerraServerList;
+    }
+  }
+  else
+  {
+    // Get Server Type & Set Combobox Dataprovider
+    var setServerType:String = (new XMLListCollection(response.FileServer.(elements('Name') == setServerName).Type))[0].toString();
+    var setIsSource:String = (new XMLListCollection(response.FileServer.(elements('Name') == setServerName).Source))[0].toString();
+    
+    if (setIsSource == "true")
+    {
+      primary.dataProvider = new XMLListCollection(response.FileServer.(elements('Type') == setServerType && elements('Source') == 'true').Name);
+      var index:Number = -1;
+      
+      for ( var j:int = 0; j < primary.dataProvider.source.length(); j++)
+        if (primary.dataProvider.source[j].toString() == setServerName )
+        {
+          index = j;
+          break;
+        }
+      
+      if (index != -1)
+        primary.selectedIndex = index;
+    }
+  }
+  
+  path.text = null;
+  protocol.selectedItem = "CIFS";
+  
+  validateNext();
+}
+
+private function onComplete2(event:RESTEvent):void
+{
+  response = new XMLList(event.response);
+  ImportProviderList = new XMLListCollection(response.Provider.Name);
+  importProvider.dataProvider = ImportProviderList;
+  
+  if (setImportProviderName != "")
+  {
+    var index:Number = -1;
+    
+    for ( var j:int = 0; j < ImportProviderList.source.length(); j++)
+      if (ImportProviderList.source[j].toString() == setImportProviderName )
+      {
+        index = j;
+        break;
+      }
+    
+    if (index != -1)
+      importProvider.selectedIndex = index;
+  }
+}
+
+private function changeType():void
+{
+  protocol.enabled = true;
+  
+  if (type.selectedItem == "Celerra")
+    primary.dataProvider = CelerraServerList;
+  
+  if (type.selectedItem == "VNX")
+    primary.dataProvider = VNXServerList;
+  
+  if (type.selectedItem == "NetApp")
+    primary.dataProvider = NetappServerList;
+  
+  if (type.selectedItem == "Windows")
+  {
+    protocol.enabled = false;
+    primary.dataProvider = WindowsServerList;
+  }
+  
+  
+  path.text = null;
+  validateNext();
+}
+
+private function changePrimary():void
+{
+  path.text = null;
+  validateNext();
+}
+
+private function changeProtocol():void
+{
+  path.text = null;
+  validateNext();
+}
+
+protected function clickHandler(event:MouseEvent):void
+{
+  Common.showDirectoryBrowser(this, primary.selectedItem.toString(), protocol.selectedItem.toString(), OnBrowseComplete);
+}
+
+private function OnBrowseComplete(event:BrowseEvent):void
+{
+  path.text = event.selectedPath;
+  validateNext();
+}
+
+public function validateNext():void
+{
+  if (VBox1.visible)
+  {
+    if (StringUtil.trim(path.text) != "" && primary.selectedItem != null)
+      enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else if ((getData(TaskType.ATTR_TASK_TYPE) == "Delete Orphans" || getData(TaskType.ATTR_TASK_TYPE) == "Delete Stubs") && primary.selectedItem != null)
+      enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else
+      enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else if (VBox2.visible)
+  {
+    if (StringUtil.trim(delayPeriod.text) != "")
+    {
+      if (VBox2.secondaryGroup.selectedValue == "NAS")
+      {
+        if (VBox2.listNASRepository.length != 0)
+          enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+        else
+          enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      }
+      else if (VBox2.secondaryGroup.selectedValue == "NAS Group")
+      {
+        if (VBox2.NASGroup.length != 0)
+          enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+        else
+          enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      }
+      else if (VBox2.secondaryGroup.selectedValue == "Centera")
+      {
+        if (VBox2.CenteraFileServers.length != 0)
+          enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+        else
+          enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      }
+      else if (VBox2.secondaryGroup.selectedValue == "Cloud")
+      {
+        if (VBox2.cloud.selectedItem == "Atmos" && VBox2.AtmosFileServers.length != 0)
+          enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+        else if (VBox2.cloud.selectedItem == "AmazonS3" && VBox2.AmazonFileServers.length != 0)
+          enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+        else if (VBox2.cloud.selectedItem == "Azure" && VBox2.AzureFileServers.length != 0)
+          enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+        else
+          enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      }
+    }
+    else
+      enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else if (VBox3.visible)
+  {
+    if (StringUtil.trim(importTaskName.text) != "" && importProvider.selectedItem != null)
+      enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else
+      enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+}
+
+protected function addNewServerClickHandler(event:MouseEvent):void
+{
+  var wizard:Object;
+  
+  if (type.selectedItem == "Celerra")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('Celerra');
+    wizard.show(this);
+  }
+  
+  if (type.selectedItem == "VNX")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('VNX');
+    wizard.show(this);
+  }
+  
+  if (type.selectedItem == "NetApp")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard();
+    wizard.show(this);
+  }
+  
+  if (type.selectedItem == "Windows")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard();
+    wizard.show(this);
+  }
+}
+
+protected function addNewImportProviderClickHandler(event:MouseEvent):void
+{
+  var dialog:AddImportProvider = new AddImportProvider();
+  dialog.ref = this;
+  dialog.centerDialog();
+  dialog.modal = true;
+  dialog.show(this.parent);
+}

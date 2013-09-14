@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+              xmlns:mx="http://www.adobe.com/2006/mxml"
+              xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+              xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+              xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+              implements="com.emc.efx.services.navigation.IUxHasPayload"
+              xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+              xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*"
+              xmlns:controls="com.emc.ecuit.flex.components.controls.*"
+              xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+               xmlns:mx="http://www.adobe.com/2006/mxml" id="viewBlock"
+               xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+               creationComplete="init()"
+               title="{ResourceManager.getInstance().getString('fma','QDNPRO')}" width="100%" height="100%"
+               showRefresh="false" showFilter="false" showFind="false"
+               showExport="false" showPrint="false" showTools="false"
+               helpServiceID="FMAHelpService" helpID="QualifiedDomain"
+               keyDown="page_keyDownHandler(event)"
+               xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+               xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+
+
+    <mx:Script source="QualifiedDomain.mxml.as" />
+    <mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+             paddingBottom="10" paddingTop="10"
+             height="100%">
+      <UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','FQD')}" width="50%">
+        <mx:Form label="Web Service Specific Settings">
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FQDN_DOMIAN_NAME')}">
+            <mx:TextInput id="Name"  text="{response.Name[0]}" change="Name_changeHandler(event)" />
+          </mx:FormItem>
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FQDN_IP_ADDC')}">
+            <controls:IPAddressControl id="ip" address="{ipStr.split('.') }" creationComplete="ip_creationCompleteHandler(event)"/>
+          </mx:FormItem>
+        </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta>
+      <mx:HBox height="100%" />
+      <mx:HBox>
+        <buttons:UxButton id="ok" label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="onOK(event)" />
+        <buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="OnCancel(event)" />
+      </mx:HBox>
+
+    </mx:Box>
+  </UxViewBlock>
+</UxVBoxWindow>

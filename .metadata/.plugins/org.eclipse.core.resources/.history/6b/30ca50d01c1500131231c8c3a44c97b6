@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009"
+            xmlns:s="library://ns.adobe.com/flex/spark"
+            xmlns:mx="library://ns.adobe.com/flex/mx"
+            xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+            xmlns:controls="com.emc.ecuit.flex.components.controls.*"
+            xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+            creationComplete="creationCompleteHandler(event)"
+            backgroundColor="#EAF5FE" xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*">
+  <fx:Script>
+    <![CDATA[
+      import com.emc.fma.views.Utility.UtilityFunctionClass;
+    ]]>
+  </fx:Script>
+
+  <wizards:states>
+    <mx:State name="Expression" />
+    <mx:State name="GlobalExpression" />
+  </wizards:states>
+
+  <fx:Script source="RuleExpressions.mxml.as" />
+
+  <views:UxProgressCanvas id="progress" width="100%" height="100%" >
+
+    <mx:VBox x="0" y="0" width="100%" paddingBottom="15" paddingTop="15" paddingLeft="15" paddingRight="15">
+
+      <mx:Text id="introText" text="{Common.getResource('POLICY_WIZARD_STEP_2A_STATE_1_INTROTEXT')}" paddingBottom="10" width="100%"/>
+
+        <mx:HBox paddingBottom="5">
+          <mx:RadioButtonGroup id="expressionGroup" change="expressionGroup_changeHandler(event)" />
+          <mx:RadioButton label="Expression" group="{expressionGroup}" selected="true" />
+          <mx:RadioButton label="Saved Expression" group="{expressionGroup}" />
+        </mx:HBox>
+
+        <boxes:UxVBox backgroundColor="#EAF5FE" borderStyle="solid" height="100%" width="100%" paddingLeft="0" paddingRight="0">
+
+          <mx:Form id="newRuleForm" label="File Matching Expression" width="100%" height="100%" includeIn="Expression">
+            <mx:HBox>
+              <mx:VBox>
+                <mx:Label text="File Attribute"/>
+                <mx:ComboBox id="fileAttributeComboBox" rowCount="6" dataProvider="{fileAttribute}" change="fileAttributeComboBox_changeHandler(event)" width="165"/>
+              </mx:VBox>
+              <mx:VBox>
+                <mx:Label text="Operator"/>
+                <mx:ComboBox id="operatorComboBox" dataProvider="{operators}" width="90"/>
+              </mx:VBox>
+              <mx:VBox >
+                <mx:Label text="Value"/>
+                <mx:TextInput id="valueTextInput" restrict="[0-9]" change="validateAdd(event)" width="130" focusOut="handleFocusOut(event)"/>
+              </mx:VBox>
+              <mx:VBox id="unitVBox">
+                <mx:Label text="Unit"/>
+                <mx:HBox>
+                  <mx:ComboBox id="unitComboBox"  dataProvider="{attributeValues}" width="80"/>
+                </mx:HBox>
+              </mx:VBox>
+            </mx:HBox>
+          </mx:Form>
+
+          <mx:Form id="existingRuleForm" label="Add Global Expression" width="100%" height="100%" includeIn="GlobalExpression">
+            <mx:HBox>
+              <mx:VBox>
+                <mx:Label text="Expression Name"/>
+                <mx:ComboBox id="globalComboBox" width="150" />
+              </mx:VBox>
+              <mx:VBox>
+                <mx:Label text=""/>
+                <mx:Button label="Add Expression" toolTip="Add New File Matching Expression" click="addSavedExpression()" useHandCursor="true" icon="{add_22x22}" />
+              </mx:VBox>
+            </mx:HBox>
+          </mx:Form>
+
+        </boxes:UxVBox>
+
+
+        <mx:HBox>
+          <mx:DataGrid id="myGrid1" editable="false" height="95" width="435" variableRowHeight="true" dataProvider="{fileMatchingExpressionList}" >
+            <mx:columns>
+              <mx:DataGridColumn dataField="File Attributes Matching" width="100" />
+            </mx:columns>
+          </mx:DataGrid>
+          <mx:VBox>
+            <mx:Button id="addButton" label="Add" width="65" click="addExpression(event)" />
+            <mx:Button id="deleteButton" label="Delete" enabled="{myGrid1.selectedItem == null ? false:true}" width="65" click="deleteExpression()" />
+          </mx:VBox>
+        </mx:HBox>
+
+        <mx:Form paddingLeft="0" paddingTop="30">
+          <mx:FormItem label="(b) Select action for the above mentioned expressions : " textAlign="left" required="true">
+            <mx:ComboBox id="actionComboBox" dataProvider="{action}" change="validateNext()" width="115" />
+          </mx:FormItem>
+        </mx:Form>
+
+    </mx:VBox>
+
+  </views:UxProgressCanvas>
+
+</wizards:UxWizardStep>

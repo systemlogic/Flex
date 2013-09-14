@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A BigButtonContainer -->
+<UxBigButtonContainer xmlns="com.emc.efx.services.layout.containers.*"
+					  xmlns:mx="http://www.adobe.com/2006/mxml" horizontalGap="0"
+					  xmlns:section="com.emc.efx.services.layout.section.*"
+					  xmlns:ArchivedReport="com.emc.fma.views.Archived.ArchivedReport.*" 
+					  xmlns:Archiver="com.emc.fma.views.Schedule.Archiver.*">
+	<sections>
+		<!--<section:UxLazyLoadSection key="VIEWSCHEDULETASK"
+		headerText="@Resource(key='VIEWSCHEDULETASK', bundle='fma')"
+		description="@Resource(key='VIEWSCHEDULETASK_DISC', bundle='fma')"
+		iconSource="@Resource(key='SCHEDULE_VIEW_TASK_64', bundle='fma')"
+		smallIconSource="@Resource(key='SCHEDULE_VIEW_TASK_64', bundle='fma')"
+								  contentClass="com.emc.fma.views.Schedule.Archiver.ScheduleList"/>-->
+			
+		<!--<section:UxDefaultSection key="VIEWSCHEDULETASK"
+								  headerText="@Resource(key='VIEWSCHEDULETASK', bundle='fma')"
+								  description="@Resource(key='VIEWSCHEDULETASK_DISC', bundle='fma')"
+								  iconSource="@Resource(key='SCHEDULE_VIEW_TASK_64', bundle='fma')"
+								  smallIconSource="@Resource(key='SCHEDULE_VIEW_TASK_64', bundle='fma')">
+			<section:contentView>
+				<Archiver:ScheduleList/>
+			</section:contentView>
+		</section:UxDefaultSection>-->
+	</sections>
+</UxBigButtonContainer>
+

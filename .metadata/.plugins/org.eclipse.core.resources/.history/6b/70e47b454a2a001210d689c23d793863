@@ -1,0 +1,116 @@
+/**
+ *
+ * Copyright: Copyright (c) 2012
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.utilities {
+    import com.emc.efx.core.resourcemanager.UxResourceManager;
+    import com.emc.efx.utilities.errors.UxError;
+
+    import mx.formatters.DateFormatter;
+
+    /**
+     * Utility functions for display of date format. The date format defined 
+     * via UxDateUtils is used throughout the framework.
+     */
+    public class UxDateUtils {
+
+        /**
+         * @private
+         * The date format String. The format string should be as per the 
+         * guidelines for the formatString in DateFormatter class.
+         */
+        private static var _dateTimeFormatString:String = null;
+
+        /**
+         * @private
+         * The date formatter
+         */
+        private static var _dateTimeFormatter:DateFormatter = null;
+
+        /**
+         * Throws an UxError as this is a static method class
+         */
+        public function UxDateUtils() {
+            throw new UxError("Construction of static method utility class");
+        }
+
+		/**
+		 * The date format String. The format string should be as per the 
+         * guidelines for the formatString in DateFormatter class.
+         * 
+         * @return The current date format string or if currently null returns
+         *         a default format.
+		 */
+        public static function getDateTimeFormatString():String {
+            if (_dateTimeFormatString == null) {
+                _dateTimeFormatString =
+                    UxResourceManager.getInstance().getString("utilities",
+                    "DATE_TIME_FORMAT");
+            }
+
+            return _dateTimeFormatString;
+        }
+
+		/**
+		 * Sets a framework-wide date format String.
+         * 
+         * <p>
+         * The format string should be as per the guidelines for the 
+         * formatString in DateFormatter class. Either the dateTimeFormatString 
+         * or the dateFormatter can be set in UxDateUtils. If none is specified, 
+         * then the localized format specified by the EFX framework is used.
+         * </p>
+         * 
+         * @param dateFormatString  A DateFormatter format string
+         * 
+         * @see DateFormatter
+		 */
+        public static function setDateTimeFormatString(dateFormatString:String):void {
+            _dateTimeFormatString = dateFormatString;
+        }
+
+		/**
+		 * Retrieves the current DateFormatters instance.
+         * 
+         * @return The current DateFormatter instance, or if null sets and 
+         *         returns a new DateFormatter instance.
+		 */
+        public static function getDateTimeFormatter():DateFormatter {
+            if (_dateTimeFormatter == null) {
+                _dateTimeFormatter = new DateFormatter();
+                _dateTimeFormatter.formatString = getDateTimeFormatString();
+            }
+
+            return _dateTimeFormatter;
+        }
+
+		/**
+		 * Sets the current DateFormatter instance.
+         * 
+		 * Either the dateTimeFormatString or the dateFormatter can be set in 
+         * UxDateUtils.  If none is specified, then the localized format 
+         * specified by the EFX framework is used.
+         * 
+         * @param dateFormatter  A DateFormatter instance.
+		 */
+        public static function setDateTimeFormatter(dateFormatter:DateFormatter):void {
+            _dateTimeFormatter = dateFormatter;
+        }
+
+		/**
+		 * Creates a formated String of a Date instance for the current 
+         * DateFormatter.
+         * 
+         * @param date  A date instance.
+         * 
+         * @return  A formatted string representing the date instance.  A null 
+         *          date results in an empty string.
+		 */
+        public static function formatDateTime(date:Date):String {
+            return getDateTimeFormatter().format(date);
+        }
+    }
+}

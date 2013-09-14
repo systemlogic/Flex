@@ -1,0 +1,892 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+		xmlns:fxs="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:mx="library://ns.adobe.com/flex/mx" 
+		xmlns:tx="com.emc.efx.guitoolkit.components.table.*"
+		implements="com.emc.efx.services.navigation.IUxHasPayload"
+		xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+		xmlns:containers="com.emc.ecuit.flex.components.containers.*" 
+		xmlns:chart="com.emc.efx.guitoolkit.components.chart.*" 
+		xmlns:table="com.emc.ecuit.flex.components.table.*">
+	
+	
+	<fxs:Declarations>
+		<mx:ArrayCollection id="GridColumns" >
+			<fxs:Object Name="Column1" Title="Source" />
+			<fxs:Object Name="Column2" Title="Total Archived" />
+			<fxs:Object Name="Column3" Title="Files Archived" />
+			<fxs:Object Name="Column4" Title="Files Stubbed" />
+			<fxs:Object Name="Column5" Title="% for Group A" />
+			<fxs:Object Name="Column6" Title="% for Group B" />
+			<fxs:Object Name="Column7" Title="% for Group C" />
+			<fxs:Object Name="Column8" Title="% for Group D" />
+			<fxs:Object Name="Column9" Title="% for Group E" />
+		</mx:ArrayCollection>
+	</fxs:Declarations>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+				 showRefresh="false" showExport="false" showFind="false" 
+				 showPrint="false" showTools="false" showFilter="false" 
+				 width="100%" height="100%" title="View Report"
+				 helpServiceID="FMAHelpService" helpID="ViewArchivedReport"
+				 id="viewBlock" creationComplete="viewBlock_creationCompleteHandler(event)"
+				 xmlns:tx="com.emc.efx.guitoolkit.components.table.*"
+				 xmlns:fx="com.emc.efx.guitoolkit.components.table.filter.*"
+				 xmlns:filter="com.emc.efx.guitoolkit.components.filter.*"
+				 xmlns:filter1="com.emc.efx.guitoolkit.filter.*"
+				 xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+				 xmlns:rules="com.emc.efx.guitoolkit.components.table.rules.*">
+		
+		<fxs:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.utilities.map.UxHashMap;
+				import com.emc.fma.views.Archived.ArchivedReport.CreateReport.CreateReport;
+				import com.emc.fma.views.Archived.ArchivedReport.model.ReportModel;
+				
+				import mx.binding.utils.ChangeWatcher;
+				import mx.charts.HitData;
+				import mx.charts.series.items.PieSeriesItem;
+				import mx.collections.ArrayCollection;
+				import mx.collections.XMLListCollection;
+				import mx.controls.DateField;
+				import mx.controls.ToolTip;
+				import mx.events.FlexEvent;
+				import mx.events.ListEvent;
+				import mx.resources.ResourceManager;
+				import mx.utils.ArrayUtil;
+				
+
+				private var _client:UxHttpClient;
+				private var response:XML ;
+				[Bindable] private var _rowsObject:Object = new Object();
+				[Bindable] private var fsDataProvider:ArrayCollection = new ArrayCollection();
+				[Bindable] private var fsrDataProvider:ArrayCollection = new ArrayCollection();
+				[Bindable] private var fsgDataProvider:ArrayCollection = new ArrayCollection();
+				[Bindable] private var fsgrDataProvider:ArrayCollection = new ArrayCollection();
+				[Bindable] private var chartBardata:ArrayCollection = new ArrayCollection();
+				
+				[Bindable]private var sizeDataReport:ArrayCollection ;
+				[Bindable]private var typeDataReport:ArrayCollection ;
+				
+				public static const SIZE_FIELD_NAME:String =
+					"SizeFieldName";
+				public static const SIZE_FIELD_LOCALIZED_NAME:String =
+					"SizeFieldLocalizedName";
+				public static const SIZE_FIELD_VALUE:String =
+					"SizeFieldValue";
+				
+				
+				public static const TYPE_FIELD_NAME:String =
+					"TypeFieldName";
+				public static const TYPE_FIELD_LOCALIZED_NAME:String =
+					"TypeFieldLocalizedName";
+				public static const TYPE_FIELD_VALUE:String =
+					"TypeFieldValue";
+				
+				
+				private var _currentPayload:UxHashMap = null;
+				override protected function initializeData():void {
+					super.initializeData();
+				}
+				[Bindable]
+				public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				[Bindable] private var reportName:String ;
+				protected function repoList_itemClickHandler(event:ListEvent):void
+				{
+					var data:Object = repoList.selectedItem.Column3 ;
+					reportName = repoList.selectedItem.Column4 ;
+					var type:String;
+					getChartReport(type,reportName);
+				}
+				protected function createReport_clickHandler(event:MouseEvent):void
+				{
+					var wizard:Object = new CreateReport();
+					wizard.show(this);
+					
+				}
+				private function getChartReport(type:String,reportName:String):void{
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, getReport);
+					var xml:XML = <REQUEST/>;
+					xml.appendChild(<action>getReport</action>);
+					xml.appendChild(<type>{type}</type>);
+					xml.appendChild(<Name>{reportName}</Name>);
+					var ByteArrayData:ByteArray = new ByteArray();
+					ByteArrayData.writeUTFBytes(xml);
+					_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "getChart.htm"), ByteArrayData);
+					viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+					viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+				}
+				
+				private var myWatcher:ChangeWatcher ;
+				[Bindable]
+				private var repoModel:ReportModel ;
+				protected function repoList_creationCompleteHandler(event:FlexEvent):void
+				{
+					repoModel = new ReportModel();
+				}
+				protected function viewBlock_creationCompleteHandler(event:FlexEvent):void
+				{
+					myWatcher = ChangeWatcher.watch(repoModel,["completed"], watcherListener);
+				}
+				private function watcherListener(event:Event):void {
+					myWatcher.unwatch();
+					try{
+						repoList.selectedIndex = 0 ; //To test whether there is any report in the list or not. if not will throw an error and return from catch block
+						reportName = repoList.selectedItem.Column4 ; 
+					}catch(err:Error){
+						return ;
+					}
+					
+					var type:String;
+					if(reportName != null){
+						getChartReport(type,reportName);
+					}
+				}
+				private function focusOnFirst():void{
+					trace(repoList.dataProvider.source.length);
+				}
+				private function getReport(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					response =  new XML(_client.response.body) ;
+					sizeReport(response.Size.Name);
+					typeReport(response.Type.Name);
+					setGridColumns(GridColumns);
+					_rowsObject = createRows4();
+					barData(response.All.Name);
+					repositoryList.visible = true; 
+				}
+				private function timeLabel(time:XML):void{
+					trace(time.@ArchivedStartTime);
+					trace(time.@ArchivedEndTime);
+					var startDate:Date = parseDate(time.@ArchivedStartTime) ;
+					var endDate:Date = parseDate(time.@ArchivedEndTime) ;
+					var difference:Number = endDate.getTime() - startDate.getTime() ;  //Returns the number of milliseconds since midnight January 1, 1970, universal time, for a Date object. Use this method to represent a specific instant in time when comparing two or more Date objects.
+					if(difference >= 1000*60*60*24*30*3){
+						xLabel = "Quaters" 
+					}else if(difference >= 1000*60*60*24*30 && difference < 1000*60*60*24*30*3){
+						xLabel = "Months"
+					}else if(difference >= 1000*60*60*24 && difference < 1000*60*60*24*30){
+						xLabel = "Weeks"
+					}
+				}
+				var tempSizeReport:Number = 0 ;
+				private function sizeLabel(time:XML):void{
+					var size:Number ;
+					
+					for each(var test :XML in time..ArchivedTimeRanges){
+						size  = test.NoOfBytes.@Count ;
+						if(size > tempSizeReport ){
+							tempSizeReport = size;
+						}
+					}
+					if(tempSizeReport > 1024*1024*1024*1024*1024){
+						yLabel = "Total PB archived" ; 
+						tempSizeReport = 1024*1024*1024*1024*1024 ;
+						timeUnit = "PB" ;
+					}else if(tempSizeReport > 1024*1024*1024*1024){
+						yLabel = "Total TB archived" ;
+						tempSizeReport = 1024*1024*1024*1024 ;
+						timeUnit = "TB" ;
+					}else if(tempSizeReport > 1024*1024*1024){
+						yLabel = "Total GB archived" ;
+						tempSizeReport = 1024*1024*1024 ;
+						timeUnit = "GB" ;
+					}else if(tempSizeReport > 1024*1024){
+						yLabel = "Total MB archived" ;
+						tempSizeReport = 1024*1024 ;
+						timeUnit = "MB" ;
+					}else if(tempSizeReport > 1024){
+						yLabel = "Total KB archived" ;
+						tempSizeReport = 1024 ;
+						timeUnit = "KB" ;
+					}
+					
+				}
+				[Bindable] var timeUnit:String 		;
+				[Bindable] var timeXML:XML 		;
+				[Bindable] var xLabel:String 	= "x";
+				[Bindable] var yLabel:String 	= "y";
+				
+				private function parseDate(str:String):Date{
+					var yyyy:int = parseInt(str.substring(0,4));
+					var mm  :int = parseInt(str.substring(5,7)) -1 ;
+					var dd  :int = parseInt(str.substring(8,10));
+					var HH  :int = parseInt(str.substring(11,13));
+					var MM  :int = parseInt(str.substring(14,16));
+					var SS  :int = parseInt(str.substring(17,19));
+					return new Date(yyyy,mm,dd,HH,MM,SS);
+					
+				}
+				
+				private function barData(rep:String):void{
+					barChart.visible = true ;
+					chartBardata = new ArrayCollection() ;
+					
+					for each (var typeReport : XML in response..All) {
+						if(typeReport.Name.search(rep+"$")>-1){
+							timeXML = typeReport ;
+							trace(timeXML);
+							break;
+						}
+					}
+					var count = 1 ;
+					if(timeXML.Report.FileServer.hasOwnProperty('@Name')){
+						timeLabel(timeXML.Report.FileServer.ArchivedTimeRanges[0]) ;
+						sizeLabel(timeXML.Report.FileServer[0]) ;
+						for each(var sourceName : XML in timeXML.Report.FileServer..ArchivedTimeRanges){
+							chartBardata.addItem({yField: xLabel + " : "+ count++ , xField: roundValue(sourceName.NoOfBytes.@Count/tempSizeReport)});
+						}
+						
+					}else if(timeXML.Report.FileServerGroup.hasOwnProperty('@Name')){
+						timeLabel(timeXML.Report.FileServerGroup.ArchivedTimeRanges[0]) ;
+						sizeLabel(timeXML.Report.FileServerGroup[0]) ;
+						for each(var sourceName : XML in timeXML.Report.FileServerGroup..ArchivedTimeRanges){
+							chartBardata.addItem({yField: xLabel + " : "+ count++ , xField: roundValue(sourceName.NoOfBytes.@Count/tempSizeReport)});
+						}
+					}
+					
+				}
+				
+				private function createRows4():ArrayCollection {
+					var count:int = 0;
+					var row:Array =  new Array();
+					var TotalNoOfFiles:int ;
+					var TotalNoOfBytes:int ;
+					var TotalNoOfStubs:int ;
+					var colSou:String;
+					var colTAr:String;
+					var colNFA:String;
+					var colNFS:String;
+					var colGrA:String;
+					var colGrB:String;
+					var colGrC:String;
+					var colGrD:String;
+					var colGrE:String;
+					
+					if(response.toString().search("_Detailed_") > -1) {
+						TotalNoOfFiles = sizeXML.Report.FileServer.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = sizeXML.Report.FileServer.Aggregate.TotalNoOfBytes.@Count ;
+						TotalNoOfStubs = sizeXML.Report.FileServer.Aggregate.TotalNoOfStubs.@Count ;
+						for each(var sourceName : XML in sizeXML.Report.FileServer..SourceName ){
+							
+							colTAr	= sourceName.Aggregate.NoOfBytes.@Count;
+							colNFA	= sourceName.Aggregate.NoOfFiles.@Count;
+							colNFS	= sourceName.Aggregate.NoOfStubs.@Count;
+							
+							if(sourceName.hasOwnProperty('@Share')){
+								colSou = sourceName.@Share ;
+							}else if(sourceName.hasOwnProperty('@Export')){
+								colSou = sourceName.@Export	 ;
+							}
+							for each(var Detailed :XML in sourceName..Detailed){
+								if(Detailed.SizeRange.@Group == "GroupA"){
+									colGrA = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}else if(Detailed.SizeRange.@Group == "GroupB"){
+									colGrB = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}else if(Detailed.SizeRange.@Group == "GroupC"){
+									colGrC = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;								
+								}else if(Detailed.SizeRange.@Group == "GroupD"){
+									colGrD = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}else if(Detailed.SizeRange.@Group == "GroupE"){
+									colGrE = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}
+								
+							}
+							var obj:Object = { Column1:colSou,Column2:colTAr,Column3:colNFA,Column4:colNFS,Column5:colGrA,Column6:colGrB,Column7:colGrC,Column8:colGrD,Column9:colGrE};
+							++count;
+							row.push(obj);
+						}
+					}else  if(response.toString().search("_Aggregate_") > -1) {
+						TotalNoOfFiles = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfBytes.@Count ;
+						TotalNoOfStubs = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfStubs.@Count ;
+						for each(var sourceName : XML in sizeXML.Report.FileServerGroup..FileServer ){
+							
+							colTAr	= sourceName.Aggregate.NoOfBytes.@Count;
+							colNFA	= sourceName.Aggregate.NoOfFiles.@Count;
+							colNFS	= sourceName.Aggregate.NoOfStubs.@Count;
+							colSou = sourceName.@Name	 ;
+							for each(var Detailed :XML in sourceName..Detailed){
+								if(Detailed.SizeRange.@Group == "GroupA"){
+									colGrA = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}else if(Detailed.SizeRange.@Group == "GroupB"){
+									colGrB = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}else if(Detailed.SizeRange.@Group == "GroupC"){
+									colGrC = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;								
+								}else if(Detailed.SizeRange.@Group == "GroupD"){
+									colGrD = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}else if(Detailed.SizeRange.@Group == "GroupE"){
+									colGrE = roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) ;
+								}
+								
+							}
+							var obj:Object = { Column1:colSou,Column2:colTAr,Column3:colNFA,Column4:colNFS,Column5:colGrA,Column6:colGrB,Column7:colGrC,Column8:colGrD,Column9:colGrE};
+							++count;
+							row.push(obj);
+						}
+						
+					}
+					var rows:ArrayCollection = new ArrayCollection(row);
+					return rows;
+				}
+				
+				private function setGridColumns (columns:ArrayCollection):void
+				{
+					if (columns == null) return;
+					trace(columns);
+					var tableColumns:ArrayCollection = new ArrayCollection();
+					
+					for (var i:int = 0; i < GridColumns.length; i++)
+					{
+						var type:int = ECUITAdvancedDataGridColumn.TEXT; // Left Allign
+						//var type:int = ECUITAdvancedDataGridColumn.ICON; // Center Allign
+						var precision:int = 0; //default precision
+						var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+						
+						column.dataField = GridColumns[i].Name;
+						column.headerText = GridColumns[i].Title;
+						column.width = viewBlock.width/10 ;
+						tableColumns.addItem(column);
+					}
+					repositoryList.columns = tableColumns.toArray();
+				}
+				
+				[Bindable] private var groupSizeDict:Dictionary ;
+				[Bindable] private var groupTypeDict:Dictionary ;
+				[Bindable] private var groupBytesDict:Dictionary ;
+				var sizeXML:XML ;
+				var typeXML:XML ;
+				var allXML :XML ;
+				var unit:String ;
+				var unitFactor:Number ;
+				private function typeReport(rep:String):void{
+					groupTypeDict = new Dictionary() ;
+					groupBytesDict = new Dictionary();
+					typeDataReport = new ArrayCollection();
+					for each (var typeReport : XML in response..Type) {
+						if(typeReport.Name.search(rep+"$")>-1){
+							typeXML = typeReport ;
+							trace(sizeXML);
+							break;
+						}
+					}
+					var TotalNoOfFiles:int = 0;
+					var TotalNoOfBytes:int = 0;
+					var OtherNoOfFiles:int = 0;
+					var OtherNoOfBytes:int = 0;
+					var TotalNoOfStubs:int = 0;
+					
+					var node:XML 
+					if(rep.search("_Detailed_") > -1){
+						node =  typeXML.Report.FileServer.SourceName[0] ;
+					}else  if(rep.search("_Aggregate_") > -1){
+						node =  typeXML.Report.FileServerGroup.FileServer[0] ;
+					}
+					if(rep.search("_Detailed_") > -1) {
+						TotalNoOfFiles = typeXML.Report.FileServer.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = parseInt(typeXML.Report.FileServer.Aggregate.TotalNoOfBytes.@Count) +  parseInt(typeXML.Report.FileServer.Aggregate.OtherNoOfBytes.@Count);
+						OtherNoOfFiles = typeXML.Report.FileServer.Aggregate.OtherNoOfFiles.@Count ;
+						OtherNoOfBytes = typeXML.Report.FileServer.Aggregate.OtherNoOfBytes.@Count ;
+						TotalNoOfStubs = typeXML.Report.FileServer.Aggregate.TotalNoOfStubs.@Count ;
+						for each(var SourceName : XML in typeXML.Report.FileServer..SourceName ){
+							for each(var Detailed :XML in SourceName..Detailed){
+								var CapacityName:String =  Detailed.Type.@TypeName;
+								if(!groupBytesDict.hasOwnProperty(CapacityName)){
+									groupBytesDict[CapacityName] = Detailed.NoOfBytes.@Count.toString() ;
+								}else{
+									var tempValue:int = parseInt(groupBytesDict[CapacityName]) +  parseInt(Detailed.NoOfBytes.@Count.toString())
+									groupBytesDict[CapacityName] = null ;
+									groupBytesDict[CapacityName] =  tempValue;
+								}
+							}
+						}
+						
+					}else if(rep.search("_Aggregate_") > -1) {
+						TotalNoOfFiles = typeXML.Report.FileServerGroup.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = parseInt(typeXML.Report.FileServerGroup.Aggregate.TotalNoOfBytes.@Count) +  parseInt(typeXML.Report.FileServerGroup.Aggregate.OtherNoOfBytes.@Count);
+						OtherNoOfFiles = typeXML.Report.FileServerGroup.Aggregate.OtherNoOfFiles.@Count ;
+						OtherNoOfBytes = typeXML.Report.FileServerGroup.Aggregate.OtherNoOfBytes.@Count ;
+						TotalNoOfStubs = typeXML.Report.FileServerGroup.Aggregate.TotalNoOfStubs.@Count ;
+						for each(var SourceName : XML in typeXML.Report.FileServerGroup..FileServer ){
+							for each(var Detailed :XML in SourceName..Detailed){
+								var CapacityName:String =  Detailed.Type.@TypeName;
+								if(!groupBytesDict.hasOwnProperty(CapacityName)){
+									groupBytesDict[CapacityName] = Detailed.NoOfBytes.@Count.toString() ;
+								}else{
+									var tempValue:int = parseInt(groupBytesDict[CapacityName]) +  parseInt(Detailed.NoOfBytes.@Count.toString())
+									groupBytesDict[CapacityName] = null ;
+									groupBytesDict[CapacityName] =  tempValue;
+								}
+							}
+						}
+					}
+					if(node != null){
+						for each(var Detailed : XML in node..Detailed){
+							var val:int = parseInt(groupBytesDict[Detailed.Type.@TypeName.toString()]) ;
+							var CapacityValue:Number  = val  / TotalNoOfBytes;
+							var value:String ;
+							value = Detailed.Type.@TypeName.toString() ;
+							typeDataReport.addItem({TypeFieldName:value, TypeFieldLocalizedName:value,TypeFieldValue: CapacityValue});
+							groupTypeDict[value] = value + " : " + roundValue(CapacityValue*100) + "%" ;
+						}
+						var CapacityValue:Number  = OtherNoOfBytes  / TotalNoOfBytes;
+						var value:String ;
+						value = "Others" ;
+						typeDataReport.addItem({TypeFieldName:value, TypeFieldLocalizedName:value,TypeFieldValue: CapacityValue});
+						groupTypeDict[value] = value + " : " + roundValue(CapacityValue*100) + "%" ;
+						//groupTypeDict[value] = "File Type : "+value + "\nUsage : " + roundValue(CapacityValue*100) + "%" ;
+					}
+					
+					
+				}
+				private function sizeReport(rep:String):void{
+					groupSizeDict = new Dictionary() ;
+					groupBytesDict = new Dictionary();
+					unitFactor  = 0 ; 
+					sizeDataReport = new ArrayCollection();
+					for each (var sizeReport : XML in response..Size) {
+						if(sizeReport.Name.search(rep+"$")>-1){
+							sizeXML = sizeReport ;
+							trace(sizeXML);
+							break;
+						}
+					}
+					var TotalNoOfFiles:int = 0;
+					var TotalNoOfBytes:int = 0;
+					var TotalNoOfStubs:int = 0;
+					
+					var node:XML 
+					if(rep.search("_Detailed_") > -1){
+						node =  sizeXML.Report.FileServer.SourceName[0] ;
+					}else  if(rep.search("_Aggregate_") > -1){
+						node =  sizeXML.Report.FileServerGroup.FileServer[0] ;
+					}
+					
+					if(rep.search("_Detailed_") > -1) {
+						TotalNoOfFiles = sizeXML.Report.FileServer.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = sizeXML.Report.FileServer.Aggregate.TotalNoOfBytes.@Count ;
+						TotalNoOfStubs = sizeXML.Report.FileServer.Aggregate.TotalNoOfStubs.@Count ;
+						var tempUnit:Number  ;
+						for each(var SourceName : XML in sizeXML.Report.FileServer..SourceName ){
+							for each(var Detailed :XML in SourceName..Detailed){
+								var testingUnit:Number = Number(Detailed.SizeRange.@EndSize);
+								if(testingUnit > unitFactor){
+									unitFactor = testingUnit
+								}
+							}
+						}
+						if(unitFactor > 1024*1024*1024*1024*1024){
+							unit = "pb" ;
+							unitFactor = 1024*1024*1024*1024*1024;
+						}else if(unitFactor > 1024*1024*1024*1024){
+							unit = "tb" ;
+							unitFactor = 1024*1024*1024*1024;
+						}else if(unitFactor > 1024*1024*1024){
+							unit = "gb" ;
+							unitFactor = 1024*1024*1024;
+						}else if(unitFactor > 1024*1024){
+							unit = "mb" ;
+							unitFactor = 1024*1024;
+						}else if(unitFactor  > 1024){
+							unit = "kb" ;
+							unitFactor = 1024 ;
+						} 
+						
+						
+						for each(var SourceName : XML in sizeXML.Report.FileServer..SourceName ){	
+							for each(var Detailed :XML in SourceName..Detailed){
+								var CapacityName:String =  Detailed.SizeRange.@Group;
+								if(!groupBytesDict.hasOwnProperty(CapacityName)){
+									groupBytesDict[CapacityName] = Detailed.NoOfBytes.@Count.toString() ;
+								}else{
+									var tempValue:int = parseInt(groupBytesDict[CapacityName]) +  parseInt(Detailed.NoOfBytes.@Count.toString())
+									groupBytesDict[CapacityName] = null ;
+									groupBytesDict[CapacityName] =  tempValue;
+								}
+							}
+						}
+					} else if(rep.search("_Aggregate_") > -1){
+						TotalNoOfFiles = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfBytes.@Count ;
+						TotalNoOfStubs = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfStubs.@Count ;
+						var flag:Boolean = true;
+						for each(var SourceName : XML in sizeXML.Report.FileServerGroup..FileServer ){
+							for each(var Detailed : XML in SourceName..Detailed ){
+								var testingUnit:Number = Number(Detailed.SizeRange.@EndSize);
+								if(testingUnit > unitFactor){
+									unitFactor = testingUnit
+								}
+							}
+						}
+						if(unitFactor > 1024*1024*1024*1024*1024){
+							unit = "pb" ;
+							unitFactor = 1024*1024*1024*1024*1024;
+						}else if(unitFactor > 1024*1024*1024*1024){
+							unit = "tb" ;
+							unitFactor = 1024*1024*1024*1024;
+						}else if(unitFactor > 1024*1024*1024){
+							unit = "gb" ;
+							unitFactor = 1024*1024*1024;
+						}else if(unitFactor > 1024*1024){
+							unit = "mb" ;
+							unitFactor = 1024*1024;
+						}else if(unitFactor  > 1024){
+							unit = "kb" ;
+							unitFactor = 1024 ;
+						} 
+						
+						
+						for each(var SourceName : XML in sizeXML.Report.FileServerGroup..FileServer ){	
+							for each(var Detailed :XML in SourceName..Detailed){
+								var CapacityName:String =  Detailed.SizeRange.@Group;
+								if(!groupBytesDict.hasOwnProperty(CapacityName)){
+									groupBytesDict[CapacityName] = Detailed.NoOfBytes.@Count.toString() ;
+								}else{
+									var tempValue:int = parseInt(groupBytesDict[CapacityName]) +  parseInt(Detailed.NoOfBytes.@Count.toString())
+									groupBytesDict[CapacityName] = null ;
+									groupBytesDict[CapacityName] =  tempValue;
+								}
+							}
+						}
+					} 
+					GridColumns = new ArrayCollection();
+					addHeader("Column1","Source");
+					addHeader("Column2","Total Archived");
+					addHeader("Column3","Files Archived");
+					addHeader("Column4","Files Stubbed");
+					
+					var Column:int = 5 ;
+					if(node!=null){
+						for each(var Detailed : XML in node..Detailed){
+							var val:int = parseInt(groupBytesDict[Detailed.SizeRange.@Group.toString()]) ;
+							var CapacityValue:Number  = val  / TotalNoOfBytes;
+							var value:String ;
+							var header:String ;
+							if((Detailed.SizeRange.@EndSize.toString()) == "END"){
+								value = Detailed.SizeRange.@Group.toString()  //+ "  -  " + parseInt(Detailed.SizeRange.@StartSize)/unitFactor +" to " +  Number.POSITIVE_INFINITY  + " " + unit  ;
+								header=  Detailed.SizeRange.@Group.toString() + "  % -  Over " + parseInt(Detailed.SizeRange.@StartSize)/unitFactor +  unit  ;
+								addHeader("Column"+Column,header);
+							}else{
+								value = Detailed.SizeRange.@Group.toString() //+ "  -  " + parseInt(Detailed.SizeRange.@StartSize)/unitFactor +" to " + (Detailed.SizeRange.@EndSize)/unitFactor  + " " + unit  ;
+								header=	Detailed.SizeRange.@Group.toString() + "  % -  " + parseInt(Detailed.SizeRange.@StartSize)/unitFactor +" to " + (Detailed.SizeRange.@EndSize)/unitFactor  + " " + unit  ;
+								addHeader("Column"+Column,header);	
+							}
+							Column++;
+							sizeDataReport.addItem({SizeFieldName:value, SizeFieldLocalizedName:value,SizeFieldValue: CapacityValue});
+							groupSizeDict[value] = value + " : " + roundValue(CapacityValue*100) + "%" ;
+						} 
+					}
+				}
+				
+				private function addHeader(name:String,title:String ):void{
+					var obj:Object = new Object();
+					obj.Name	= name ;
+					obj.Title	= title;
+					GridColumns.addItem(obj);
+				}
+				
+				private function allReport(rep:String):void{
+					
+				}
+				private function createPieSizeLabel(item:Object, field:String,
+													index:Number, percentValue:Number):String {
+					return getSizeLabel(item[SIZE_FIELD_NAME]);
+				}
+				
+				private function createPietypeLabel(item:Object, field:String,
+													index:Number, percentValue:Number):String {
+					return getTypeLabel(item[TYPE_FIELD_NAME]);
+				}
+				private function getTypeLabel(field:String):String {
+					var getString:String = groupTypeDict[field] ;
+					trace(getString);
+					return getString;
+				}
+				private function getSizeLabel(field:String):String {
+					var getString:String = groupSizeDict[field] ;
+					trace(getString);
+					return getString;
+				}
+				private function roundValue(temp:Number):String{
+					return temp.toString().substr(0,5) ;
+				}
+				private function createTypeDataTip(hitData:HitData):String {
+					var pSI:PieSeriesItem = hitData.chartItem as PieSeriesItem;
+					var field:String = pSI.item[TYPE_FIELD_NAME];
+					var tooltip:String = "" ;
+					var TotalNoOfFiles:int ;
+					var TotalNoOfBytes:int ;
+					var OtherNoOfFiles:int ;
+					var OtherNoOfBytes:int ;
+					var TotalNoOfStubs:int ;
+					if(response.toString().search("_Detailed_") > -1) {
+						TotalNoOfFiles = typeXML.Report.FileServer.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = parseInt(typeXML.Report.FileServer.Aggregate.TotalNoOfBytes.@Count) + parseInt(typeXML.Report.FileServer.Aggregate.OtherNoOfBytes.@Count);
+						OtherNoOfFiles = typeXML.Report.FileServer.Aggregate.OtherNoOfFiles.@Count ;
+						OtherNoOfBytes = typeXML.Report.FileServer.Aggregate.OtherNoOfBytes.@Count ;
+						TotalNoOfStubs = typeXML.Report.FileServer.Aggregate.TotalNoOfStubs.@Count ;
+						if(field.search("Others") > -1){
+							tooltip += "SourceName : " + "All Share and Exports" + 
+								" Usage : " +	roundValue(OtherNoOfBytes / TotalNoOfBytes *100) + "%\n" ;
+						}else{
+							for each(var sourceName : XML in typeXML.Report.FileServer..SourceName ){
+								for each(var Detailed :XML in sourceName..Detailed){
+									if (field.search(Detailed.Type.@TypeName) > -1 ){
+										if(sourceName.hasOwnProperty('@Share')){
+											tooltip += "SourceName : " + sourceName.@Share + 
+												" Usage : " +	roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) + "%\n" ;
+										}else if(sourceName.hasOwnProperty('@Export')){
+											tooltip += "SourceName : " + sourceName.@Export + 
+												" Usage : " +	roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) + "%\n" ;
+										}
+									} 
+								}
+							}
+						}
+					}else if(response.toString().search("_Aggregate_") > -1) {
+						TotalNoOfFiles = typeXML.Report.FileServerGroup.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = parseInt(typeXML.Report.FileServerGroup.Aggregate.TotalNoOfBytes.@Count) + parseInt(typeXML.Report.FileServerGroup.Aggregate.OtherNoOfBytes.@Count) ;
+						OtherNoOfFiles = typeXML.Report.FileServerGroup.Aggregate.OtherNoOfFiles.@Count ;
+						OtherNoOfBytes = typeXML.Report.FileServerGroup.Aggregate.OtherNoOfBytes.@Count ;
+						TotalNoOfStubs = typeXML.Report.FileServerGroup.Aggregate.TotalNoOfStubs.@Count ;
+						if(field.search("Others") > -1){
+							tooltip += "SourceName : " + "All Share and Exports" + 
+								" Usage : " +	roundValue(OtherNoOfBytes / TotalNoOfBytes *100) + "%\n" ;
+						}else{
+							for each(var sourceName : XML in typeXML.Report.FileServerGroup..FileServer ){
+								for each(var Detailed :XML in sourceName..Detailed){
+									if (field.search(Detailed.Type.@TypeName) > -1 ){
+										tooltip += "SourceName : " + sourceName.@Name + 
+											" Usage : " +	roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) + "%\n" ;
+									} else if(field.search("Others") > -1){
+										tooltip += "SourceName : " + "All Share and Exports" + 
+											" Usage : " +	roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) + "%\n" ;
+									} 
+								}
+							}
+						}
+					}
+					return tooltip;
+				}
+				private function createSizeDataTip(hitData:HitData):String {
+					var pSI:PieSeriesItem = hitData.chartItem as PieSeriesItem;
+					var field:String = pSI.item[SIZE_FIELD_NAME];
+					var tooltip:String = "" ;
+					var TotalNoOfFiles:int ;
+					var TotalNoOfBytes:int ;
+					var TotalNoOfStubs:int ;
+					if(response.toString().search("_Detailed_") > -1) {
+						TotalNoOfFiles = sizeXML.Report.FileServer.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = sizeXML.Report.FileServer.Aggregate.TotalNoOfBytes.@Count ;
+						TotalNoOfStubs = sizeXML.Report.FileServer.Aggregate.TotalNoOfStubs.@Count ;
+						for each(var sourceName : XML in sizeXML.Report.FileServer..SourceName ){
+							for each(var Detailed :XML in sourceName..Detailed){
+								if (field.search(Detailed.SizeRange.@Group) > -1 ){
+									if(sourceName.hasOwnProperty('@Share')){
+										tooltip += "SourceName : " + sourceName.@Share + 
+											" Usage : " +	roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) + "%(" + roundValue(Number(Detailed.NoOfBytes.@Count)/unitFactor) + unit +")\n";
+									}else if(sourceName.hasOwnProperty('@Export')){
+										tooltip += "SourceName : " + sourceName.@Export + 
+											" Usage : " +	roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) + "%(" + roundValue(Number(Detailed.NoOfBytes.@Count)/unitFactor) + unit +")\n";
+									}
+								}
+							}
+						}
+					}else if(response.toString().search("_Aggregate_") > -1) {
+						TotalNoOfFiles = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfFiles.@Count ;
+						TotalNoOfBytes = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfBytes.@Count ;
+						TotalNoOfStubs = sizeXML.Report.FileServerGroup.Aggregate.TotalNoOfStubs.@Count ;
+						for each(var sourceName : XML in sizeXML.Report.FileServerGroup..FileServer ){
+							for each(var Detailed :XML in sourceName..Detailed){
+								if (field.search(Detailed.SizeRange.@Group) > -1 ){
+									tooltip += "SourceName : " + sourceName.@Name + 
+										" Usage : " +	roundValue(Detailed.NoOfBytes.@Count / TotalNoOfBytes *100) + "%(" + roundValue(Number(Detailed.NoOfBytes.@Count)/unitFactor) + unit +")";
+								}
+							}
+						}
+					}
+					return tooltip;
+				}
+				
+			]]>
+		</fxs:Script>
+		<mx:HBox width="100%" height="100%">
+			
+			<mx:Canvas width="100%" height="100%"
+					   verticalScrollPolicy="off" 
+					   horizontalScrollPolicy="off">
+				<chart:UxPieChart id="sizePie"
+								  automationName="sizePie"
+								  dataProvider="{sizeDataReport}"
+								  showDataTips="true"  width="100%"
+								  dataTipFunction="createSizeDataTip"
+								  
+								  top="0"
+								  bottom="15"
+								  right="0">
+					<chart:series>
+						<!--explodeRadius is a number between 0 and 1. explodeRadius=".12"-->
+						<mx:PieSeries field="{SIZE_FIELD_VALUE}"
+									  nameField="{SIZE_FIELD_LOCALIZED_NAME}"
+									  labelPosition="callout"
+									  labelFunction="createPieSizeLabel">
+							
+							<mx:calloutStroke>
+								<mx:Stroke color="gray"
+										   weight="1"
+										   caps="none"/>
+							</mx:calloutStroke>
+							
+							<mx:showDataEffect>
+								<mx:SeriesInterpolate duration="1000"/>
+							</mx:showDataEffect>
+						</mx:PieSeries>
+					</chart:series>
+				</chart:UxPieChart>
+			</mx:Canvas>
+			
+			<mx:Canvas width="100%"
+					   height="100%" 
+					   verticalScrollPolicy="off"
+					   horizontalScrollPolicy="off">
+				
+				<!--<mx:Legend id="typePieLegend"
+				dataProvider="{typePie}"
+				direction="vertical"
+				left="{typePieLegend.width - 15}"
+				paddingTop="10"      
+				paddingLeft="10"/>-->
+				
+				<chart:UxPieChart id="typePie"
+								  automationName="typePie"
+								  dataProvider="{typeDataReport}"
+								  showDataTips="true" width="100%"
+								  dataTipFunction="createTypeDataTip"
+								  
+								  top="0"
+								  bottom="15"
+								  right="0">
+					<chart:series>
+						<mx:PieSeries field="{TYPE_FIELD_VALUE}"
+									  nameField="{TYPE_FIELD_LOCALIZED_NAME}"
+									  labelPosition="callout"
+									  labelFunction="createPietypeLabel">
+							
+							<mx:calloutStroke>
+								<mx:Stroke color="gray"
+										   weight="1"
+										   caps="none"/>
+							</mx:calloutStroke>
+							
+							<mx:showDataEffect>
+								<mx:SeriesInterpolate duration="1000"/>
+							</mx:showDataEffect>
+						</mx:PieSeries>
+					</chart:series>
+				</chart:UxPieChart>
+			</mx:Canvas>
+			
+			
+			<mx:Canvas width="100%" height="100%"
+					   verticalScrollPolicy="off" 
+					   horizontalScrollPolicy="off">
+				
+				<chart:UxBarChart id="barChart" 
+								  height="100%"
+								  color="black"
+								  width="100%" visible="false"
+								  showDataTips="true"
+								  dataProvider="{chartBardata}"
+								  verticalAxisTitle="{xLabel}"
+								  horizontalAxisTitle="{yLabel}">
+					
+					<chart:verticalAxis>
+						<mx:CategoryAxis categoryField="yField"/>
+					</chart:verticalAxis>
+					
+					
+					<chart:series>
+						<mx:BarSeries yField="yField"
+									  xField="xField"
+									  /> <!--displayName="Critical"-->
+						
+					</chart:series>
+				</chart:UxBarChart>
+				
+				<mx:Legend dataProvider="{barChart}"
+						   color="0x323232"/>
+				
+			</mx:Canvas>
+			
+			
+			
+		</mx:HBox>	
+		
+		<table:ECUITAdvancedDataGrid id="repositoryList" dataProvider="{_rowsObject}" sortableColumns="false"
+									 showHeaders = "true" visible="false" 
+									 editable="false" useRollOver="false" height="50%"	  			 
+									 allowMultipleSelection="false" rowCount="3"/>
+		<tx:UxTablePanel width="100%" height="100%">
+			<tx:filterPanel>
+				<fx:UxTableFilterPanel id="myTableFilterPanel">
+					<fx:filterGroups>
+						<fxs:Array>
+							<filter:UxFilterComboxBox label="Report Type">
+								<filter:filterOptions>
+									<fxs:Array>
+										<filter1:UxAllFilter label="All">
+										</filter1:UxAllFilter>
+										
+										<fx:UxTableColumnFilter label="FileServer">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="FileServer"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="FileServer Group">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="FileServer Group"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+									</fxs:Array>
+								</filter:filterOptions>
+							</filter:UxFilterComboxBox>
+						</fxs:Array>
+					</fx:filterGroups>
+				</fx:UxTableFilterPanel>
+			</tx:filterPanel>
+			<tx:UxAdvancedDataGrid id="repoList" tableModel="{repoModel}" 
+								   showHeaders = "true" itemClick="repoList_itemClickHandler(event)" 
+								   editable="false" useRollOver="false"	creationComplete="repoList_creationCompleteHandler(event)"		 
+								   allowMultipleSelection="false">
+				<tx:tableColumnViewInfo>
+					<mx:ArrayCollection>
+						<tx:UxTableColumnViewInformation columnKey="Column1" colWidth="350"/>
+						<tx:UxTableColumnViewInformation columnKey="Column2" colWidth="350"/>
+						<tx:UxTableColumnViewInformation columnKey="Column3" colWidth="350"/>
+						<tx:UxTableColumnViewInformation columnKey="Column4" colWidth="240" colHidden="true"/>
+					</mx:ArrayCollection>
+				</tx:tableColumnViewInfo>
+				
+			</tx:UxAdvancedDataGrid>
+			<tx:commandPanel>
+				<tx:UxTableCommandPanel>
+					<buttons:UxButton id="createReport" label="Create Report" click="createReport_clickHandler(event)"/>
+				</tx:UxTableCommandPanel>
+			</tx:commandPanel>
+		</tx:UxTablePanel>	
+		
+		
+	</UxViewBlock>
+</UxVBoxWindow>

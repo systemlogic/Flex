@@ -1,0 +1,183 @@
+package com.emc.core.services.threadservice;
+
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
+import javax.swing.Timer;
+
+import com.emc.core.logging.FxCoreLevel;
+import com.emc.core.logging.FxCoreLogManager;
+import com.emc.core.logging.IFxCoreLogger;
+
+/**
+ * Blocking runnable with a timeout. This can be used to run a background task
+ * and block the calling thread. If the background task does not complete within
+ * the provided time the calling thread will wakeup. Default timeout is one
+ * second.
+ * 
+ * Use: implement the blockingRun with your background task. Call the execute
+ * method to start the background task using the common thread pool. The calling
+ * thread will block until the background task is complete or the timeout
+ * occurs. The getReturnValue can be used to obtain the result and will be null
+ * if the timeout occurred. Note: If a timeout occures the background thread
+ * will continue to run and the return value my be valid at a later point.
+ * 
+ * 
+ */
+public abstract class FxBlockingRunnable extends FxCoreNamedRunnable {
+
+  /**
+   * Is the runnable done. This value it true when not running
+   */
+  private boolean _bDone = false;
+
+  /** Return value of the runnable last time it was run. */
+  private Object _returnValue = null;
+
+  /**
+   * How long we should block for. The calling thread will continue to execute
+   * but control to calling thread will only block for this amount of time.
+   */
+  private int _nTimeOut = 1000 * 1;
+
+  /**
+   * Class Constructor
+   * 
+   * @param strName :
+   *          Name of thread for extra debug information
+   * @param nMaxTime :
+   *          How long this will block for.
+   */
+  public FxBlockingRunnable(String strName, int nTimeOut) {
+    super(strName);
+    _nTimeOut = nTimeOut;
+  }
+
+  /**
+   * Class Constructor
+   */
+  public FxBlockingRunnable() {
+
+  }
+
+  /**
+   * Abstract method that should be used for the
+   * 
+   * @return
+   */
+  public abstract Object blockingRun();
+
+  /**
+   * Helper method to start the background task. If you want to run using a
+   * different pool you will need to call the waitOnThread method.
+   */
+  public synchronized void execute() {
+    _bDone = false;
+    super.execute();
+    waitOnThread();
+  }
+
+  /**
+   * Return value from last run
+   * 
+   * @return
+   */
+  public Object getReturnValue() {
+    return _returnValue;
+  }
+
+  /*
+   * Caller should implement the blockingRun method. (non-Javadoc)
+   * 
+   * @see java.lang.Runnable#run()
+   */
+  public final void run() {
+    _returnValue = null;
+
+    // Timer used for timeout
+    Timer timer = new Timer(getTimeOut(), new ActionListener() {
+
+      @Override
+      public void actionPerformed(ActionEvent e) {
+
+        // timer expired so call stop thread. This method will return true
+        // only if this stops the thread.
+        if (wakeThread()) {
+          IFxCoreLogger logger = FxCoreLogManager.getCoreLogger(this);
+          if (logger.isLoggable(FxCoreLevel.DEBUG)) {
+            logger.debug("Thread timeout. "
+                + FxBlockingRunnable.this.getThreadName());
+          }
+        }
+      }
+    });
+    // only call the action performed one time
+    timer.setRepeats(false);
+    // start the timer
+    timer.start();
+
+    // Call the worker method
+    _returnValue = blockingRun();
+
+    // if we return normally without the timer call stop thread to wake up the
+    // calling thread
+    if (wakeThread()) {
+
+      // kill the timer since we don't need it.
+      timer.stop();
+
+      IFxCoreLogger logger = FxCoreLogManager.getCoreLogger(this);
+      if (logger.isLoggable(FxCoreLevel.DEBUG)) {
+        logger.debug("Valid Return. " + FxBlockingRunnable.this.getThreadName()
+            + " " + _returnValue);
+      }
+    }
+  }
+
+  /**
+   * Used to block the calling thread
+   */
+  private synchronized void waitOnThread() {
+    try {
+      if (_bDone == false) {
+        wait();
+      }
+    } catch (Exception e) {
+      FxCoreLogManager.getCoreLogger(this).exception(e);
+    }
+  }
+
+  /**
+   * Used to wake the calling thread
+   * 
+   * @return
+   */
+  public synchronized boolean wakeThread() {
+    boolean bReturn = false;
+    if (_bDone == false) {
+      _bDone = true;
+
+      // wake up thread being blocked
+      notify();
+      bReturn = true;
+    }
+    return bReturn;
+  }
+
+  /**
+   * @return The wait timeout
+   */
+  public int getTimeOut() {
+    return _nTimeOut;
+  }
+
+  /**
+   * Used to set the blocking timeout
+   * 
+   * @param timeOut
+   */
+  public void setTimeOut(int timeOut) {
+    _nTimeOut = timeOut;
+  }
+
+}

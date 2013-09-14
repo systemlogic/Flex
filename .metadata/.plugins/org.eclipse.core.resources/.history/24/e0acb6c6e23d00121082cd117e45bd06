@@ -1,0 +1,16 @@
+package com.emc.fma.model.SchemaManager.vo
+{
+	
+	[Bindable]
+	public class ProfileCredentialVO
+	{
+		public var Username:String;
+		public var Password:String;
+
+		public function ProfileCredentialVO()
+		{
+			Username = "";
+			Password = "";
+		}
+	}
+}

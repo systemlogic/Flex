@@ -1,0 +1,195 @@
+import com.emc.ecuit.flex.components.application.AppTitleBar;
+import com.emc.ecuit.flex.components.application.Breadcrumb;
+import com.emc.ecuit.flex.components.application.BreadcrumbBar;
+import com.emc.ecuit.flex.components.application.BreadcrumbEvent;
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.services.rest.RestHTTPService;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.views.Configuration.FileServer.wizard.Centera.UserProfile;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.model.SchemaManager.SchemaConverter;
+import com.emc.fma.model.SchemaManager.vo.CenteraVO;
+        
+import flash.sampler.NewObjectSample;
+        
+import mx.collections.ArrayCollection;
+import mx.controls.AdvancedDataGrid;
+import mx.events.CloseEvent;
+import mx.managers.PopUpManager;
+import mx.resources.ResourceManager;
+        
+import mx.controls.Alert;
+
+[Bindable] public var Server:String;
+[Bindable] public var ServerType:String;
+        
+private var _currentPayload:UxHashMap = null;
+
+override protected function initializeData():void
+{
+  super.initializeData();
+  Common.setFocusOnFirstChild(this);
+
+  if ( currentPayload != null )
+  {
+    var dataObj:String = currentPayload.getValue("ServerType");
+    if ( dataObj != null )
+    {
+      Server = currentPayload.getValue("Server");
+      ServerType = currentPayload.getValue("ServerType");
+      viewBlock.title=ServerType + " "+ ResourceManager.getInstance().getString('fma','FIL_SER_PRP');
+
+      // Send GET request to the server
+      RESTClient.sendGetRequest("/api/server/"+Server, OnGetServerStatus, viewBlock);
+    }
+  }
+}
+
+private function OnGetServerStatus(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event, onCancel);
+    return;
+  }
+  trace(event.response);
+
+  try
+  {
+    var serverType:String = event.response.children()[0].localName();
+    if ( serverType != ServerType )
+      throw new Error("Expecting " + ServerType + " server, but returned " + serverType);
+
+    var centeraVO:CenteraVO = SchemaConverter.XMLtoVO(serverType, event.response);
+    if ( centeraVO == null )
+      throw new Error("Error converting XML to CenteraVO.\n" + event.response.toXMLString());
+
+    nameForm.FileServerName.text = centeraVO.Name;
+    nodeString.text = centeraVO.ConnectionString;
+    nodeCount.text  = String(centeraVO.ConnectionString.split(",").length);
+    //commitChanges.enabled = false;
+
+    if ( centeraVO.ProfilePath != null && centeraVO.ProfilePath != "" )
+    {
+      currentState = "peaFile"; 
+      PeaFildInput.text = centeraVO.ProfilePath;
+      PeaFildInput.enabled = false;
+    }
+    else if ( centeraVO.ProfileCredential != null && centeraVO.ProfileCredential.Username != "" )
+    {
+      currentState = "userProfile";
+      username.text = centeraVO.ProfileCredential.Username;
+      password.text = centeraVO.ProfileCredential.Password;
+    }
+    else
+      currentState = "anonymous";
+  }
+  catch (error:Error)
+  {
+    Common.showErrorDialog(this, error.message, onCancel);
+  }
+}
+
+private function page_keyDownHandler(event:KeyboardEvent):void
+{
+  if (event.keyCode == Keyboard.ESCAPE)
+    onCancel(new MouseEvent(MouseEvent.CLICK));
+}
+
+[Bindable]
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+        
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+        
+        
+private function init():void
+{          
+}
+        
+private function onCancel(event:Event):void
+{
+  var navService:IUxNavigationService =
+    UxExtensionManager.getInstance().getService(UxConstants.
+                                                NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}
+        
+private function onOK(event:MouseEvent):void
+{
+  onCancel(event);          
+}
+
+[Bindable] public var importFileName:String;
+[Bindable] public var importFileData:String;
+private var fr:FileReference;
+private static const FILE_TYPES:Array = [new FileFilter("Text File", "*.txt;*.text")];
+
+protected function Browse_clickHandler(event:MouseEvent):void
+{
+  //create the FileReference instance
+  fr = new FileReference();
+          
+  //listen for when they select a file
+  fr.addEventListener(Event.SELECT, onFileSelect);
+          
+  //listen for when then cancel out of the browse dialog
+  fr.addEventListener(Event.CANCEL,onCancelClk);
+          
+  //open a native browse dialog that filters for text files
+  fr.browse(FILE_TYPES);
+}
+
+private function onFileSelect(e:Event):void
+{
+  //listen for when the file has loaded
+  fr.addEventListener(Event.COMPLETE, onLoadComplete);
+          
+  //listen for any errors reading the file
+  fr.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
+          
+  //load the content of the file
+          
+  fr.load();
+          
+}
+        
+//called when the user cancels out of the browser dialog
+private function onCancelClk(e:Event):void
+{
+  trace("File Browse Canceled");
+  fr = null;
+}
+        
+/************ Select Event Handlers **************/
+        
+//called when the file has completed loading
+private function onLoadComplete(e:Event):void
+{
+  var data:ByteArray = fr.data;
+  importFileName = fr.name;
+  importFileData = data.readUTFBytes(data.bytesAvailable);
+  PeaFildInput.text = importFileName;
+  fr = null;
+}
+        
+//called if an error occurs while loading the file contents
+private function onLoadError(e:IOErrorEvent):void
+{
+  trace("Error loading file : " + e.text);
+}

@@ -1,0 +1,24 @@
+/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.connection {
+    import com.emc.efx.net.UxURL;
+
+    /**
+     * The IUxConnection interface specifies the interface for connection objects used
+     * to represent connection points for a given scope object (if applicable).
+     */
+    public interface IUxConnection {
+        
+        /**
+         * Gets the URL object for this connection object.
+         * 
+         * @return The UxURL object of the URL for this connection object.
+         */
+        function getConnectionURL():UxURL
+    }
+}

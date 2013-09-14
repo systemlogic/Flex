@@ -1,0 +1,225 @@
+package com.emc.fma.model.SchemaManager
+{
+	import com.emc.fma.model.SchemaManager.vo.*;
+	
+	import flash.utils.getDefinitionByName;
+	import flash.utils.getQualifiedClassName;
+	
+	import mx.collections.ArrayCollection;
+	import mx.controls.Alert;
+	import mx.events.FlexEvent;
+	import mx.rpc.events.FaultEvent;
+	import mx.rpc.events.ResultEvent;
+	import mx.rpc.events.SchemaLoadEvent;
+	import mx.rpc.events.XMLLoadEvent;
+	import mx.rpc.xml.Schema;
+	import mx.rpc.xml.SchemaLoader;
+	import mx.rpc.xml.SchemaManager;
+	import mx.rpc.xml.SchemaTypeRegistry;
+	import mx.rpc.xml.XMLDecoder;
+	import mx.rpc.xml.XMLEncoder;
+	import mx.utils.ObjectProxy;
+	import mx.utils.ObjectUtil;
+	
+	
+	public class SchemaConverter
+	{
+		private var schema:Schema;
+		private var schemaLoader:SchemaLoader;
+		private var schemaManager:SchemaManager;	
+		
+		
+		public function SchemaConverter()
+		{
+			
+		}
+		
+		public static function XMLtoVO(serverType:String, dataXML:XML):*
+		{	
+			
+			var schemaXML:XML;
+			var schemaMappedVO:ArrayCollection;
+			var returnType:String = '';
+			
+			if (serverType == "NetApp" || serverType == "Celerra" || serverType == "VNX" ||
+				serverType == "DataDomain" || serverType == "Isilon" || serverType == "VNXe" || serverType == "Windows" ||
+				serverType == "Centera" || serverType == "Atmos" || serverType == "AmazonS3" || serverType == "Azure" )
+			{
+				schemaXML = LoadSchema.FileServersXSD;
+				schemaMappedVO = new ArrayCollection(["NetApp","Celerra","VNX","DataDomain","Isilon","VNXe","Windows","Centera","Atmos","AmazonS3","Azure",
+					"Cifs","Ndmp","Source", "Admin","DirExclusions","Fpolicy","ProfileCredential"]);
+				returnType = serverType;
+			}
+				
+			else if (serverType == "ListAllServers")
+			{
+				schemaXML = LoadSchema.FileServersListXSD;
+				schemaMappedVO = new ArrayCollection();
+			}
+				
+			else if (serverType == "Policy")
+			{
+				schemaXML = LoadSchema.PolicyXSD;
+				schemaMappedVO = new ArrayCollection([])
+			}
+			
+			
+			// Load requested Schema
+			var schema:Schema = new Schema(schemaXML);
+			
+			var schemaManager:SchemaManager = new SchemaManager();
+			schemaManager.addSchema(schema);
+			
+			//Map the XSD type "example" to the ActionScript class ExampleVO
+			var schemaTypeRegistry:SchemaTypeRegistry = SchemaTypeRegistry.getInstance();
+			for each( var obj:Object in schemaMappedVO )
+			{
+				var objClass:Class = getDefinitionByName( "com.emc.fma.model.SchemaManager.vo." + obj.toString() + "VO" ) as Class;
+				schemaTypeRegistry.registerClass(new QName(schema.targetNamespace.uri, obj.toString()), objClass);
+			}
+			
+			//define a generic qName for the top level element of the XSD ("Response")
+			var qName:QName = new QName(schema.targetNamespace.uri, "Response");
+			
+			//Define standard XMLDecoder for XML validation
+			var xmlDecoder:XMLDecoder = new XMLDecoder();
+			
+			//makeObjectsBindable automatically uses ArrayCollections rather than Arrays when parsing multiple children
+			//of the same type in the xml (see result>Windows in the xsd)
+			xmlDecoder.makeObjectsBindable = true;
+			
+			xmlDecoder.schemaManager = schemaManager;
+			
+			//reset the temporary value object to null
+			var valueObject:Object = null;
+			
+			//creates a generic result object containing the deserialised version of the xml
+			var result:* = xmlDecoder.decode(dataXML, qName);
+			
+			if (serverType != "ListAllServers")
+				return result[returnType];
+			else
+				return result;
+		}
+		
+		public static function VOtoXML(schemaType:String,dataVO:Object):XML
+		{
+			
+			var schemaXML:XML;
+			var schemaMappedVO:ArrayCollection;
+			
+			if (schemaType == "FileServers")
+			{
+				schemaXML = LoadSchema.FileServersXSD;
+				schemaMappedVO = new ArrayCollection(["NetApp","Celerra","VNX","DataDomain","Isilon","VNXe","Windows","Centera","Atmos","AmazonS3","Azure",
+					"Cifs","Ndmp","Source", "Admin","DirExclusions","Fpolicy","ProfileCredential"]);			
+			}
+				
+			else if (schemaType == "Policy")
+			{
+				schemaXML = LoadSchema.PolicyXSD;
+				schemaMappedVO = new ArrayCollection([])
+			}
+			
+			// Load requested Schema:
+			var schema:Schema = new Schema(schemaXML);
+			
+			//Once the schema is loaded, add it to the SchemaManager:
+			var schemaManager:SchemaManager = new SchemaManager();
+			schemaManager.addSchema(schema);
+			
+			//Register any ActionScript classes to their corresponding schema type:
+			var schemaTypeRegistry:SchemaTypeRegistry = SchemaTypeRegistry.getInstance();
+			for each( var obj:Object in schemaMappedVO )
+			{
+				var objClass:Class = getDefinitionByName( "com.emc.fma.model.SchemaManager.vo." + obj.toString() + "VO" ) as Class;
+				schemaTypeRegistry.registerClass(new QName(schema.targetNamespace.uri, obj.toString()), objClass);
+			}
+			
+			var qName:QName;
+			var xmlEncoder:XMLEncoder;
+			var xmlList:XMLList;
+			
+			namespace xsi = "http://www.w3.org/2001/XMLSchema";
+			use namespace xsi;
+			
+			//creating a generic qName for the top level <result> element in the XML document
+			qName = new QName(schema.targetNamespace.uri, "Response");
+			
+			xmlEncoder = new XMLEncoder();
+			xmlEncoder.schemaManager = schemaManager;
+			
+			//a temporary object that will represent the <result> node of the XML
+			var valueObject:Object = new Object();
+			
+			//add the exampleObject to result object
+			var className:String = flash.utils.getQualifiedClassName(dataVO);
+			var nodeName:String =  (className.toString().replace("com.emc.fma.model.SchemaManager.vo::","")).replace("VO","");
+			valueObject[nodeName] = dataVO;
+			
+			//XMLEncoder.encode() supports various ways to define the corresponding element in the schema 
+			//(top level element,a specific type or even a custom XSD definition) that will be used to encode the Actionscript object.
+			xmlList = xmlEncoder.encode(valueObject, qName);
+			
+			var xml:XML = xmlList[0];
+			
+			if (schemaType == "FileServers")
+				xml = (new SchemaConverter).validateServerXML(nodeName,xml);
+			if (schemaType == "Policy")
+				xml= (new SchemaConverter).validateServerXML(nodeName,xml);
+
+			return xml.children()[0];
+		}
+		
+		private function validateServerXML(_tmpString:String, _tmpXml:XML):XML
+		{		
+
+			if (_tmpXml.descendants(_tmpString).Cifs.User == "")
+				delete _tmpXml.descendants(_tmpString).Cifs;
+			if (_tmpXml.descendants(_tmpString).Ndmp.User == "")
+				delete _tmpXml.descendants(_tmpString).Ndmp;
+			if (_tmpXml.descendants(_tmpString).Source.Ccd == "")
+				delete _tmpXml.descendants(_tmpString).Source.Ccd;
+			if (_tmpXml.descendants(_tmpString).Source.Acd == "")
+				delete _tmpXml.descendants(_tmpString).Source.Acd;
+			if (_tmpXml.descendants(_tmpString).Source.Admin.User == "")
+				delete _tmpXml.descendants(_tmpString).Source.Admin;	
+			if (_tmpXml.descendants(_tmpString).Source.DirExclusions == "")
+				delete _tmpXml.descendants(_tmpString).Source.DirExclusions;
+			if (_tmpXml.descendants(_tmpString).Source.Fpolicy.Primary == "")
+				delete _tmpXml.descendants(_tmpString).Source.Fpolicy.Primary;
+			if (_tmpXml.descendants(_tmpString).Source.Fpolicy.Secondary == "")
+				delete _tmpXml.descendants(_tmpString).Source.Fpolicy.Secondary;
+			if (_tmpXml.descendants(_tmpString).Source.Fpolicy.Passthrough == "")
+				delete _tmpXml.descendants(_tmpString).Source.Fpolicy.Passthrough;
+			if (_tmpXml.descendants(_tmpString).Source.Fpolicy.LargeFiles == "")
+				delete _tmpXml.descendants(_tmpString).Source.Fpolicy.LargeFiles;
+			if (_tmpXml.descendants(_tmpString).Source.Fpolicy == "")
+				delete _tmpXml.descendants(_tmpString).Source.Fpolicy;
+      // Added for Celerra/VNX not having any ccd/acd entries
+			if (_tmpXml.descendants(_tmpString).Source == "")
+      {
+        if (_tmpXml.descendants(_tmpString).Initialize != "true")
+          delete _tmpXml.descendants(_tmpString).Source;
+
+          delete _tmpXml.descendants(_tmpString).Initialize;
+      }
+			if (_tmpXml.descendants(_tmpString).HostIP == "")
+				delete _tmpXml.descendants(_tmpString).HostIP;
+			
+			//Centera
+			if (_tmpXml.descendants(_tmpString).ProfilePath == ""){
+				delete _tmpXml.descendants(_tmpString).ProfilePath;
+				delete _tmpXml.descendants(_tmpString).ProfileMD5Hash;}
+			if (_tmpXml.descendants(_tmpString).ProfileCredential.Username == "")
+				delete _tmpXml.descendants(_tmpString).ProfileCredential;
+			
+			return _tmpXml;		
+		}
+		
+		private function validatePolicyXML(_tmpString:String, _tmpXml:XML):XML
+		{
+			return null;
+		}
+	}	
+}

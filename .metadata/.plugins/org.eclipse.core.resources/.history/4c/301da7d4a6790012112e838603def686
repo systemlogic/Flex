@@ -1,0 +1,75 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+
+import mx.events.FlexEvent;
+import mx.resources.ResourceManager;
+
+override protected function initializeData():void
+{
+  super.initializeData();
+  Common.setFocusOnFirstChild(this);
+}
+
+protected function viewBlock_creationCompleteHandler(event:FlexEvent):void
+{
+  RESTClient.sendGetRequest("/api/system/securitysettings", OnGetComplete, viewBlock);
+}
+
+private function OnGetComplete(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event, OnCancel);
+    return;
+  }
+  var response:XML = event.response;
+  trace(response);
+
+  securityLevel.text      =  response.SecurityLevel;
+  passwordHardening.text  =  response.PasswordHardening;
+  rootLogin.text          =  response.RootLogin;
+  securityDdatabase.text  =  response.SecurityDatabase;
+  configTime.text         =  response.ConfigTime;
+  pwdAge.passwordAging.text      =  response.PasswordAging ;
+  
+  if(pwdAge.passwordAging.text == "yes"){
+    pwdAge.currentState = "EveryThing" ;
+    pwdAge.minPwdChg.text = response.AgeMinDays ;
+    pwdAge.maxPwdChg.text = response.AgingMaxDays;
+    pwdAge.warnPwdExp.text= response.AgingWarnDays;
+    pwdAge.actExpDay.text = response.AgingLockDays;
+  }else{
+    pwdAge.currentState = "None" ;
+  }
+  ldap.LDAPAuthentication.text =  response.LDAPAuthentication;
+  if(ldap.LDAPAuthentication.text == "yes"){
+    ldap.currentState = "EveryThing" ;
+    ldap.srhlmt.text = response.SearchTimeLimitLDAP ;
+    ldap.bindPol.text = response.BindPolicyLDAP;
+    ldap.bindLmt.text = response.BindTimeLimitLDAP;
+    ldap.ldapServer.text = response.ServerLDAP
+    ldap.base.text = response.BaseLDAP
+  }else{
+    ldap.currentState = "None" ;
+  }
+}
+
+private function page_keyDownHandler(event:KeyboardEvent):void
+{
+  if ( event.keyCode == Keyboard.ESCAPE )
+    OnCancel(new MouseEvent(MouseEvent.CLICK));
+}
+
+private function OnCancel(event:Event):void
+{
+  var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}

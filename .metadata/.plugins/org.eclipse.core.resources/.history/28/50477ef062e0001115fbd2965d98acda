@@ -1,0 +1,125 @@
+/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+
+package com.emc.efx.services.alert {
+    import com.emc.efx.services.scope.UxScope;
+
+    /**
+     *
+     * The IUxAlert interface specifies the interface for alert objects. The
+     * AlertService works with objects of type IUxAlert. Thus we can display and
+     * notify subscribers about alerts from different systems as long as they are
+     * all packaged into an object of type IUxAlert.
+     *
+     */
+    public interface IUxAlert {
+
+        function get uuid():String;
+
+        /**
+         * Get the severity of the alert.
+         *
+         * @return Severity Level of the alert.
+         */
+        function get severity():UxAlertSeverity;
+
+        /**
+         * Gets the date and time when the object was generated.
+         *
+         * @return Date and Time the alert was generated.
+         */
+        function get dateTime():Date;
+
+        /**
+         * Gets the description of the alert.
+         *
+         * @return String Description of the alert
+         */
+        function get description():String;
+
+        /**
+         * Returns the ID for the type of alert.
+         *
+         * @return Event code of the alert
+         */
+        function get eventCode():Number;
+
+        /**
+         * Returns the domain name for the alert
+         *
+         * @return Name of the domain
+         */
+        function get domainName():String;
+
+        /**
+         * Gets the originating system name for the alert
+         *
+         * @return Name of the originating system
+         */
+        function get originatingSystemName():String;
+
+        /**
+         * Gets the facility name for the alert.
+         *
+         * @return Name of the facility
+         */
+        function get facilityName():String;
+
+        /**
+         *
+         * Gets the longer description of the alert
+         *
+         * @return The full description of the alert
+         *
+         */
+        function get fullDescription():String;
+
+        /**
+         *
+         * Gets an array collection of allowedActions for the alert
+         *
+         * @return array collection of allowed actions
+         *
+         */
+        function get allowedActions():Array;
+
+        /**
+         *
+         * Gets additional info on correcting the cause of the alert.
+         *
+         * @return String on how to correct the alert
+         *
+         */
+        function get recommendedAction():String;
+
+        /**
+         *
+         * Gets scope object for alert originating system.
+         *
+         * @return IFxScope for system reporting the alert
+         *
+         */
+        function get alertScope():UxScope;
+
+        /**
+         *
+         * Perform an action on this alert. This action should correspond to one of
+         * the actions indicated as indicated by AllowedActions().  The method
+         * returns void, but the result of the action can be obtained by listening
+         * for the UxAlertActionResponseEvent that should be dispatched by the
+         * implementation.
+         *
+         * @param action the action to perform
+         *
+         */    
+        function doAction(action:String):void;
+
+    }
+
+}
+

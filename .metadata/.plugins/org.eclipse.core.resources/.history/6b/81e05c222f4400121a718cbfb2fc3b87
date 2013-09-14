@@ -1,0 +1,507 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import mx.collections.ArrayCollection;
+import mx.events.FlexEvent;
+import mx.events.ItemClickEvent;
+import mx.events.ListEvent;
+import mx.resources.ResourceManager;
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+public static const ATTR_SUMMARY_TIME    :String = "SUMMARY_TIME";
+public static const ATTR_STATE_SELECTION  :String = "STATE_SELECTION";
+public static const ATTR_TIME_INDEX      :String = "TIME_INDEX";
+public static const ATTR_STATE        :String = "STATE";
+public static const ATTR_SCHEDULE_SELECTION  :String = "SCHEDULE_SELECTION";
+public static const ATTR_RUN_ON_IMPORT    :String = "Run On Import";
+public static const ATTR_RUN_NOW      :String = "Run Now";
+public static const ATTR_RUN_SIM_NOW    :String = "Run Simulation Now";
+public static const ATTR_RUN_EVERY_DAY    :String = "Run Every Day";
+public static const ATTR_RUN_EVERY_WEEK    :String = "Run Every Week";
+public static const ATTR_RUN_EVERY_MONTH  :String = "Run Every Month";
+public static const ATTR_RUN_IN_FUTURE    :String = "Run In Future";
+public static const ATTR_RUN_AUTO_RECUR_TEST:String = "Automatic recursive File Migration Test";
+public static const ATTR_RUN_AUTO_RECUR     :String = "Automatic recursive File Migration" ;
+[Bindable]private var scheduleArray:ArrayCollection ;
+
+public var _defaultEnterName:String = "";
+
+private function setIndex():void
+{
+  if (getData(ATTR_TIME_INDEX) == null)
+    return ;
+
+  var rightSide:String = getData(ATTR_STATE_SELECTION).toString() ;
+  var index:int = 0 ;
+  var found:Boolean = false ;
+
+  for each(var str:String in time_Selection.dataProvider as ArrayCollection)
+  {
+    if (rightSide.search(str) > -1)
+    {
+      found = true ;
+      break ;
+    }
+
+    index++;
+  }
+
+  if (found)
+  {
+    time_Selection.selectedIndex = index;
+  }
+  else {
+    time_Selection.selectedIndex = 0 ;
+  }
+  change_state();
+}
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    // Pull defaults from wizard data
+    var def:Object;
+    def = getData(ATTR_SCHEDULE_SELECTION);
+
+    if (def != null)
+    {
+      _defaultEnterName = String(def);
+    }
+
+    _initialized = true;
+  }
+
+  scheduleArray = new ArrayCollection();
+
+  if (getData(TaskType.ATTR_SCHEDULE_TYPE) == TaskType.ATTR_Archive && getData(PolicySelection.ATTR_IMPORT_CHECK) as Boolean)
+  {
+    autoRecusLabel.visible = false ;
+    fileThresholdLimitLabel.visible = false ;
+    scheduleArray.addItem(ATTR_RUN_ON_IMPORT);
+    scheduleArray.addItem(ATTR_RUN_EVERY_DAY);
+    scheduleArray.addItem(ATTR_RUN_EVERY_WEEK);
+    scheduleArray.addItem(ATTR_RUN_EVERY_MONTH);
+    scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    capacity.visible = false ;
+    currentState = "runNowState" ;
+    setIndex();
+  }
+  else if (getData(TaskType.ATTR_SCHEDULE_TYPE) == TaskType.ATTR_Archive && !getData(PolicySelection.ATTR_IMPORT_CHECK) as Boolean)
+  {
+    autoRecusLabel.visible = false ;
+    fileThresholdLimitLabel.visible = false ;
+    scheduleArray.addItem(ATTR_RUN_NOW);
+    scheduleArray.addItem(ATTR_RUN_SIM_NOW);
+    scheduleArray.addItem(ATTR_RUN_EVERY_DAY);
+    scheduleArray.addItem(ATTR_RUN_EVERY_WEEK);
+    scheduleArray.addItem(ATTR_RUN_EVERY_MONTH);
+    scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    capacity.visible = true ;
+
+    if (capacity.selected)
+    {
+      currentState = "capacityState" ;
+    }
+    else if (time.selected)
+    {
+      currentState = "runNowState" ;
+      setIndex();
+    }
+  }
+  else if (getData(TaskType.ATTR_SCHEDULE_TYPE) == TaskType.ATTR_Delete)
+  {
+    autoRecusLabel.visible = false ;
+    fileThresholdLimitLabel.visible = false ;
+    scheduleArray.addItem(ATTR_RUN_SIM_NOW);
+    scheduleArray.addItem(ATTR_RUN_EVERY_DAY);
+    scheduleArray.addItem(ATTR_RUN_EVERY_WEEK);
+    scheduleArray.addItem(ATTR_RUN_EVERY_MONTH);
+    scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    capacity.visible = false ;
+    currentState = "runSimNowState" ;
+    setIndex();
+  }
+  else if (getData(TaskType.ATTR_SCHEDULE_TYPE) == TaskType.ATTR_Auxillary)
+  {
+    autoRecusLabel.visible = false ;
+    fileThresholdLimitLabel.visible = false ;
+    scheduleArray.addItem(ATTR_RUN_EVERY_DAY);
+    scheduleArray.addItem(ATTR_RUN_EVERY_WEEK);
+    scheduleArray.addItem(ATTR_RUN_EVERY_MONTH);
+    capacity.visible = false ;
+    currentState = "runEveryDayState" ;
+    setIndex();
+  }
+  else if (getData(TaskType.ATTR_SCHEDULE_TYPE) == TaskType.ATTR_Migration && getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_REPOMIGRATION)
+  {
+    autoRecusLabel.visible = false ;
+    fileThresholdLimitLabel.visible = false ;
+    scheduleArray.addItem(ATTR_RUN_SIM_NOW);
+    scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    capacity.visible = false ;
+    currentState = "runSimNowState" ;
+    setIndex();
+  }
+  else if (getData(TaskType.ATTR_SCHEDULE_TYPE) == TaskType.ATTR_Migration && getData(TaskSelection.ATTR_POLICY_TYPE) == TaskSelection.ATTR_FILEMIGRATION)
+  {
+    autoRecusLabel.visible = true ;
+    autoRecursive.selected = getData(TimeSelection.ATTR_RUN_AUTO_RECUR_TEST) as Boolean;
+    fileThresholdLimitLabel.visible = autoRecursive.selected ;
+
+    if (autoRecursive.selected)
+    {
+      scheduleArray.addItem(ATTR_RUN_NOW);
+      scheduleArray.addItem(ATTR_RUN_SIM_NOW);
+      scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    }
+    else if (!autoRecursive.selected)
+    {
+      scheduleArray.addItem(ATTR_RUN_NOW);
+      scheduleArray.addItem(ATTR_RUN_SIM_NOW);
+      scheduleArray.addItem(ATTR_RUN_EVERY_DAY);
+      scheduleArray.addItem(ATTR_RUN_EVERY_WEEK);
+      scheduleArray.addItem(ATTR_RUN_EVERY_MONTH);
+      scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    }
+
+    capacity.visible = false ;
+    currentState = "runNowState" ;
+    setIndex();
+  }
+
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+  sourceList_updateCompleteHandler();
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+protected function sourceList_updateCompleteHandler():void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+
+  updateButtons();
+}
+private function updateButtons():Boolean
+{
+  var temp:String ;
+  var test:Boolean = false ;
+
+  if (capacity.selected && archiveThreshold.text != "" && warningThreshold.text != "")
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else if (time.selected && time_Selection.selectedLabel == ATTR_RUN_ON_IMPORT)
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else if (time.selected && time_Selection.selectedLabel == ATTR_RUN_NOW)
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else if (time.selected && time_Selection.selectedLabel == ATTR_RUN_SIM_NOW)
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else if (time.selected && time_Selection.selectedLabel == ATTR_RUN_EVERY_DAY)
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else if (time.selected && time_Selection.selectedLabel == ATTR_RUN_EVERY_WEEK)
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else if (time.selected && time_Selection.selectedLabel == ATTR_RUN_EVERY_MONTH)
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else if (time.selected && time_Selection.selectedLabel == ATTR_RUN_IN_FUTURE && reunInFuturePicker.dateEntry.selectedDate != null )
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = true ;
+  }
+  else {
+    enableButtons(!_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    test = false  ;
+  }
+  return test;
+
+}
+override protected function save(): void
+{
+  var temp:String ;
+  var summary:String;
+
+  if (capacity.selected)
+  {
+    temp = "archive@" + archiveThreshold.text + "%:warning@" + warningThreshold.text + "%"
+    summary = "Run Task When Archive Threshold reaches " + archiveThreshold.text + "%" ;
+  }
+  else if (time.selected)
+  {
+    if (time_Selection.selectedLabel == ATTR_RUN_NOW)
+    {
+      temp = "now";
+      summary = "Run it Now" ;
+    }
+    else if (time_Selection.selectedLabel == ATTR_RUN_ON_IMPORT)
+    {
+      temp = "onimport";
+      summary = "Run Task On Import File" ;
+    }
+    else if (time_Selection.selectedLabel == ATTR_RUN_SIM_NOW && !runSimDetailCheck.selected)
+    {
+      temp = "simulation:summary";
+      summary = "Run Simulation Summary Now" ;
+    }
+    else if (time_Selection.selectedLabel == ATTR_RUN_SIM_NOW && runSimDetailCheck.selected)
+    {
+      temp = "simulation:detailed";
+      summary = "Run Detailed Summary Now" ;
+    }
+    else if (time_Selection.selectedLabel == ATTR_RUN_EVERY_DAY)
+    {
+      temp = "daily@" +
+             UtilityFunctionClass.formatTime(reunEveryDayPicker.timeEntry.hoursIn24) + ":" +
+             UtilityFunctionClass.formatTime(reunEveryDayPicker.timeEntry.minute);
+      summary = "Run Task Daily at " + UtilityFunctionClass.formatTime(reunEveryDayPicker.timeEntry.hoursIn24) + ":" +
+                UtilityFunctionClass.formatTime(reunEveryDayPicker.timeEntry.minute);
+    }
+    else if (time_Selection.selectedLabel == ATTR_RUN_EVERY_WEEK)
+    {
+      temp = weekSelection.selectedLabel +
+             "-week:" + dayWeekSelection.selectedLabel.substr(0,3) + "@"+
+             UtilityFunctionClass.formatTime(timeweekSelection.timeEntry.hoursIn24) + ":" +
+             UtilityFunctionClass.formatTime(timeweekSelection.timeEntry.minute) ;
+      summary = "Run Task on Every " + dayWeekSelection.selectedLabel + " of " + weekSelection.selectedLabel + " week at " +
+                UtilityFunctionClass.formatTime(timeweekSelection.timeEntry.hoursIn24) + ":" +
+                UtilityFunctionClass.formatTime(timeweekSelection.timeEntry.minute) ;
+    }
+    else if (time_Selection.selectedLabel == ATTR_RUN_EVERY_MONTH)
+    {
+      temp = monthSelection.selectedLabel +
+             "-months:" + UtilityFunctionClass.formatDate(parseInt(monthDaySelection.selectedLabel)) + "@" +
+             UtilityFunctionClass.formatTime(timemonthSelection.timeEntry.hoursIn24) + ":" +
+             UtilityFunctionClass.formatTime(timemonthSelection.timeEntry.minute) ;
+      summary = "Run Task on Every " + UtilityFunctionClass.formatDate(parseInt(monthDaySelection.selectedLabel)) + " Day of "  +  monthSelection.selectedLabel +
+                " month at" + UtilityFunctionClass.formatTime(timemonthSelection.timeEntry.hoursIn24) + ":" +
+                UtilityFunctionClass.formatTime(timemonthSelection.timeEntry.minute) ;
+    }
+    else if (time_Selection.selectedLabel == ATTR_RUN_IN_FUTURE)
+    {
+      var date:Date = reunInFuturePicker.dateEntry.selectedDate ;
+      trace(UtilityFunctionClass.formatMonth(date.date));
+      trace(UtilityFunctionClass.formatMonth(date.month));
+      temp = "once:" + reunInFuturePicker.dateEntry.selectedDate.fullYear + "-" +
+             UtilityFunctionClass.formatMonth(reunInFuturePicker.dateEntry.selectedDate.month ) + "-" +
+             UtilityFunctionClass.formatDate(reunInFuturePicker.dateEntry.selectedDate.date) + "@" +
+             UtilityFunctionClass.formatTime(reunInFuturePicker.timeEntry.hoursIn24) + ":" +
+             UtilityFunctionClass.formatTime(reunInFuturePicker.timeEntry.minute) ;
+      summary = "Run Task once at " + UtilityFunctionClass.formatTime(reunInFuturePicker.timeEntry.hoursIn24) + ":" +
+                UtilityFunctionClass.formatTime(reunInFuturePicker.timeEntry.minute) + "@"+ reunInFuturePicker.dateEntry.selectedDate.fullYear + "-" +
+                UtilityFunctionClass.formatMonth(reunInFuturePicker.dateEntry.selectedDate.month ) + "-" +
+                UtilityFunctionClass.formatDate(reunInFuturePicker.dateEntry.selectedDate.date);
+    }
+  }
+
+  trace(summary);
+  setData(ATTR_SCHEDULE_SELECTION,       temp);
+  setData(ATTR_STATE_SELECTION, getData(TaskType.ATTR_SCHEDULE_TYPE)+time_Selection.selectedLabel);
+  setData(ATTR_TIME_INDEX, time_Selection.selectedIndex);
+  setData(ATTR_STATE, currentState);
+  setData(ATTR_SUMMARY_TIME,summary);
+  setData(ATTR_RUN_AUTO_RECUR_TEST,autoRecursive.selected);
+  setData(ATTR_RUN_AUTO_RECUR,fileThresholdLimit.text);
+  //enableStep(TvShowSelection.STEP_NAME, true);
+  stepComplete = true;
+}
+
+// Override as we have step specific validation
+override protected function validate(): Boolean
+{
+  return true;
+}
+
+protected function timeCapacity_itemClickHandler(event:ItemClickEvent):void
+{
+  if (time.selected)
+  {
+    currentState = "timeState";
+  }
+  else if (capacity.selected)
+  {
+    currentState = "capacityState";
+  }
+
+  sourceList_updateCompleteHandler()();
+
+}
+
+private function change_state():void
+{
+  if (time_Selection.selectedLabel == ATTR_RUN_NOW)
+  {
+    currentState = "runNowState" ;
+  }
+  else if (time_Selection.selectedLabel == ATTR_RUN_SIM_NOW)
+  {
+    currentState = "runSimNowState" ;
+  }
+  else if (time_Selection.selectedLabel == ATTR_RUN_EVERY_DAY)
+  {
+    currentState = "runEveryDayState" ;
+  }
+  else if (time_Selection.selectedLabel == ATTR_RUN_EVERY_WEEK)
+  {
+    currentState = "runEveryWeekState" ;
+  }
+  else if (time_Selection.selectedLabel == ATTR_RUN_EVERY_MONTH)
+  {
+    currentState = "runEveryMonthState" ;
+  }
+  else if (time_Selection.selectedLabel == ATTR_RUN_IN_FUTURE)
+  {
+    currentState = "runinFuture" ;
+  }
+}
+
+protected function time_Selection_changeHandler(event:ListEvent):void
+{
+  change_state();
+}
+
+protected function reunEveryDayPicker_creationCompleteHandler(event:FlexEvent):void
+{
+  reunEveryDayPicker.dateEntry.visible = false ;
+  reunEveryDayPicker.gmtCombo.width = 0 ;
+}
+
+protected function timeweekSelection_creationCompleteHandler(event:FlexEvent):void
+{
+  // TODO Auto-generated method stub
+  timeweekSelection.dateEntry.visible = false ;
+  timeweekSelection.gmtCombo.width = 0 ;
+}
+
+private function days_month():void
+{
+  monthDaySelection.dataProvider = new ArrayCollection();
+
+  if (monthSelection.selectedLabel == "1" ||
+  monthSelection.selectedLabel == "3" ||
+  monthSelection.selectedLabel == "5" ||
+  monthSelection.selectedLabel == "7" ||
+  monthSelection.selectedLabel == "8" ||
+  monthSelection.selectedLabel == "10" ||
+  monthSelection.selectedLabel == "12"
+     )
+  {
+    for (var index:int = 1 ; index <= 31 ; index++)
+    {
+      (monthDaySelection.dataProvider as ArrayCollection).addItem(index);
+    }
+  }
+  else if (monthSelection.selectedLabel == "4" ||
+           monthSelection.selectedLabel == "6" ||
+           monthSelection.selectedLabel == "9" ||
+           monthSelection.selectedLabel == "11")
+  {
+    for (var index:int = 1 ; index <= 30 ; index++)
+    {
+      (monthDaySelection.dataProvider as ArrayCollection).addItem(index);
+    }
+  }
+  else if (monthSelection.selectedLabel == "2")
+  {
+    for (var index:int = 1 ; index <= 28 ; index++)
+    {
+      (monthDaySelection.dataProvider as ArrayCollection).addItem(index);
+    }
+  }
+}
+protected function monthSelection_changeHandler(event:ListEvent):void
+{
+  days_month();
+}
+
+protected function timemonthSelection_creationCompleteHandler(event:FlexEvent):void
+{
+  timemonthSelection.dateEntry.visible = false ;
+  timemonthSelection.gmtCombo.width = 0 ;
+  // TODO Auto-generated method stub
+
+}
+
+protected function reunInFuturePicker_creationCompleteHandler(event:FlexEvent):void
+{
+  reunInFuturePicker.gmtCombo.width = 0 ;
+  var CurrentDateTime:Date = new Date();
+  reunInFuturePicker.dateEntry.selectedDate = new Date();
+  /* reunInFuturePicker.dateEntry.selectedDate.fullYear = CurrentDateTime.getFullYear();
+  reunInFuturePicker.dateEntry.selectedDate.month =  CurrentDateTime.getMonth();
+  reunInFuturePicker.dateEntry.selectedDate.date = CurrentDateTime.getDate() */
+}
+
+protected function monthDaySelection_creationCompleteHandler(event:FlexEvent):void
+{
+  days_month();
+}
+
+protected function autoRecursive_changeHandler(event:Event):void
+{
+  scheduleArray = new ArrayCollection();
+  fileThresholdLimitLabel.visible = autoRecursive.selected
+
+  if (autoRecursive.selected)
+  {
+    scheduleArray.addItem(ATTR_RUN_NOW);
+    scheduleArray.addItem(ATTR_RUN_SIM_NOW);
+    scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    fileThresholdLimit_updateCompleteHandler(event);
+  }
+  else if (!autoRecursive.selected)
+  {
+    scheduleArray.addItem(ATTR_RUN_NOW);
+    scheduleArray.addItem(ATTR_RUN_SIM_NOW);
+    scheduleArray.addItem(ATTR_RUN_EVERY_DAY);
+    scheduleArray.addItem(ATTR_RUN_EVERY_WEEK);
+    scheduleArray.addItem(ATTR_RUN_EVERY_MONTH);
+    scheduleArray.addItem(ATTR_RUN_IN_FUTURE);
+    sourceList_updateCompleteHandler();
+  }
+
+  capacity.visible = false ;
+  currentState = "runNowState" ;
+  setIndex();
+}
+
+
+protected function fileThresholdLimit_updateCompleteHandler(event:Event):void
+{
+  if (fileThresholdLimit.text.length > 0 && updateButtons() )
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else {
+    enableButtons(!_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+
+}
+
+protected function reunInFuturePicker_updateCompleteHandler(event:Event):void
+{
+  // TODO Auto-generated method stub
+  if (fileThresholdLimitLabel.visible)
+  {
+    fileThresholdLimit_updateCompleteHandler(event);
+  }
+  else {
+    sourceList_updateCompleteHandler();
+  }
+
+}
+

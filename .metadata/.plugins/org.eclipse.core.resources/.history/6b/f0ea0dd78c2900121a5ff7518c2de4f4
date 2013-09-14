@@ -1,0 +1,34 @@
+/**
+ *
+ *
+ * Copyright: Copyright (c) 2012
+ *
+ * Company: EMC
+ *
+ *
+ */
+package com.emc.efx.guitoolkit.components.table {
+
+    /**
+     *
+     * Interface used to specify function to customize data for exporting.
+     *
+     * By default for export, the string obtained by converting cell data object to string format
+     * is used as the data for export. But in some cases, the exported data is required to be different from
+     * the data to be displayed. (Eg. For a column with icons, the exported data should have some text which defines that icon)
+     * exportFormatFunction can be used in such cases.
+     *
+     **/
+    public interface IUxExportFormatter {
+
+        /**
+         * Function used to customize the data used for exporting.
+
+         * columnKey - It is the columnKey currently being evaluated.
+         * cellData - The data object corresponding to the current cell.
+         * It should return null if the default value is to be used.
+         *
+         */
+        function getExportData(columnKey:String, cellData:Object):String;
+    }
+}

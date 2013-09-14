@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fx="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*"
+        xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+        xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+        xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+  <fx:Script source="ResetSystem.mxml.as" />
+
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock"
+         title="{ResourceManager.getInstance().getString('fma','REBOOT')}" width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false"
+         helpServiceID="FMAHelpService" helpID="ResetSystem" >
+    <mx:HBox width="100%">
+      <UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','REBOOT')}" width="50%" >
+        <mx:Form>
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','RBT_CNF_PWD')}">
+            <mx:TextInput id="password" displayAsPassword="true"/>
+          </mx:FormItem>
+          <mx:FormItem >
+            <mx:HBox>
+              <buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_RBT')}" click="_clickHandler(event,ResourceManager.getInstance().getString('fma','BUTTON_RBT'))" enabled="{password.text == '' ? false :true}"/>
+              <buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_SHT')}" click="_clickHandler(event,ResourceManager.getInstance().getString('fma','BUTTON_SHT'))" enabled="{password.text == '' ? false :true}"/>
+            </mx:HBox>
+          </mx:FormItem>
+        </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta>
+    </mx:HBox>
+  </UxViewBlock>
+</UxVBoxWindow>

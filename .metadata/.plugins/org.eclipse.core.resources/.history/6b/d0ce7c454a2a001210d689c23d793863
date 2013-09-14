@@ -1,0 +1,18 @@
+package com.emc.efx.utilities {
+    import mx.graphics.SolidColor;
+    import mx.graphics.Stroke;
+
+    public class UxStrokeUtils {
+        public function UxStrokeUtils() {
+        }
+
+        public static function getStroke(color:uint=0x000000, weight:Number=1,
+            alpha:Number=1.0, pixelHinting:Boolean=false,
+            scaleMode:String="normal", caps:String="round",
+            joints:String="round", miterLimit:Number=3):Object {
+
+            return new mx.graphics.SolidColorStroke(color, weight, alpha,
+                pixelHinting, scaleMode, caps, joints, miterLimit);
+        }
+    }
+}

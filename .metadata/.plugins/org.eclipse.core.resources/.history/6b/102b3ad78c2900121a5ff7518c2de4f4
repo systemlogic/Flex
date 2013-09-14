@@ -1,0 +1,44 @@
+﻿/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.rpc {
+
+    /**
+     * TODO : Make this less script like.
+     */
+    public class UxMethodFault {
+
+        private var _fault:Object;
+
+        public function UxMethodFault(o:Object) {
+            if (o)
+                this.setFaultObject(o);
+        }
+
+        public function getFaultCode():Number {
+            return Number(this._fault.faultCode);
+        }
+
+        public function getFaultString():String {
+            return String(this._fault.faultString);
+        }
+
+        public function getArgs():Array {
+            return new Array(this._fault.args);
+        }
+
+        public function setFaultObject(o:Object):void {
+            this._fault=o;
+        }
+
+        public function toString():String {
+            return "[MethodFaultImpl(faultCode=" + _fault.faultCode + ", faultString=" +
+                _fault.faultString + ")]";
+        }
+    }
+}
+

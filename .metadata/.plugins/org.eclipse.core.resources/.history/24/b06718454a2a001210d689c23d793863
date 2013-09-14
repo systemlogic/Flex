@@ -1,0 +1,48 @@
+/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.guitoolkit.events {
+    import flash.events.Event;
+
+    public class UxViewEvent extends UxEvent {
+
+        /**
+         *
+         * The UxViewEvent.INITIALIZE_DATA constant defines the
+         * value of the <code>type</code> property of the event object for an event
+         * that is dispatched when a view is initialized
+         *
+         * @eventType initializeData
+         */
+        public static const INITIALIZE_DATA:String = "initializeData";
+
+        /**
+         *
+         * The UxViewEvent.UNINITIALIZE_DATA constant defines the
+         * value of the <code>type</code> property of the event object for an event
+         * that is dispatched when a view is initialized
+         *
+         * @eventType unInitializeData
+         */
+
+        public static const UNINITIALIZE_DATA:String = "unInitializeData";
+
+        /**
+         * Class Constructor
+         * @param type Event type
+         */
+
+        public function UxViewEvent(type:String, message:String="",
+            bubbles:Boolean=false, cancelable:Boolean=false) {
+            super(type, message, bubbles, cancelable);
+        }
+        
+        public override function clone():Event {
+            return new UxViewEvent(type, message, bubbles, cancelable);
+        }
+    }
+}

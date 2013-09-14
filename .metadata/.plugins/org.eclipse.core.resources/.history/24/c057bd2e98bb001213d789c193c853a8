@@ -1,0 +1,471 @@
+/**
+ * @file RESTClient.as
+ * @brief Implementation of REST client using HTTP or HTTPS
+ *
+ * @section NOTE
+ * ResourceBundle variable "USE_REST_LIBRARY" decides whether to use ExternalInterface/javascript or UxHttpClient to make REST calls.
+ * You can alter the behavior by setting it to one of 
+ *    - RESTClient.USE_LIBRARY_JavaScript
+ *    - RESTClient.USE_LIBRARY_UxHttpClient (default, defined in fma.mxml)
+ *
+ * @example
+ * // REST call
+ * RESTClient.sendGetRequest("/api/server", OnRequestComplete);
+ *
+ * private function OnRequestComplete(event:RESTEvent):void
+ * {
+ *   if ( event.type == RESTEvent.EVENT_COMPLETE )
+ *   {
+ *     // Result in "event.response"
+ *   }
+ *   else if ( event.type == RESTEvent.EVENT_ERROR )
+ *   {
+ *     // Error in "event.response" will be in XML form like this
+ *     //
+ *     // <Response>
+ *     //   <Code>-1</Code>
+ *     //   <Message>Error message will be here</Message>
+ *     // </Response>
+ *   }
+ * }
+ */
+
+//! @package com.emc.fma.utils
+package com.emc.fma.utils {
+
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+import com.emc.efx.net.UxURL;
+import com.emc.efx.net.UxURLRequest;
+import com.emc.efx.net.http.UxHttpClient;
+import com.emc.efx.net.http.events.UxHttpErrorEvent;
+import com.emc.efx.net.http.events.UxHttpStatusEvent;
+import com.emc.efx.net.http.events.UxHttpTimeoutEvent;
+import com.emc.efx.services.login.events.UxLoginServiceEvent;
+import com.emc.fma.utils.Common;
+
+import flash.events.Event;
+import flash.events.EventDispatcher;
+import flash.events.HTTPStatusEvent;
+import flash.events.IOErrorEvent;
+import flash.events.SecurityErrorEvent;
+import flash.events.TimerEvent;
+import flash.external.ExternalInterface;
+import flash.net.URLRequest;
+import flash.net.URLRequestHeader;
+import flash.net.navigateToURL;
+import flash.utils.ByteArray;
+import flash.utils.Timer;
+
+import mx.controls.Alert;
+import mx.resources.ResourceManager;
+
+/**
+ * @class RESTClient
+ * @brief Make REST calls to the server (mostly originating server).
+ *        See @example section at the start of this file on how to use it.
+ */
+public class RESTClient extends EventDispatcher
+{
+  //! HTTP GET method
+  public static const METHOD_GET:String    = "GET";
+  //! HTTP POST method
+  public static const METHOD_POST:String   = "POST";
+  //! HTTP PUT method
+  public static const METHOD_PUT:String    = "PUT";
+  //! HTTP DELETE method
+  public static const METHOD_DELETE:String = "DELETE";
+
+  //! REST Library to use
+  public static const USE_LIBRARY_JavaScript:String   = "js";
+  public static const USE_LIBRARY_UxHttpClient:String = "uxht";
+
+  //! @var Timeout timer
+  private static var _timer:int = 300*1000;
+
+  //! @var UI Object that is making the call
+  private var _uiObject:Object = null;
+
+  //! @var UxHttpClient object that will be used to make HTTP calls if USE_LIBRARY_UxHttpClient is set
+  private var _httpClient:UxHttpClient = null;
+  private var _statusCode:int = 0;
+
+  /**
+   * @fn RESTClient()
+   * @brief RESTClient constructor.
+   *
+   * ***** NOT TO BE USED BY ANY MODULE DIRECTLY.  *****
+   * ***** MUST USE ONLY THE STATIC METHODS RESTClient.sendXXXRequest()
+   */
+  public function RESTClient(_uiObject:Object)
+  {
+    this._uiObject = _uiObject;
+  }
+
+  /**
+   * @fn sendGetRequest(resource, eventCallback)
+   * @brief Send a HTTP GET request to the server. There is no content sent with the request.
+   *
+   * @param resource [in] URL resource to access in the form of /api/<resource>
+   * @param eventCallback [in] Event callback for all types of events defined in RESTEvent.EVENT_xxx
+   * @param _uiObject [in] UI Object for handling wait-cursor
+   *
+   * @seealso RESTEvent
+   */
+  public static function sendGetRequest(resource:String, eventCallback:Function, _uiObject:Object = null):void
+  {
+    (new RESTClient(_uiObject)).sendRequest(METHOD_GET, resource, null, eventCallback);
+  }
+
+  /**
+   * @fn sendPostRequest(resource, content, eventCallback)
+   * @brief Send a HTTP POST request to the server with the given content.
+   *
+   * @param resource [in] URL resource to access in the form of /api/<resource>
+   * @param content [in] Content to be sent to the server (mostly XML in our case)
+   * @param eventCallback [in] Event callback for all types of events defined in RESTEvent.EVENT_xxx
+   * @param _uiObject [in] UI Object for handling wait-cursor
+   *
+   * @seealso RESTEvent
+   */
+  public static function sendPostRequest(resource:String, content:String, eventCallback:Function, _uiObject:Object = null):void
+  {
+    (new RESTClient(_uiObject)).sendRequest(METHOD_POST, resource, content, eventCallback);
+  }
+
+  /**
+   * @fn sendPutRequest(resource, content, eventCallback)
+   * @brief Send a HTTP PUT request to the server with the given content.
+   *
+   * @param resource [in] URL resource to access in the form of /api/<resource>
+   * @param content [in] Content to be sent to the server (mostly XML in our case)
+   * @param eventCallback [in] Event callback for all types of events defined in RESTEvent.EVENT_xxx
+   * @param _uiObject [in] UI Object for handling wait-cursor
+   *
+   * @seealso RESTEvent
+   */
+  public static function sendPutRequest(resource:String, content:String, eventCallback:Function, _uiObject:Object = null):void
+  {
+    (new RESTClient(_uiObject)).sendRequest(METHOD_PUT, resource, content, eventCallback);
+  }
+
+  /**
+   * @fn sendDeleteRequest(resource, eventCallback)
+   * @brief Send a HTTP DELETE request to the server. There is no content sent with the request.
+   *
+   * @param resource [in] URL resource to access in the form of /api/<resource>
+   * @param eventCallback [in] Event callback for all types of events defined in RESTEvent.EVENT_xxx
+   * @param _uiObject [in] UI Object for handling wait-cursor
+   *
+   * @seealso RESTEvent
+   */
+  public static function sendDeleteRequest(resource:String, eventCallback:Function, _uiObject:Object = null):void
+  {
+    (new RESTClient(_uiObject)).sendRequest(METHOD_DELETE, resource, null, eventCallback);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////////
+  //
+  // Private methods and events
+  //
+  /////////////////////////////////////////////////////////////////////////////////////////
+
+  /**
+   * @fn sendRequest(resource, eventCallback)
+   * @brief Send a HTTP request to the server based on method and content.
+   *        This is called internally by all static functions.
+   *
+   * @param method [in] HTTP method defined in METHOD_xxx
+   * @param resource [in] URL resource to access in the form of /api/<resource>
+   * @param content [in] Content to be sent to the server (mostly XML in our case)
+   * @param eventCallback [in] Event callback for all types of events defined in RESTEvent.EVENT_xxx
+   *
+   * @seealso RESTEvent
+   */
+  public static var minuteTimer:Timer ;
+  private function sendRequest(method:String, resource:String, content:String, eventCallback:Function):void
+  {
+    var response:String = "";
+    var useRestLibrary:String = Common.getResource('USE_REST_LIBRARY');
+  
+    if ( minuteTimer == null )
+    {
+      minuteTimer = new Timer(1000, 30*60) ;
+      //minuteTimer.addEventListener(TimerEvent.TIMER, onTick);
+      minuteTimer.addEventListener(TimerEvent.TIMER_COMPLETE, OnLogout);
+      minuteTimer.start();
+    }
+    else
+    {
+      minuteTimer.reset();
+      minuteTimer.start();
+    }
+
+    // Set callback notification for all events
+    if ( eventCallback != null )
+    {
+      this.addEventListener(RESTEvent.EVENT_COMPLETE, eventCallback);
+      this.addEventListener(RESTEvent.EVENT_ERROR, eventCallback);
+
+      this.addEventListener(ProgressEvent.BEGIN, Common.OnRestProgress);
+      this.addEventListener(ProgressEvent.END, Common.OnRestProgress);
+    }
+
+    try
+    {
+      switch ( useRestLibrary )
+      {
+      case RESTClient.USE_LIBRARY_JavaScript:
+        // use ExternalInterface
+        if ( !ExternalInterface.available )
+          throw new Error("ExternalInterface not available");
+
+        // dispatch the progress begin event
+        this.dispatchEvent(new ProgressEvent(ProgressEvent.BEGIN, _uiObject));
+
+        // make the call and get the response from the server using javascript
+        response = ExternalInterface.call("httpSendRequest", method, resource, content);
+
+        // dispatch the progress end event
+        this.dispatchEvent(new ProgressEvent(ProgressEvent.END, _uiObject));
+
+        var event:RESTEvent = new RESTEvent(RESTEvent.EVENT_COMPLETE, response);
+        if ( event.hasStandardResponse )
+        {
+          var xml:XML = event.response;
+          _statusCode = xml.Code;
+          if ( xml.hasOwnProperty("@type") && xml.@type == "js" )
+          {
+            var message:String = getHttpStatusErrorMessage(_statusCode);
+            //message = xml.Message;
+            event = new RESTEvent(RESTEvent.EVENT_ERROR, Common.makeResponse(_statusCode, message));
+          }
+          else if ( _statusCode == -100 )
+          {
+            Common.showErrorDialog(null, xml.Message, OnLogout);
+            return;
+          }
+        }
+        // dispatch the completion event
+        this.dispatchEvent(event);
+        break;
+
+      case RESTClient.USE_LIBRARY_UxHttpClient:
+        // use UxHttpClient to make calls
+        var data:ByteArray = new ByteArray();
+        if ( content != null && content != "" )
+          data.writeUTFBytes(content);
+        else
+          data.writeUTFBytes("");
+
+        var request:UxURLRequest = new UxURLRequest();
+        var destination:String = Common.getResource('ALLOCATION_CONTEXT') + encodeURI(resource);
+
+        request.data   = data;
+        request.method = method;
+        if ( request.method == METHOD_PUT || request.method == METHOD_DELETE )
+        {
+          destination = destination + "?_method=" + request.method;
+          request.requestHeaders = [new URLRequestHeader("X-HTTP-Method-Override", request.method)];
+          request.method = METHOD_POST;
+        }
+        request.url = new UxURL(destination);
+
+        _httpClient = new UxHttpClient(_timer);  //Set to 10 min. = 10*60*1000
+        _httpClient.addEventListener(UxHttpTimeoutEvent.HTTP_TIMEOUT, OnHttpTimeout);
+        _httpClient.addEventListener(IOErrorEvent.IO_ERROR, OnIOError);
+        _httpClient.addEventListener(UxHttpErrorEvent.HTTP_ERROR, OnIOError);
+        _httpClient.addEventListener(SecurityErrorEvent.SECURITY_ERROR, OnSecurityBreach);
+        _httpClient.addEventListener(UxHttpStatusEvent.HTTP_STATUS, OnHttpStatus);
+        _httpClient.addEventListener(Event.COMPLETE, OnComplete);
+
+        // dispatch the progress begin event
+        this.dispatchEvent(new ProgressEvent(ProgressEvent.BEGIN, _uiObject));
+        _httpClient.sendRequest(request);
+    
+    break;
+
+      default:
+        throw new Error("Invalid REST library specified \"" + useRestLibrary + "\"\nYou cannot use Cloud Tiering Appliance.");
+      }
+    }
+    catch (error:Error)
+    {
+      response = Common.makeErrorResponse(error.message);
+      this.dispatchEvent(new RESTEvent(RESTEvent.EVENT_ERROR, response));
+      // dispatch the progress end event
+      this.dispatchEvent(new ProgressEvent(ProgressEvent.END, _uiObject));
+    }
+  }
+
+  
+  public function onTick(event:TimerEvent):void 
+  {
+    //trace("tick " + event.target.currentCount);
+  }
+  
+  public function OnLogout(event:Event):void
+  {
+    var ref:URLRequest = new URLRequest("javascript:location.reload(true)");
+    navigateToURL(ref, "_self");
+  }
+
+  /**
+   * @fn OnHttpStatus()
+   * @brief Event received once we get HTTP status from the server.
+   *        If the statusCode is not 200 it dispatchs RESTEvent.EVENT_ERROR event.
+   *
+   * @param event [in] Event object
+   *
+   * @seealso RESTEvent
+   */
+  private function OnHttpStatus(event:UxHttpStatusEvent):void
+  {
+    _httpClient.removeEventListener(event.type, OnHttpStatus);
+
+    _statusCode = event.statusCode;
+
+    if ( _statusCode == 200 )
+    {
+      // Nothing to do, just return
+      return;
+    }
+
+    var message:String = getHttpStatusErrorMessage(_statusCode);
+    this.dispatchEvent(new RESTEvent(RESTEvent.EVENT_ERROR, Common.makeResponse(_statusCode, message)));
+    // dispatch the progress end event
+    this.dispatchEvent(new ProgressEvent(ProgressEvent.END, _uiObject));
+  }
+
+  /**
+   * @fn OnComplete()
+   * @brief Event received once we receive a full response from the server for status code 200.
+   *        Dispatches RESTEvent.EVENT_COMPLETE event that will be received by the caller.
+   *
+   * @param event [in] Event object
+   *
+   * @seealso RESTEvent
+   */
+  private function OnComplete(event:Event):void
+  {
+    var response:String = _httpClient.response.body.readUTFBytes(_httpClient.response.body.length);
+    var e:RESTEvent = new RESTEvent(RESTEvent.EVENT_COMPLETE, response);
+
+    // dispatch the progress end event
+    this.dispatchEvent(new ProgressEvent(ProgressEvent.END, _uiObject));
+
+    if ( e.hasStandardResponse && e.response.Code == -100 )
+    {
+      Common.showErrorDialog(null, e.response.Message, OnLogout);
+      return;
+    }
+    this.dispatchEvent(e);
+  }
+
+  /**
+   * @fn OnSecurityBreach()
+   * @brief Event received if there is a security breach in making the HTTP call to the server.
+   *        Dispatches RESTEvent.EVENT_ERROR event that will be received by the caller.
+   *
+   * @param event [in] Event object
+   *
+   * @seealso RESTEvent
+   */
+  private function OnSecurityBreach(event:SecurityErrorEvent):void
+  {
+    _httpClient.removeEventListener(event.type, OnSecurityBreach);
+
+    if ( _statusCode == 0 )
+    {
+      // Finally send an error response
+      this.dispatchEvent(new RESTEvent(RESTEvent.EVENT_ERROR, Common.makeErrorResponse("Security Error")));
+      // dispatch the progress end event
+      this.dispatchEvent(new ProgressEvent(ProgressEvent.END, _uiObject));
+    }
+  }
+
+  /**
+   * @fn OnIOError()
+   * @brief Event received if there is an input/output error while making the HTTP call to the server.
+   *        Dispatches RESTEvent.EVENT_ERROR event that will be received by the caller.
+   *
+   * @param event [in] Event object
+   *
+   * @seealso RESTEvent
+   */
+  private function OnIOError(event:IOErrorEvent):void
+  {
+    _httpClient.removeEventListener(event.type, OnIOError);
+
+    if ( _statusCode == 0 )
+    {
+      // Finally send an error response
+      this.dispatchEvent(new RESTEvent(RESTEvent.EVENT_ERROR, Common.makeErrorResponse("An input/output error was encountered")));
+      // dispatch the progress end event
+      this.dispatchEvent(new ProgressEvent(ProgressEvent.END, _uiObject));
+    }
+  }
+
+  /**
+   * @fn OnHttpTimeout()
+   * @brief Event received if there the request timed out. Shows a dialog to the user whether to retry the request or not.
+   *
+   * @param event [in] Event object
+   *
+   * @seealso RESTEvent, OnDialogHandler
+   */
+  private function OnHttpTimeout(event:UxHttpTimeoutEvent):void
+  {
+    // TODO: Need to handle it properly
+    _httpClient.removeEventListener(event.type, OnHttpTimeout);
+
+    var dlg:ECUITPopupDialog = ECUITPopupDialog.showConfirmDialog(this, 
+                                  Common.getResource('SLOW_SERVER'),
+                                  Common.getResource('SERVER_MESSAGE_HEADER'),
+                                  ECUITPopupDialog.YES_NO_OPTION );
+    dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, OnDialogHandler);
+  }
+
+  /**
+   * @fn OnDialogHandler()
+   * @brief Pop-up dialog result handler for Timeout event OnHttpTimeout.
+   *        If Yes was pressed we double the timeout interval and retry the request. (TODO)
+   *        Otherwise, it dispatches RESTEvent.EVENT_ERROR event that will be received by the caller.
+   *
+   * @param event [in] Event object
+   *
+   * @seealso RESTEvent, OnHttpTimeout
+   */
+  private function OnDialogHandler(event:ECUITPopupDialogEvent):void 
+  {
+    var response:String = event.resultLabel; 
+    if ( response == "Yes" )
+      _timer *= 2;
+    else
+      this.dispatchEvent(new RESTEvent(RESTEvent.EVENT_ERROR, Common.makeErrorResponse("Request timed out")));
+
+    // dispatch the progress end event
+    this.dispatchEvent(new ProgressEvent(ProgressEvent.END, _uiObject));
+  }
+
+  private function getHttpStatusErrorMessage(statusCode:int):String
+  {
+    var message:String;
+
+    if ( statusCode == 401 )
+      message = "401 Error. TODO: Need to logout";
+    else if ( statusCode == 404 )
+      message = Common.getResource('ERROR_404');
+    else if ( statusCode == 500 )
+      message = Common.getResource('ERROR_500');
+    else if ( statusCode == 503 )
+      message = Common.getResource('ERROR_503');
+    else
+      message = "Server sent error code: " + String(statusCode);
+
+    return message;
+  }
+
+} // end of class
+
+} // end of package

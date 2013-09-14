@@ -1,0 +1,904 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+import com.emc.ecuit.flex.components.views.ProgressCanvas;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.services.rest.RestHTTPService;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+import com.emc.efx.guitoolkit.components.table.UxTableModel;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.efx.net.http.UxHttpResponse;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import flash.debugger.enterDebugger;
+import flash.sampler.NewObjectSample;
+
+import mx.collections.ArrayCollection;
+import mx.controls.AdvancedDataGrid;
+import mx.controls.Button;
+import mx.events.CloseEvent;
+import mx.managers.PopUpManager;
+import mx.resources.ResourceManager;
+[Bindable]private var exp_array:XML = <Request/>;
+[Bindable]public var Server:String;
+[Bindable]public var ServerType:String;
+[Bindable]public var _rowsObject:Object = new Object();
+private var _currentPayload:UxHashMap = null;
+private var instanceid:String       = "Instance Id";
+private var logFile:String         = "Log File Path";
+private var archFile:String       = "Archive File Path";
+private var fileArchive:String       = "Files Archived";
+private var fileToBeArchive:String       = "Files To Be Archived";
+private var totalByteArch:String     = "Total Bytes Archived";
+private var totalByteToBeArch:String     = "Total Bytes To Be Archived";
+private var fileOpfail:String       = "File Operation Failed";
+private var endTime:String         = "End Time";
+private var startTime:String       = "Start Time";
+private var dirProcess:String       = "Directories Processed";
+private var lastDirProcess:String     = "Last Directories Processed";
+private var fileProcessed:String     = "Files Processed";
+private var lastFileProcess:String     = "Last Files Processed";
+private var filesDeleted:String     = "Files Deleted";
+private var filesToBeDeleted:String     = "Files To Be Deleted";
+private var totalBytesDeleted:String  = "Total Bytes Deleted";
+private var totalBytesToBeDeleted:String  = "Total Bytes To Be Deleted";
+private var status_Col:String        = "Status";
+private var incrimentalBaseDate:String  = "Incrimental Base Date";
+private var filesMigrated:String    = "Files Migrated";
+private var totalBytesMigrated:String  = "Total Bytes Migrated";
+private var importDate:String      = "Import Date";
+private var genrationDate:String    = "Genration Date";
+private var entries:String        = "Enteries";
+private var loaded:String        = "Loaded";
+private var duplicate:String      = "Duplicate";
+private var errors:String        = "Errors";
+
+
+
+private var columni:String = "Columni";
+private var columnl:String = "Columnl";
+private var columna:String = "Columna";
+private var column1:String = "Column1";
+private var column2:String = "Column2";
+private var column3:String = "Column3";
+private var column4:String = "Column4";
+private var column5:String = "Column5";
+private var column6:String = "Column6";
+private var column7:String = "Column7";
+private var column8:String = "Column8";
+private var column9:String = "Column9";
+[Bindable] private var Type:String;
+
+public function get workingPages():Array
+{
+  var workingPageArray:Array = new Array();
+  workingPageArray.push(logPage);
+  return workingPageArray;
+}
+private var simulationType:String ;
+override protected function initializeData():void
+{
+  super.initializeData();
+
+  if (currentPayload != null)
+  {
+    var taskid:String = currentPayload.getValue("TaskId");
+    Type = currentPayload.getValue("Type");
+    var Heading:String = currentPayload.getValue("Heading");
+    simulationType = currentPayload.getValue("simulationType");
+    viewBlock.title = Heading;
+    var xml:XML = <Request/>;
+
+    if (Type == UtilityFunctionClass.IMPORTLOGS)
+    {
+      xml.appendChild(<action>getImportLogList</action>);
+    }
+    else
+    {
+      xml.appendChild(<action>getList</action>);
+    }
+
+    xml.appendChild(<TaskID>
+    {taskid}</TaskID>);
+    xml.appendChild(<Type>
+    {Type}</Type>);
+    xml.appendChild(<simulation>
+    {simulationType}</simulation>);
+    RESTClient.sendPostRequest("/gettaskprogress.htm", xml, onComplete, viewBlock);
+    viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+    viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+
+    if ( Type == "archiver" || Type == "multitier" || Type == "multitierstub")
+    {
+      archiveColumnAdd();
+      currentState = "normal";
+    }
+    else if (Type == "filemigration" )
+    {
+      fileMigrationColumnAdd();
+      currentState = "filemigration";
+    }
+    else if (Type == "repositorymigration" || Type == "importarchive")
+    {
+      repoMigrationColumnAdd();
+      currentState = Type;
+    }
+    else if (Type == "deleteorphan" || Type == "deletestub")
+    {
+      deleteOrphan_StubColumnAdd();
+      currentState = "normal";
+    }
+    else if (Type == "stubscanner")
+    {
+      stubScannerColumnAdd();
+      currentState = "stubscanner";
+    }
+    else if (Type == "backup")
+    {
+      currentState = "backup";
+    }
+    else if (Type == UtilityFunctionClass.IMPORTLOGS)
+    {
+      importLogsColumnAdd();
+      currentState = "importLog";
+    }
+  }
+}
+[Bindable]
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+
+private function importLogsColumnAdd():void
+{
+  GridColumns = new ArrayCollection();
+  var obj:Object = new Object();
+  obj.Name = columni;
+  obj.Title= instanceid;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columnl;
+  obj.Title= logFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columna;
+  obj.Title= archFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column1;
+  obj.Title= importDate;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column2;
+  obj.Title= genrationDate;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column3;
+  obj.Title= entries;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column4;
+  obj.Title= loaded;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column5;
+  obj.Title= duplicate;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column6;
+  obj.Title= errors;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column7;
+  obj.Title= status_Col;
+  GridColumns.addItem(obj);
+
+}
+
+
+
+private function repoMigrationColumnAdd():void
+{
+  GridColumns = new ArrayCollection();
+  var obj:Object = new Object();
+  obj.Name = columni;
+  obj.Title= instanceid;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columnl;
+  obj.Title= logFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columna;
+  obj.Title= archFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column1;
+  obj.Title= startTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column2;
+  obj.Title= endTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column3;
+  obj.Title= dirProcess;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column4;
+  obj.Title= lastDirProcess;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column5;
+  obj.Title= fileProcessed;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column6;
+  obj.Title= lastFileProcess;
+  GridColumns.addItem(obj);
+
+}
+private function fileMigrationColumnAdd():void
+{
+  GridColumns = new ArrayCollection();
+  var obj:Object = new Object();
+  obj.Name = columni;
+  obj.Title= instanceid;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columnl;
+  obj.Title= logFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columna;
+  obj.Title= archFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column1;
+  obj.Title= status_Col;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column2;
+  obj.Title= incrimentalBaseDate;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column3;
+  obj.Title= filesMigrated;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column4;
+  obj.Title= totalBytesMigrated;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column5;
+  obj.Title= startTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column6;
+  obj.Title= endTime;
+  GridColumns.addItem(obj);
+
+}
+private function deleteOrphan_StubColumnAdd():void
+{
+  GridColumns = new ArrayCollection();
+  var obj:Object = new Object();
+  obj.Name = columni;
+  obj.Title= instanceid;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columnl;
+  obj.Title= logFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columna;
+  obj.Title= archFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column1;
+  if(simulationType == "no")
+    obj.Title= filesDeleted;
+  else
+    obj.Title= filesToBeDeleted;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column2;
+  if(simulationType == "no")
+    obj.Title= totalBytesDeleted;
+  else
+    obj.Title= totalBytesToBeDeleted;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column3;
+  obj.Title= fileOpfail;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column4;
+  obj.Title= startTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column5;
+  obj.Title= endTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column6;
+  obj.Title= lastFileProcess;
+  GridColumns.addItem(obj);
+
+}
+private function stubScannerColumnAdd():void
+{
+  GridColumns = new ArrayCollection();
+  var obj:Object = new Object();
+  obj.Name = columni;
+  obj.Title= instanceid;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columnl;
+  obj.Title= logFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columna;
+  obj.Title= archFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column1;
+  obj.Title= startTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column2;
+  obj.Title= endTime;
+  GridColumns.addItem(obj);
+}
+private function archiveColumnAdd():void
+{
+  GridColumns = new ArrayCollection();
+  var obj:Object = new Object();
+  obj.Name = columni;
+  obj.Title= instanceid;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columnl;
+  obj.Title= logFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = columna;
+  obj.Title= archFile;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column1;
+  if(simulationType == "no")
+    obj.Title= fileArchive;
+  else
+    obj.Title= fileToBeArchive;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column2;
+  if(simulationType == "no")
+    obj.Title= totalByteArch;
+  else
+    obj.Title= totalByteToBeArch;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column3;
+  obj.Title= fileOpfail;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column4;
+  obj.Title= startTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column5;
+  obj.Title= endTime;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column6;
+  obj.Title= dirProcess;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column7;
+  obj.Title= lastDirProcess;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column8;
+  obj.Title= fileProcessed;
+  GridColumns.addItem(obj);
+
+  obj = new Object();
+  obj.Name = column9;
+  obj.Title= lastFileProcess;
+  GridColumns.addItem(obj);
+
+}
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+
+private function init():void
+{
+
+}
+[Bindable] private var isilonIPs:ArrayCollection = new ArrayCollection();
+[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+[Bindable] private var response:XMLList
+private function onComplete(event:RESTEvent):void
+{
+  viewBlock.updateProgress(100, "default");
+  response = new XMLList(event.response);
+
+  if (Type != UtilityFunctionClass.IMPORTLOGS && response.source[0].toString()=="")
+  {
+    ECUITPopupDialog.showMessageDialog(this,response.source[0].toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+    true;
+  }
+
+
+  scheduleType.text = response.schedulerType[0].toString();
+  setGridColumns(GridColumns);
+  exp_array = response.logs[0] as XML;
+  trace(exp_array)
+
+  if ( Type == "archiver" || Type == "multitier" || Type == "multitierstub")
+  {
+    source.text = response.source[0].toString();
+    _rowsObject = createArchiveRows();
+    policyName.text = response.policyName[0].toString();
+  }
+  else if (Type == "filemigration" )
+  {
+    source.text = response.source[0].toString();
+    _rowsObject = createFileMigrationRows();
+    policyName.text = response.policyName[0].toString();
+    destination.text = response.destination[0].toString();
+  }
+  else if (Type == "importarchive" )
+  {
+    _rowsObject = createRepoMigrationRows();
+    taskName.text = response.taskName[0].toString();
+    provider.text = response.provider[0].toString();
+  }
+  else if ( Type == "repositorymigration")
+  {
+    source.text = response.source[0].toString();
+    _rowsObject = createRepoMigrationRows();
+    //policyName.text = response.policyName[0].toString();
+    destination.text = response.destination[0].toString();
+  }
+  else if (Type == "deleteorphan" || Type == "deletestub" )
+  {
+    source.text = response.source[0].toString();
+    _rowsObject = createDeleteOrphan_StubRows();
+    policyName.text = response.policyName[0].toString();
+  }
+  else if (Type == "stubscanner")
+  {
+    source.text = response.source[0].toString();
+    _rowsObject = createStubScannerRows();
+  }
+  else if (Type == "backup")
+  {
+    source.text = response.source[0].toString();
+  }
+  else if (Type == UtilityFunctionClass.IMPORTLOGS)
+  {
+    _rowsObject = createImportLogRows();
+  }
+}
+
+
+private function createImportLogRows():ArrayCollection
+{
+  var count:int = 0;
+  var row:Array =  new Array();
+  var item:XML;
+
+  for each(item in exp_array.log)
+  {
+    var importDate:String = item.importDate;
+    var genrationDate:String = item.genrationDate;
+    var entries:String = item.entries;
+    var loaded:String = item.loaded;
+    var duplicate:String = item.duplicate;
+    var errors:String = item.errors;
+    var status:String = item.status;
+    var logFilePath:String = item.logFilePath;
+    var archFileListLogPath:String = "";
+    var instenceId:String = "";
+    var obj:Object =
+    {
+      Column1:importDate,Column2:genrationDate,Column3:entries,Column4:loaded,Column5:duplicate,Column6:errors,Column7:status,
+      Columni:instenceId,Columnl:logFilePath,Columna:archFileListLogPath
+    };
+    ++count;
+    row.push(obj);
+    trace(item);
+  }
+
+  var temp:String = new String(exp_array);
+  exp_array = XML(temp);
+  var rows:ArrayCollection = new ArrayCollection(row);
+  return rows;
+}
+
+
+private function createRepoMigrationRows():ArrayCollection
+{
+  var count:int = 0;
+  var row:Array =  new Array();
+  var item:XML;
+
+  for each(item in exp_array.log)
+  {
+    var startTime:String = item.startTime;
+    var endTime:String = item.endTime;
+    var dirsProcessed:String = item.dirsProcessed;
+    var lastDirProcessed:String = item.lastDirProcessed;
+    var filesProcessed:String = item.filesProcessed;
+    var lastFileProcessed:String = item.lastFileProcessed;
+    var logFilePath:String = item.logFilePath;
+    var archFileListLogPath:String = item.archFileListLogPath;
+    var instenceId:String = item.instenceId;
+    var obj:Object =
+    {
+      Column1:startTime,Column2:endTime,Column3:dirsProcessed,Column4:lastDirProcessed,Column5:filesProcessed,Column6:lastFileProcessed,
+      Columni:instenceId,Columnl:logFilePath,Columna:archFileListLogPath
+    };
+    ++count;
+    row.push(obj);
+    trace(item);
+  }
+
+  var temp:String = new String(exp_array);
+  exp_array = XML(temp);
+  var rows:ArrayCollection = new ArrayCollection(row);
+  return rows;
+}
+
+
+private function createFileMigrationRows():ArrayCollection
+{
+  var count:int = 0;
+  var row:Array =  new Array();
+  var item:XML;
+
+  for each(item in exp_array.log)
+  {
+    var status:String = item.status;
+    var incrementalBase:String = item.incrementalBase;
+    var filesMigrated:String = item.filesMigrated;
+    var startTime:String = item.startTime;
+    var endTime:String = item.endTime;
+    var totalBytesMigrated:String = item.totalBytesMigrated;
+    var lastDirProcessed:String = item.lastDirProcessed;
+    var filesProcessed:String = item.filesProcessed;
+    var lastFileProcessed:String = item.lastFileProcessed;
+    var logFilePath:String = item.logFilePath;
+    var archFileListLogPath:String = item.archFileListLogPath;
+    var instenceId:String = item.instenceId;
+    var obj:Object =
+    {
+      Column1:status,Column2:incrementalBase,Column3:filesMigrated,Column4:totalBytesMigrated,Column5:startTime,
+      Column6:endTime,Columni:instenceId,Columnl:logFilePath,Columna:archFileListLogPath
+    };
+    ++count;
+    row.push(obj);
+    trace(item);
+  }
+
+  var temp:String = new String(exp_array);
+  exp_array = XML(temp);
+  var rows:ArrayCollection = new ArrayCollection(row);
+  return rows;
+}
+
+private function onCanel(event:MouseEvent):void
+{
+  var navService:IUxNavigationService =
+  UxExtensionManager.getInstance().getService(UxConstants.
+  NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}
+public function setGridColumns (columns:ArrayCollection):void
+{
+  if (columns == null) return;
+
+  trace(columns);
+  var tableColumns:ArrayCollection = new ArrayCollection();
+
+  for (var i:int = 0; i < GridColumns.length; i++)
+  {
+    var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+    var precision:int = 0; //default precision
+    type = ECUITAdvancedDataGridColumn.TEXT;
+    var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+    column.dataField = GridColumns[i].Name;
+    column.headerText = GridColumns[i].Title;
+    column.width = repositoryList.width/10;
+    column.visible = true;
+
+    if (column.headerText == instanceid || column.headerText == logFile || column.headerText == archFile )
+    {
+      column.visible = false;
+    }
+
+    tableColumns.addItem(column);
+  }
+
+  repositoryList.columns = tableColumns.toArray();
+}
+private function createArchiveRows():ArrayCollection
+{
+  var count:int = 0;
+  var row:Array =  new Array();
+  var item:XML;
+
+  for each(item in exp_array.log)
+  {
+    var filesArchived:String = item.filesArchived;
+    var totalBytes:String = item.totalBytes;
+    var fileOpsFailed:String = item.fileOpsFailed;
+    var startTime:String = item.startTime;
+    var endTime:String = item.endTime;
+    var dirsProcessed:String = item.dirsProcessed;
+    var lastDirProcessed:String = item.lastDirProcessed;
+    var filesProcessed:String = item.filesProcessed;
+    var lastFileProcessed:String = item.lastFileProcessed;
+    var logFilePath:String = item.logFilePath;
+    var archFileListLogPath:String = item.archFileListLogPath;
+    var instenceId:String = item.instenceId;
+    var obj:Object =
+    {
+      Column1:filesArchived,Column2:totalBytes,Column3:fileOpsFailed,Column4:startTime,
+      Column5:endTime,Column6:dirsProcessed,Column7:lastDirProcessed,Column8:filesProcessed,Column9:lastFileProcessed,
+      Columni:instenceId,Columnl:logFilePath,Columna:archFileListLogPath
+    };
+    ++count;
+    row.push(obj);
+    trace(item);
+  }
+
+  var temp:String = new String(exp_array);
+  exp_array = XML(temp);
+  var rows:ArrayCollection = new ArrayCollection(row);
+  return rows;
+}
+private function createStubScannerRows():ArrayCollection
+{
+  var count:int = 0;
+  var row:Array =  new Array();
+  var item:XML;
+
+  for each(item in exp_array.log)
+  {
+    var startTime:String = item.startTime;
+    var endTime:String = item.endTime;
+    var logFilePath:String = item.logFilePath;
+    var archFileListLogPath:String = item.archFileListLogPath;
+    var instenceId:String = item.instenceId;
+    var obj:Object =
+    {
+      Column1:startTime,Column2:endTime,
+      Columni:instenceId,Columnl:logFilePath,Columna:archFileListLogPath
+    };
+    ++count;
+    row.push(obj);
+    trace(item);
+  }
+
+  var temp:String = new String(exp_array);
+  exp_array = XML(temp);
+  var rows:ArrayCollection = new ArrayCollection(row);
+  return rows;
+}
+
+private function createDeleteOrphan_StubRows():ArrayCollection
+{
+  var count:int = 0;
+  var row:Array =  new Array();
+  var item:XML;
+
+  for each(item in exp_array.log)
+  {
+    var filesArchived:String = item.filesArchived;
+    var totalBytes:String = item.totalBytes;
+    var fileOpsFailed:String = item.fileOpsFailed;
+    var startTime:String = item.startTime;
+    var endTime:String = item.endTime;
+    var dirsProcessed:String = item.dirsProcessed;
+    var lastDirProcessed:String = item.lastDirProcessed;
+    var filesProcessed:String = item.filesProcessed;
+    var lastFileProcessed:String = item.lastFileProcessed;
+    var logFilePath:String = item.logFilePath;
+    var archFileListLogPath:String = item.archFileListLogPath;
+    var instenceId:String = item.instenceId;
+    var obj:Object =
+    {
+      Column1:filesArchived,Column2:totalBytes,Column3:fileOpsFailed,Column4:startTime,
+      Column5:endTime,Column6:dirsProcessed,Column7:lastDirProcessed,Column8:filesProcessed,Column9:lastFileProcessed,
+      Columni:instenceId,Columnl:logFilePath,Columna:archFileListLogPath
+    };
+    ++count;
+    row.push(obj);
+    trace(item);
+  }
+
+  var temp:String = new String(exp_array);
+  exp_array = XML(temp);
+  var rows:ArrayCollection = new ArrayCollection(row);
+  return rows;
+}
+private function logPageFun(dataObj:Object,pageType:String,fileName:String):void
+{
+  var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+  var map:UxHashMap = new UxHashMap();
+  map.put(pageType, dataObj);
+  map.put("action", "download" );
+  map.put("file",fileName);
+  var location:Array = new Array;
+  _section.headerText = dataObj["key"];
+  location = navService.currentLocation;
+  location.push(pageType)
+  navService.moveToChild(pageType, map);
+}
+private var _section:UxLazyLoadSection;
+private function onView(event:Event,fileName:String):void
+{
+  viewBlock.updateProgress(100, "default");
+  //response = new XMLList(event.response);
+  _section = logPage;
+  var history:String = ResourceManager.getInstance().getString('fma','LOG');
+
+  logPageFun(
+  {key:history },logPage.key,fileName);
+}
+protected function view_log_clickHandler(event:MouseEvent):void
+{
+  var fileName:String = repositoryList.selectedItem.Columnl;
+  onView(event,fileName);
+
+}
+private function downloadHandler(fileName:String):void
+{
+  fileRef = new FileReference();
+  fileRef.addEventListener(Event.COMPLETE, doEvent);
+  fileRef.addEventListener(Event.CANCEL, doCancelEvent);
+  urlReq = new URLRequest(ResourceManager.getInstance().getString('fma','ALLOCATION_CONTEXT')+ "/history.htm");
+  var variables:URLVariables = new URLVariables();
+  variables.action = "download";
+  variables.file = fileName;
+  fileName = fileName.substr(fileName.lastIndexOf("/")+1);
+  urlReq.data = variables;
+  fileRef.download(urlReq,fileName);
+  viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+  viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+}
+protected function download_log_clickHandler(event:MouseEvent):void
+{
+  downloadHandler(repositoryList.selectedItem.Columnl);
+}
+
+protected function view_archive_clickHandler(event:MouseEvent):void
+{
+  var fileName:String = repositoryList.selectedItem.Columna;
+  onView(event,fileName);
+}
+
+protected function download_archive_clickHandler(event:MouseEvent):void
+{
+  downloadHandler(repositoryList.selectedItem.Columna);
+}
+
+
+private var FILE_URL:String;
+
+private var fileRef:FileReference;
+private var urlReq:URLRequest;
+
+private function doCancelEvent(evt:Event):void
+{
+  viewBlock.updateProgress(100, "default");
+  trace("File Download cancel has been selected");
+}
+private function doEvent(evt:Event):void
+{
+  /* Create shortcut to the FileReference object. */
+  viewBlock.updateProgress(100, "default");
+  var fr:FileReference = evt.currentTarget as FileReference;
+
+  /* Add event order and type to the DataGrid control. */
+
+  try
+  {
+    /* Update the Model. */
+    fileRefModel.creationDate = fr.creationDate;
+    fileRefModel.creator = fr.creator;
+    fileRefModel.modificationDate = fr.modificationDate;
+    fileRefModel.name = fr.name;
+    fileRefModel.size = fr.size;
+    fileRefModel.type = fr.type;
+    /* Display the Text control. */
+    //txt.visible = true;
+  }
+  catch (err:*)
+  {
+    trace(err);
+  }
+}
+
+private function downloadSourceCodeZip():void
+{
+  /* Clear existing array collection. */
+  /* Hide the Text control. */
+  /* Begin download. */
+  fileRef.download(urlReq);
+}
+protected function cancel_clickHandler(event:MouseEvent):void
+{
+  var navService:IUxNavigationService =
+  UxExtensionManager.getInstance().getService(UxConstants.
+  NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+
+}
+

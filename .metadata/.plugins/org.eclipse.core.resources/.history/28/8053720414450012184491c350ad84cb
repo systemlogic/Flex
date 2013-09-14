@@ -1,0 +1,18 @@
+package com.emc.fma.model.SchemaManager.vo
+{
+ 
+	[Bindable]
+	public class AmazonS3VO
+	{
+		public var Name:String;
+		public var URL:String;
+		public var BucketName:String;
+		public var AccessKeyID:String;
+		public var SecretAccessKey:String;
+
+		public function AmazonS3VO()
+		{
+		}
+		
+	}
+}

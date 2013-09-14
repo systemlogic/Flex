@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A BigButtonContainer -->
+<UxBigButtonContainer xmlns="com.emc.efx.services.layout.containers.*"
+            xmlns:mx="http://www.adobe.com/2006/mxml" horizontalGap="0"
+            xmlns:section="com.emc.efx.services.layout.section.*"
+            xmlns:ArchivedReport="com.emc.fma.views.Archived.ArchivedReport.*">
+  <sections>
+    <section:UxLazyLoadSection key="VIEWARCHIVE"
+                   headerText="@Resource(key='VIEWARCHIVE', bundle='fma')"
+                   description="@Resource(key='VIEWARCHIVE_DISC', bundle='fma')"
+                   iconSource="@Resource(key='VIEWARCHIVE_64', bundle='fma')"
+                   smallIconSource="@Resource(key='VIEWARCHIVE_64', bundle='fma')"
+                   contentClass="com.emc.fma.views.Archived.ArchivedReport.ArchiveFileList.ArchivedFile"/>
+
+    <section:UxLazyLoadSection key="VIEWREPORTS"
+                   headerText="@Resource(key='VIEWREPORTS', bundle='fma')"
+                   description="@Resource(key='VIEWREPORTS_DISC', bundle='fma')"
+                   iconSource="@Resource(key='VIEWREPORT_64', bundle='fma')"
+                   smallIconSource="@Resource(key='VIEWREPORT_64', bundle='fma')"
+                   contentClass="com.emc.fma.views.Archived.ArchivedReport.ViewArchivedRepot"/>
+
+    <section:UxLazyLoadSection key="ARCHREPORT"
+                  headerText="@Resource(key='ARCHREPORT', bundle='fma')"
+                  description="@Resource(key='ARCHREPORT_DISC', bundle='fma')"
+                  iconSource="@Resource(key='ARCHIVE_REPORT_64', bundle='fma')"
+                  smallIconSource="@Resource(key='ARCHIVE_REPORT_64', bundle='fma')"
+                  contentClass="com.emc.fma.views.Archived.ArchivedReport.ArchiveReportSettings"/>
+  </sections>
+</UxBigButtonContainer>
+
+

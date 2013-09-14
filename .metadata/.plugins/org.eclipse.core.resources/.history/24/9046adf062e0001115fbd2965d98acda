@@ -1,0 +1,46 @@
+/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.layout.containers {
+    import com.emc.efx.core.extensionmgr.UxExtensionManager;
+    import com.emc.efx.core.resourcemanager.UxResourceManager;
+    import com.emc.efx.utilities.automation.UxAutomationUtils;
+
+    import mx.containers.VBox;
+    import mx.controls.Label;
+
+    /**
+     * Generic unisphere home page to be shown when a chip has not content
+     * to provide - e.g. it is logged out
+     */
+    public class UxHomePage extends VBox {
+
+        public function UxHomePage() {
+            if (UxExtensionManager.getInstance().isHostingMultiPlugins()) {
+                var title:Label = new Label();
+                title.styleName = "UxHomePageTitle";
+                title.text =
+                    UxResourceManager.getInstance().getString("homepage",
+                    "HOME_PAGE_TITLE");
+                title.x = 50;
+                title.y = 50;
+                addChild(title);
+            }
+            automationName = UxAutomationUtils.DEFAULT_AN;
+        }
+
+        /**
+         * Automation name settings.
+         * override function to format automation name.
+         */
+        override public function set automationName(value:String):void {
+            super.automationName =
+                UxAutomationUtils.getFormattedAutomationName(this.className,
+                value, "_HP");
+        }
+    }
+}

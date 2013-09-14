@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Container having TestingViewBlock -->
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fxs="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+        xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+        xmlns:FileServer="com.emc.fma.views.Configuration.FileServer.*"
+        xmlns:section="com.emc.efx.services.layout.section.*"
+        xmlns:combobox="com.emc.efx.guitoolkit.components.combobox.*"
+        xmlns:action="com.emc.efx.guitoolkit.action.*"
+        xmlns:details="com.emc.efx.guitoolkit.components.details.*">
+  <fxs:Declarations>
+    <section:UxLazyLoadSection id="nasGPage" key="NASGROUPPRO" headerText="@Resource(key='NASGROUPPRO', bundle='fma')"
+                   contentClass="com.emc.fma.views.Policies.NASGroup.NASGroupProperties"/>
+  </fxs:Declarations>
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+         title="  {ResourceManager.getInstance().getString('fma','NAS_GRP_LST')}" width="100%" height="100%"
+         xmlns:fx="com.emc.efx.guitoolkit.components.table.filter.*"
+         xmlns:views="com.emc.ecuit.flex.components.views.*"
+         showRefresh="true" showExport="true" showFind="false"
+         showPrint="false" showTools="false" showFilter="true"
+         helpServiceID="FMAHelpService" helpID="NASGroupList"
+         xmlns:table="com.emc.efx.guitoolkit.components.table.*"
+         xmlns:filter="com.emc.efx.guitoolkit.components.filter.*"
+         xmlns:filter1="com.emc.efx.guitoolkit.filter.*"
+         xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+         xmlns:rules="com.emc.efx.guitoolkit.components.table.rules.*">
+
+
+    <fxs:Script source="NASGroupList.mxml.as" />
+    <table:UxTablePanel width="100%" height="100%">
+      <table:filterPanel>
+        <fx:UxTableFilterPanel id="myTableFilterPanel">
+          <fx:filterGroups>
+            <fxs:Array>
+              <filter:UxFilterComboxBox label="  {ResourceManager.getInstance().getString('fma','NAS_REPO_PRT')}">
+                <filter:filterOptions>
+                  <fxs:Array>
+                    <filter1:UxAllFilter label="All">
+                    </filter1:UxAllFilter>
+
+                    <fx:UxTableColumnFilter label="CIFS">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="CIFS"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+
+                    <fx:UxTableColumnFilter label="NFS">
+                      <fx:rules>
+                        <rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="NFS"/>
+                      </fx:rules>
+                    </fx:UxTableColumnFilter>
+                  </fxs:Array>
+                </filter:filterOptions>
+              </filter:UxFilterComboxBox>
+            </fxs:Array>
+          </fx:filterGroups>
+        </fx:UxTableFilterPanel>
+      </table:filterPanel>
+
+      <table:UxAdvancedDataGrid id="nasRepoList" tableModel="  {new NASGroupModel()}"
+                   showHeaders = "true"
+                   doubleClickEnabled="true" itemDoubleClick="clickEdit()"
+                   editable="false" useRollOver="false"
+                   allowMultipleSelection="false">
+        <table:tableColumnViewInfo>
+          <mx:ArrayCollection>
+            <table:UxTableColumnViewInformation columnKey="Name" colWidth="240"/>
+            <table:UxTableColumnViewInformation columnKey="Protocol" colWidth="240"/>
+            <table:UxTableColumnViewInformation columnKey="Repositories" colWidth="240"/>
+          </mx:ArrayCollection>
+        </table:tableColumnViewInfo>
+
+      </table:UxAdvancedDataGrid>
+
+      <table:commandPanel>
+        <table:UxTableCommandPanel>
+          <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="clickAdd()" id="_addNAS" />
+          <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_EDT')}" click="clickEdit()" enabled="  {nasRepoList.selectedItem == null ? false : true }"/>
+          <buttons:UxButton label="  {ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="clickDelete()" enabled="  {nasRepoList.selectedItem == null ? false : true }"/>
+        </table:UxTableCommandPanel>
+      </table:commandPanel>
+    </table:UxTablePanel>
+
+  </UxViewBlock>
+</UxVBoxWindow>

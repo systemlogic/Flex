@@ -1,0 +1,102 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.guitoolkit.dataloading.IUxLoader;
+import com.emc.efx.guitoolkit.dataloading.UxLoadingHandler;
+import com.emc.efx.net.UxURL;
+import com.emc.efx.net.UxURLRequest;
+import com.emc.efx.net.http.UxHttpClient;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+import com.emc.fma.views.Utility.Command;
+
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+private var _client:UxHttpClient ;
+// Suggested step name for use in id field of wizard decriptor XML file
+
+private var _initialized:Boolean = false;
+private var next:Boolean = false;
+private var serverRoundTripNotHappen:Boolean = true ;
+// Override if we have step specific display work to do
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    _initialized = true;
+  }
+
+  if (serverRoundTripNotHappen)
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  }
+
+  if (!serverRoundTripNotHappen)
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+    serverRoundTripNotHappen = false ;
+  }
+
+  type.text = getData(ReportTypeSelection.ATTR_fileServerType).toString()
+  reportName.text = getData(ReportSelection.ATTR_ITEMSELECTED).toString() ;
+}
+/* private function onCommitComplete(event:Event):void {
+  //progress.updateProgress(UxLoadingHandler.INITIAL_DATA_COMPLETE, "default");
+  progress.updateProgress(100, "default");
+  //response = new XMLList(_client.response.body);
+  //var str:String = response.Result[0].toString();
+  //Alert.show((new XMLList(_client.response.body)).Result[0].toString());
+  var response:XMLList = new XMLList(_client.response.body) ;
+  if(serverRoundTripNotHappen) {
+    serverRoundTripNotHappen = false ;
+  }
+} */
+
+private function onCommitComplete(event:Event):void
+{
+  progress.updateProgress(100, "default");
+
+  if (ResourceManager.getInstance().getString('fma','SERVER_MSG_COMIT') == (new XMLList(_client.response.body)).msg.toString())
+  {
+    this.parentWizard.dispatchEvent(new ECUITWizardEvent(ECUITWizardEvent.ECUITWIZ_WIZARDCOMPLETE, this.parentWizard, ECUITWizardEvent.ECUITWIZ_WIZARD_CANCELED));
+    serverRoundTripNotHappen = false ;
+  }
+  else {
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+    serverRoundTripNotHappen = true ;
+  }
+  ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).msg.toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);
+}
+// Override if we have step specific data to save
+override public function doFinish(): void
+{
+
+
+  var xml:XML = <REQUEST/>;
+  xml.appendChild(<action>saveReport</action>);
+
+  if (getData(ReportTypeSelection.ATTR_fileServerType) == "FileServer")
+  {
+    xml.appendChild(<isFileServer>true</isFileServer>);
+    xml.appendChild(<FileServer> {getData(ReportSelection.ATTR_ITEMSELECTED)}</FileServer>);
+  }
+  else if (getData(ReportTypeSelection.ATTR_fileServerType) == "FileServer Group")
+  {
+    xml.appendChild(<isFileServer>false</isFileServer>);
+    xml.appendChild(<FileServerGroups> {getData(ReportSelection.ATTR_ITEMSELECTED)}</FileServerGroups>);
+  }
+
+  var cmd:Command = new Command(_client,onCommitComplete,xml,"createChart.htm",progress);
+  _client = cmd.sendCommand("POST");
+  stepComplete = true;
+}
+

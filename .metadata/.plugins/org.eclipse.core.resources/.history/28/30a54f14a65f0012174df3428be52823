@@ -1,0 +1,287 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.controls.IPAddressValidator;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.efx.guitoolkit.components.wizards.UxWizard;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+      
+import mx.collections.ArrayCollection;
+import mx.events.FlexEvent;
+import mx.events.FlexMouseEvent;
+import mx.events.ListEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+      
+import spark.skins.spark.BorderContainerSkin;
+
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+
+private static const ATTR_IPADDRESS         : String = "";
+public static const ATTR_IPList_Static_List : String = "IPList";
+public static const ATTR_NODECOUNT          : String = "nodecount";
+public static const STEP_VALUE              : String = "2";
+public static const ATTR_CSIP               : String = "CSIP";
+
+[Bindable] private var ATTR_IPList:ArrayCollection  = new ArrayCollection();
+[Bindable] public var _defaultType:String = "";
+      
+public var _defaultEnterName:String = "";
+
+override public function postDisplay():void 
+{
+  if (!_initialized)
+  {
+    _initialized = true;
+    // Pull defaults from wizard data
+    var def:Object = getData(ATTR_IPADDRESS);
+
+    if ( def != null )
+      _defaultEnterName = String(def);
+  } 
+
+  updateButtons();
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+}
+
+override protected function save():void
+{
+  if ( currentState == "ctrlStation" || currentState == "vFiller" )
+  {
+    var address:String = ControlStationIP.address[0] + "." + 
+                         ControlStationIP.address[1] + "." + 
+                         ControlStationIP.address[2] + "." + 
+                         ControlStationIP.address[3];
+
+    if ( address.length > 15 )
+      address = "";
+          
+    setData(ATTR_CSIP,        StringUtil.trim(address));
+  }
+
+  setData(ATTR_IPList_Static_List,ATTR_IPList);
+  setData(ATTR_NODECOUNT,ATTR_IPList.length);
+  //enableStep(TvShowSelection.STEP_NAME, true);
+  stepComplete = true;
+}
+
+// Override as we have step specific validation
+override protected function validate():Boolean
+{
+  return true;
+}
+
+protected function _UpdateClickHandler(event:MouseEvent):void
+{ 
+  var xml:XML = <REQUEST/>;
+  xml.appendChild(<Name>{getData(NameStep.ATTR_NAME)}</Name> );
+  RESTClient.sendGetRequest("/api/resolve/" + getData(NameStep.ATTR_NAME), OnGetIPStatus, progress);
+  stepComplete = true;
+}
+
+private function OnGetIPStatus(event:RESTEvent):void
+{
+  if ( Common.showResponseMessage(this, event) )
+    return;
+  
+  var ip:String = event.response.IP[0].toString();
+  if ( UtilityFunctionClass.IPAddresspattern.test(ip) )
+  {
+    IPAddress.address = ip.split(".");
+    add.enabled = true;
+  }
+  else
+  {
+    ECUITPopupDialog.showMessageDialog(this, event.response.IP[0].toString(), ResourceManager.getInstance().getString('fma','CLIENT_ALR'), ECUITPopupDialog.INFORMATION_MESSAGE);
+  }
+}
+
+protected function _AddClickHandler(event:MouseEvent):void
+{
+  var address:String = IPAddress.address1.text + "." + 
+                       IPAddress.address2.text + "." + 
+                       IPAddress.address3.text + "." + 
+                       IPAddress.address4.text;
+
+  if ( !ATTR_IPList.contains(address) )
+  {
+    ATTR_IPList.addItem(address);
+    IPAddress.address1.text = ""; 
+    IPAddress.address2.text = ""; 
+    IPAddress.address3.text = ""; 
+    IPAddress.address4.text = "";
+    if ( currentState == "nonCtrlStation")
+      enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','ALREADY_IP'),ResourceManager.getInstance().getString('fma','ALREADY_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  if ( currentState == "ctrlStation" )
+  {
+    nodeString.text = ATTR_IPList.toString();
+    nodeCount.text  = ATTR_IPList.length.toString();
+  }
+}
+
+protected function _DeleteClickHandler(event:MouseEvent):void
+{
+  if ( ipList.selectedItem == null )
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','SELECT_IP'),ResourceManager.getInstance().getString('fma','ALREADY_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+  }
+  else
+  {
+    ATTR_IPList.removeItemAt(ipList.selectedIndex);
+    if ( ATTR_IPList.length == 0 )
+      enableButtons(!enabled, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+
+    if ( currentState == "centera" )
+    {
+      nodeString.text = ATTR_IPList.toString();
+      nodeCount.text  = ATTR_IPList.length.toString();
+    }
+  }
+}
+
+protected function ipList_Handler(event:FlexEvent):void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name )
+    return;
+  updateButtons();
+}
+
+private var ipValidator:IPAddressValidator; 
+protected function _creationCompleteHandler(event:FlexEvent):void
+{
+  // TODO Auto-generated method stub
+  if ( _defaultType == ResourceManager.getInstance().getString('fma','CENTERA') )
+    currentState =   "centera";
+  else if( _defaultType == ResourceManager.getInstance().getString('fma','CELERRA') ||
+           _defaultType == ResourceManager.getInstance().getString('fma','VNX') )
+  {
+    currentState = "ctrlStation";
+    ipValidator = new IPAddressValidator();
+    ipValidator.source = IPAddress;
+    //ipValidator.triggerEvent = "focusOut";
+  }
+  else if( _defaultType == ResourceManager.getInstance().getString('fma','VNXE') ||
+            _defaultType == ResourceManager.getInstance().getString('fma','DATADOMAIN') ||
+            _defaultType == ResourceManager.getInstance().getString('fma','ISILON') ||
+            _defaultType == ResourceManager.getInstance().getString('fma','WINDOWS') )
+  {
+    currentState =   "nonCtrlStation";
+    ipValidator = new IPAddressValidator();
+    ipValidator.source = IPAddress;
+    //ipValidator.triggerEvent = "focusOut";
+  }
+  else if( _defaultType == ResourceManager.getInstance().getString('fma','NETAPP') )
+  {
+    currentState = "vFiller";
+    ipValidator = new IPAddressValidator();
+    ipValidator.source = IPAddress;
+    //ipValidator.triggerEvent = "focusOut";
+  }
+}
+
+protected function _centeraAddHandler(event:MouseEvent):void
+{
+  // TODO Auto-generated method stub
+  if ( host.text == "" )
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','VALID_HOST'),ResourceManager.getInstance().getString('fma','VALID_HOST_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  if ( !ATTR_IPList.contains(host.text) )
+  {
+    ATTR_IPList.addItem(host.text);
+    host.text = "";
+    enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','ALREADY_VALID_HOST'),ResourceManager.getInstance().getString('fma','VALID_HOST_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+  nodeString.text = ATTR_IPList.toString();
+  nodeCount.text  = ATTR_IPList.length.toString();
+}
+
+protected function ControlStationIP_creationCompleteHandler(event:FlexEvent):void
+{
+  ControlStationIP.address1.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+  ControlStationIP.address2.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+  ControlStationIP.address3.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+  ControlStationIP.address4.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+}
+
+private function ipChangeHandler(event:KeyboardEvent):void 
+{
+  updates();
+}
+
+private function updates():void{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name )
+    return;
+  updateButtons();
+}
+
+private function updateButtons():void
+{
+  if ( currentState == "ctrlStation" || currentState == "vFiller" )
+  {
+    var address:String = ControlStationIP.address1.text + "." + 
+                         ControlStationIP.address2.text + "." + 
+                         ControlStationIP.address3.text + "." + 
+                         ControlStationIP.address4.text;
+    if ( (ipList.dataProvider as ArrayCollection).length > 0 && 
+         (address == "..." || address.search(UtilityFunctionClass.IPAddresspattern) == 0) )
+      enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);  
+    else
+      enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);  
+  }
+  else if ( currentState == "centera" || currentState == "nonCtrlStation" )
+  {
+    if ( (ipList.dataProvider as ArrayCollection).length > 0 )
+      enableButtons(enabled, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else
+      enableButtons(!enabled, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  enableButtons(_enableBackButton, UxWizard.ECUITWIZARD_BUTTONID_BACK);
+  trace(ATTR_IPList.length);
+}
+
+private function ipAddressChangeHandler(event:KeyboardEvent):void 
+{
+  ipAddressupdates();
+}
+
+private function ipAddressupdates():void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name )
+    return;
+  var address:String = IPAddress.address1.text + "." + 
+                       IPAddress.address2.text + "." + 
+                       IPAddress.address3.text + "." + 
+                       IPAddress.address4.text;
+  if ( !ATTR_IPList.contains(address) && ( address.search(UtilityFunctionClass.IPAddresspattern) == 0) )
+    add.enabled = true;
+  else
+    add.enabled = false;
+}
+
+protected function ip_creationCompleteHandler(event:FlexEvent):void
+{
+  // TODO Auto-generated method stub
+  IPAddress.address1.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  IPAddress.address2.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  IPAddress.address3.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  IPAddress.address4.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+}

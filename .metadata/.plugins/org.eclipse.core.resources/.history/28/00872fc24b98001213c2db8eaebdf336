@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fx="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+        xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+        xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+        implements="com.emc.efx.services.navigation.IUxHasPayload"
+        xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+        xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+
+  <fx:Script source="logPatternEdit.mxml.as" />
+
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+         xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+         title="{Common.getResource('PTRNPRO')}" width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="true"
+         helpServiceID="FMAHelpService" helpID="logPatternEdit"
+         keyDown="page_keyDownHandler(event)"
+         xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+         xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+    <mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+         paddingBottom="10" paddingTop="10"
+         height="100%">
+      <UxExtendedClass:UxGroupBoxCta title="{Common.getResource('PTRNPRO')}" width="50%">
+        <mx:Form>
+          <mx:FormItem label="{Common.getResource('PTRN_EDT_INDX')}">
+            <mx:TextInput id="ind" editable="false" text="{index}"  width="{parseInt(Common.getResource('CONTROL_WIDTH'))}"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('PTRN_EDT_ALR_NME')}" >
+            <mx:TextInput id="pet" editable="false" text="{pattern}"  width="{parseInt(Common.getResource('CONTROL_WIDTH'))}"/>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('PTRN_EDT_STATUS')}">
+            <mx:ComboBox id="sta"  width="{parseInt(Common.getResource('CONTROL_WIDTH'))}">
+              <mx:ArrayCollection>
+                <fx:String> {UtilityFunctionClass.ENABLED}</fx:String>
+                <fx:String> {UtilityFunctionClass.DISABLED}</fx:String>
+              </mx:ArrayCollection>
+            </mx:ComboBox>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('PTRN_EDT_THROTTLE_TME')}">
+            <mx:HBox>
+              <mx:TextInput id="cTh" text="{curThr}" restrict="0-9" maxChars="3"  width="{parseInt(Common.getResource('CONTROL_WIDTH'))}"/>
+              <mx:Button label="{Common.getResource('BUTTON_DEFAULT')}" click="default_clickHandler(event)"/>
+            </mx:HBox>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('PTRN_EDT_IN_SUMM')}">
+            <mx:ComboBox id="ins"  width="{parseInt(Common.getResource('CONTROL_WIDTH'))}">
+              <mx:ArrayCollection>
+                <fx:String> {UtilityFunctionClass.INCLUDED}</fx:String>
+                <fx:String> {UtilityFunctionClass.NOTINCLUDED}</fx:String>
+              </mx:ArrayCollection>
+            </mx:ComboBox>
+          </mx:FormItem>
+          <mx:FormItem label="{Common.getResource('PTRN_EDT_DHB_SUM')}">
+            <mx:ComboBox id="dashBoardAlerts"  width="{parseInt(Common.getResource('CONTROL_WIDTH'))}">
+              <mx:ArrayCollection>
+                <fx:String> {UtilityFunctionClass.INCLUDED}</fx:String>
+                <fx:String> {UtilityFunctionClass.NOTINCLUDED}</fx:String>
+              </mx:ArrayCollection>
+            </mx:ComboBox>
+          </mx:FormItem>
+        </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta>
+      <mx:HBox height="100%" />
+      <mx:HBox>
+        <buttons:UxButton id="commitChanges" label="{Common.getResource('BUTTON_COMMIT')}" click="onOK(event)" />
+        <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)" />
+      </mx:HBox>
+    </mx:Box>
+  </UxViewBlock>
+</UxVBoxWindow>

@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxDialog xmlns="com.emc.efx.guitoolkit.components.dialogs.*"
+		  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		  title="Verify Server" 
+		  creationComplete="_creationCompleteHandler(event)"	  
+		  helpID="AddRuleProperties" 
+		  allowClose="true"  allowMaximize="false" 
+		  allowResize="false" allowMove="false" allowMinimize="false"
+		  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+		  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+		  xmlns:forms="com.emc.efx.guitoolkit.components.forms.*" 
+		  xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*"
+		  buttonMask="{UxDialog.OK_BUTTON|UxDialog.CLOSE_BUTTON}" xmlns:views="com.emc.efx.guitoolkit.components.views.*" >
+	
+	<states>
+		<mx:State name="ControlStationpresent"/>
+	</states>
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.events.ECUITEvent;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+			import com.emc.fma.views.Utility.Command;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.controls.Button;
+			import mx.events.CloseEvent;
+			import mx.events.DropdownEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.ArrayUtil;
+			[Bindable] private var _client:UxHttpClient;
+			[Bindable] private var response:XMLList ;
+			private var myWatcher:ChangeWatcher ;
+			public var PathValue:String ;
+			[Bindable] public var fileServer:String ;
+			[Bindable] public var csip:String ;
+			[Bindable] public var type:String ;
+			[Bindable] public var isso:String ;
+			[Bindable] public var xml:XML = new XML();
+			[Bindable] private var expList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var repList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var cenList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var cloudList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var protocol:ArrayCollection = new ArrayCollection();
+			[Bindable] public var cifsArray:ArrayCollection = new ArrayCollection();
+			[Bindable] public var nfsArray:ArrayCollection = new ArrayCollection();
+			private var responseResult:XMLList ;
+			
+			private function addButton():void{
+				/* var okButton:Button = new Button();
+				okButton.label = "Verify";
+				okButton.addEventListener(MouseEvent.CLICK, onOK);
+				this.addButtonBarButton(okButton);
+				
+				var cancel_Button:Button = new Button();
+				cancel_Button.label = "Cancel";
+				cancel_Button.addEventListener(MouseEvent.CLICK, onCancel);
+				this.addButtonBarButton(cancel_Button);
+				this.addEventListener(ECUITEvent.CLOSE_WINDOW,onCancel); */
+			}
+			
+			protected function _creationCompleteHandler(event:FlexEvent):void
+			{
+				addButton();
+				
+				var tempxml:XML = <REQUEST/>; 
+				tempxml.appendChild(<Name>{fileServer}</Name>);
+				var cmd:Command = new Command(_client,onComplete,xml,"getRuleRepositoryGroup.htm",progress);
+				_client = cmd.sendCommand();
+			}
+			private function onComplete(event:Event):void{
+				response = new XMLList(_client.response.body);
+				protocol.addItem("CIFS");
+				protocol.addItem("NFS");
+				for each (var temp : XML in response.rul ) {
+					expList.addItem(temp[0].toString());
+				}
+				for each (var temp : XML in response.rep ) {
+					repList.addItem(temp[0].toString());
+					
+					var myStr:String = temp[0].toString();
+					if( myStr.indexOf( "\\\\", 0 ) != -1 )
+					{
+						cifsArray.addItem(temp[0].toString())
+					}
+					else{
+						nfsArray.addItem(temp[0].toString())
+					}
+					
+				}
+				for each (var temp : XML in response.cen ) {
+					cenList.addItem(temp[0].toString());
+				}
+				for each (var temp : XML in response.atm ) {
+					cloudList.addItem(temp[0].toString());
+				}
+				for each (var temp : XML in response.amazonS3 ) {
+					cloudList.addItem(temp[0].toString());
+				}
+				
+				if(csip.length > 0 ){
+					currentState = "ControlStationpresent" ;
+					if(protocol_combo.selectedLabel == "CIFS"){
+						repository.dataProvider = cifsArray ;
+					}else if(protocol_combo.selectedLabel == "NFS"){
+						repository.dataProvider = nfsArray ;
+					}
+				}
+				
+			}
+			
+			override protected function onCancel(event:MouseEvent):void{
+				close();
+			}
+			
+			override protected function onOK(event:MouseEvent):void {
+				var rule:XML = <REQUEST/>;
+				rule.appendChild(<Name>{fileServer}</Name>);
+				rule.appendChild(<Type>{type}</Type>);
+				rule.appendChild(<Centera>{centera.selectedLabel}</Centera>);
+				rule.appendChild(<Cloud>{cloud.selectedLabel}</Cloud>);
+				rule.appendChild(<IsSource>{isso}</IsSource>);
+				if(protocol_combo.selectedLabel == "CIFS"){
+					rule.appendChild(<PrimarySource>{"\\\\" + fsBrowse.text}</PrimarySource>);
+				}else if(protocol_combo.selectedLabel == "NFS"){
+					rule.appendChild(<PrimarySource>{fsBrowse.text}</PrimarySource>);	
+				}
+				
+				if(currentState == "ControlStationpresent")
+					rule.appendChild(<NASRepository>{repository.selectedLabel}</NASRepository>);
+				trace(xml);
+				xml = rule;
+				onCancel(event);
+			}
+			
+			protected function _clickHandler(event:MouseEvent):void
+			{
+				var dir:DirectoryBrowser = new DirectoryBrowser();
+				dir.protocal = protocol_combo.selectedLabel ;
+				dir.FileServer = fileServer ;
+				dir.ref = this ;
+				dir.centerDialog() ;
+				dir.show(this.parent); 
+				myWatcher = ChangeWatcher.watch(dir, "PathValue", watchPath);
+			}
+			private function watchPath(event:Event):void {
+				fsBrowse.text = PathValue ;
+				myWatcher.unwatch();
+				//protocol.enabled = false ;
+			}
+			
+		]]>
+	</fx:Script>
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+		<boxes:UxVBox>
+			<UxExtendedClass:UxGroupBoxCta title="CCD/ACD authentication input" width="100%" >
+				<mx:Form>
+					<mx:FormItem label="Primary Source:">
+						<boxes:UxVBox>
+							<mx:TextInput id="fsBrowse"/>
+							<boxes:UxHBox>
+								<mx:ComboBox id="protocol_combo">
+									<mx:ArrayCollection>
+										<fx:String>CIFS</fx:String>
+										<fx:String>NFS</fx:String>
+									</mx:ArrayCollection>
+								</mx:ComboBox>
+								<buttons:UxButton label="Browse" click="_clickHandler(event)"/>
+							</boxes:UxHBox>
+						</boxes:UxVBox>
+					</mx:FormItem>
+					<mx:FormItem label="Select a Centera Target:">
+						<mx:ComboBox id="centera" dataProvider="{cenList}"/>
+					</mx:FormItem>
+					<mx:FormItem label="Select a Cloud Targer:">
+						<mx:ComboBox id="cloud" dataProvider="{cloudList}"/>
+					</mx:FormItem>
+				</mx:Form>
+			</UxExtendedClass:UxGroupBoxCta>
+			<UxExtendedClass:UxGroupBoxCta title="Filemover authentication input" width="100%" includeIn="ControlStationpresent">
+				<mx:ComboBox id="repository"/>
+			</UxExtendedClass:UxGroupBoxCta>
+		</boxes:UxVBox>
+	</views:UxProgressCanvas>	
+</UxDialog >

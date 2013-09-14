@@ -1,0 +1,26 @@
+/**
+ *
+ * Copyright: Copyright (c) 2012
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.guitoolkit.effects {
+    import mx.effects.Resize;
+
+    /**
+     * Provides high latency mode support.
+     */
+    public class UxResize extends Resize {
+        
+        /**
+         * @inherit-doc
+         * Updated to use Ux instance. 
+         */
+        public function UxResize(target:Object=null) {
+            super(target);
+            
+            this.instanceClass = UxResizeInstance;
+        }
+    }
+}

@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250"
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*" 
+					  xmlns:views="com.emc.efx.guitoolkit.components.views.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.controls.IPAddressControl;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+			import com.emc.ecuit.flex.managers.ECUITResourceManager;
+			import com.emc.efx.guitoolkit.dataloading.IUxLoader;
+			import com.emc.efx.guitoolkit.dataloading.UxLoadingHandler;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.model.SchemaManager.SchemaConverter;
+			import com.emc.fma.model.SchemaManager.vo.NetAppVO;
+			import com.emc.fma.views.Configuration.FileServer.wizard.CIFSSpecific;
+			import com.emc.fma.views.Configuration.FileServer.wizard.DirectoryExclusion;
+			import com.emc.fma.views.Configuration.FileServer.wizard.IPAddressList;
+			import com.emc.fma.views.Configuration.FileServer.wizard.NDMPSpecific;
+			import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+			import com.emc.fma.views.Utility.Command;
+			
+			import mx.collections.ArrayCollection;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			
+			private var _client:UxHttpClient ;
+			private var _initialized:Boolean = false;
+			private var next:Boolean = false;
+			private var serverRoundTripNotHappen:Boolean = true ;
+			[Bindable]private var fsName:String ;
+			[Bindable]private var fsType:String ;
+			[Bindable]private var netAdd:String ;
+			override public function postDisplay(): void 
+			{
+				if (!_initialized) 
+				{
+					_initialized = true;
+				}
+				fsName = getData(NameStep.ATTR_NAME).toString() ;
+				fsType = ResourceManager.getInstance().getString('fma','NETAPP');
+				netAdd = getData(IPAddressList.ATTR_IPList_Static_List).getItemAt(0) ;
+				if(serverRoundTripNotHappen){
+					enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+					enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+					enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+				}
+				if(!serverRoundTripNotHappen){
+					enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+					enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+					enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_BACK); 
+					serverRoundTripNotHappen = false ;
+				}
+			}
+			private function onCommitComplete(event:Event):void{
+				progress.updateProgress(100, "default");
+				if(ResourceManager.getInstance().getString('fma','SERVER_MSG_COMIT') == (new XMLList(_client.response.body)).toString()){
+					this.parentWizard.dispatchEvent(new ECUITWizardEvent(ECUITWizardEvent.ECUITWIZ_WIZARDCOMPLETE, this.parentWizard, ECUITWizardEvent.ECUITWIZ_WIZARD_CANCELED));
+					serverRoundTripNotHappen = false ;
+				}else{
+					enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+					serverRoundTripNotHappen = true ;
+				}
+				ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).toString(),ResourceManager.getInstance().getString('fma','CLIENT_ALR') ,ECUITPopupDialog.INFORMATION_MESSAGE);				
+			}
+			override public function doFinish(): void
+			{
+				var _netappServer:NetAppVO = new NetAppVO();				
+				_netappServer.Name = getData(NameStep.ATTR_NAME).toString();
+				
+				for each (var _tmpip : String in getData(IPAddressList.ATTR_IPList_Static_List)){var _tmpArray1:Array = new Array();	_tmpArray1.push(_tmpip);}
+				_netappServer.IP = new ArrayCollection(_tmpArray1); 
+				
+				if(getData(CIFSSpecific.ATTR_userName)!= "")
+				{
+					_netappServer.Cifs.User = getData(CIFSSpecific.ATTR_userName)as String;
+					_netappServer.Cifs.Password = getData(CIFSSpecific.ATTR_password)as String;
+					_netappServer.Cifs.Domain = getData(CIFSSpecific.ATTR_domainName)as String;
+					_netappServer.Cifs.IsFQDN = getData(CIFSSpecific.ATTR_ISQUALIFIED)as String;
+				}
+				if(getData(NDMPSpecific.ATTR_userName) != "")
+				{
+					_netappServer.Ndmp.User = getData(NDMPSpecific.ATTR_userName) as String;
+					_netappServer.Ndmp.Password = getData(NDMPSpecific.ATTR_password) as String;
+					_netappServer.Ndmp.Port = getData(NDMPSpecific.ATTR_port) as String;
+				}
+				if(getData(NetAppAsSource.ATTR_ASSOURCE) as Boolean)
+				{
+					_netappServer.Source.Admin.User = getData(NetAppLocalAdmin.ATTR_userName) as String;
+					_netappServer.Source.Admin.Password = getData(NetAppLocalAdmin.ATTR_password) as String;
+					
+					for each (var _tmpStr:String in getData(DirectoryExclusion.ATTR_DIREX))
+					{var _tmpArray2:Array = new Array(); _tmpArray2.push(_tmpStr);}
+					_netappServer.Source.DirExclusions.Dir = new ArrayCollection(_tmpArray2); 
+					
+					for each (var _tmpObj1:Object in getData(FPolicyCallBackAgent.ATTR_PRIMARYAGENT))
+					{var _tmpArray3:Array = new Array(); _tmpArray3.push(_tmpObj1.name);}
+					_netappServer.Source.Fpolicy.Primary = new ArrayCollection(_tmpArray3); 
+					
+					for each (var _tmpObj2:Object in getData(FPolicyCallBackAgent.ATTR_SECONDRYAGENT))
+					{var _tmpArray4:Array = new Array(); _tmpArray4.push(_tmpObj2.name);}
+					_netappServer.Source.Fpolicy.Secondary = new ArrayCollection(_tmpArray4); 
+					
+					_netappServer.Source.Fpolicy.Passthrough = "enable";
+					_netappServer.Source.Fpolicy.LargeFiles = "disable";
+				}
+				if (getData(IPAddressList.ATTR_CSIP) != "" )
+					_netappServer.HostIP = getData(IPAddressList.ATTR_CSIP) as String;
+				
+				var xml:XML = SchemaConverter.VOtoXML("FileServers",_netappServer); 
+				trace(xml);
+				
+				var cmd:Command = new Command(_client,onCommitComplete,xml,"api/server/" + _netappServer.Name,progress);
+				_client = cmd.sendCommand();
+				stepComplete = true;
+			}
+			
+		]]>
+	</fx:Script>
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+		<mx:Form>
+			<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_NET_BIO')}" >
+				<mx:Label text="{fsName}"/>
+			</mx:FormItem>
+			<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_SER_TYPC')}">
+				<mx:Label text="{fsType}"/>
+			</mx:FormItem>
+			<mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_NET_ADDC')}">
+				<mx:Label text="{netAdd}"/>
+			</mx:FormItem>
+		</mx:Form>
+	</views:UxProgressCanvas>
+</wizards:UxWizardStep>

@@ -1,0 +1,99 @@
+package com.emc.fma.model;
+
+import java.util.List;
+import java.util.ArrayList;
+
+/**
+ *  Data holder bean for fileserver properties
+ *
+ */
+
+public final class FileServerBean  {
+
+    private String  name;
+    private String	type;
+    private String  namePlusType;
+    private List<SourceBean> sourceList = new ArrayList<SourceBean>();
+    private String  totalBytesArchived;
+    private boolean isSource;
+    private String isVDM = "no";
+
+    /**
+     *  Creates a new FileServerBean
+     */
+    public FileServerBean() { }
+
+    /**
+     *  Gets the display name of the Fileserver <BR>
+     *
+     *
+     *@return    String - the name
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     *  Sets the  name <br>
+     *
+     *
+     *@param  name  - the localized display name
+     */
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getType() {
+		return type;
+	}
+
+	public void setType(String type) {
+		this.type = type;
+	}
+
+	public String getNamePlusType() {
+		return namePlusType;
+	}
+
+	public void setNamePlusType(String namePlusType) {
+		this.namePlusType = namePlusType;
+	}
+
+	public List<SourceBean> getSourceList(){
+		return sourceList;
+	}
+
+	public void setSourceList(List<SourceBean> sourceList){
+		this.sourceList = sourceList;
+	}
+
+	public String getTotalBytesArchived() {
+		return totalBytesArchived;
+	}
+
+	public void setTotalBytesArchived(String totalBytesArchived) {
+		this.totalBytesArchived = totalBytesArchived;
+	}
+
+    public String getIsVDM() {
+        return isVDM;
+    }
+
+    public void setIsVDM(String isVDM) {
+        this.isVDM = isVDM;
+    }
+
+	/**
+	 * @param isSource the isSource to set
+	 */
+	public void setSource(boolean isSource) {
+		this.isSource = isSource;
+	}
+
+	/**
+	 * @return the isSource
+	 */
+	public boolean isSource() {
+		return isSource;
+	}
+}

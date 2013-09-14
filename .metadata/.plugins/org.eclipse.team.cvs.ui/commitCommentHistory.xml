@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CommitComments>	<CommitComment>Devel: Redirecting port to HTTPS</CommitComment>
+	<CommitComment>Devel: wrapper files code added
+
+</CommitComment>
+	<CommitComment>Devel: Wrapper files for project specific settings
+
+</CommitComment>
+	<CommitComment>Devel: Communication over secure port
+
+</CommitComment>
+	<CommitComment>Devel: general code development
+
+</CommitComment>
+	<CommitComment>Pkg: MESSAGE           building, packaging, appliance
+</CommitComment>
+	<CommitComment>Misc: MESSAGE          something else
+</CommitComment>
+	<CommitComment>Misc: MESSAGE          something else
+
+</CommitComment>
+	<CommitComment>CVS:    Devel: MESSAGE         general code development
+</CommitComment>
+</CommitComments>

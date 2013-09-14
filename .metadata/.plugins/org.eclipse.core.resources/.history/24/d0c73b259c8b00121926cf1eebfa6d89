@@ -1,0 +1,252 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.components.wizards.ECUITWizardEvent;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+import com.emc.efx.guitoolkit.dataloading.IUxLoader;
+import com.emc.efx.guitoolkit.dataloading.UxLoadingHandler;
+import com.emc.efx.guitoolkit.events.UxViewEvent;
+import com.emc.fma.model.SchemaManager.SchemaConverter;
+import com.emc.fma.model.SchemaManager.vo.CelerraVO;
+import com.emc.fma.model.SchemaManager.vo.VNXVO;
+import com.emc.fma.model.SchemaManager.vo.VNXeVO;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Configuration.FileServer.FileServerSelection;
+import com.emc.fma.views.Configuration.FileServer.wizard.CIFSSpecific;
+import com.emc.fma.views.Configuration.FileServer.wizard.DirectoryExclusion;
+import com.emc.fma.views.Configuration.FileServer.wizard.IPAddressList;
+import com.emc.fma.views.Configuration.FileServer.wizard.NDMPSpecific;
+import com.emc.fma.views.Configuration.FileServer.wizard.NameStep;
+
+import mx.collections.ArrayCollection;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+private var _initialized:Boolean = false;
+private var next:Boolean = false;
+private var serverRoundTripNotHappen:Boolean = true;
+
+[Bindable] public var _defaultMode:String = "";
+[Bindable] private var fsName:String;
+[Bindable] private var fsType:String;
+[Bindable] private var netAdd:String;
+
+override public function postDisplay(): void 
+{
+  if ( !_initialized ) 
+    _initialized = true;
+
+  fsName = getData(NameStep.ATTR_NAME).toString();
+  netAdd = getData(IPAddressList.ATTR_IPList_Static_List).getItemAt(0);
+  if ( serverRoundTripNotHappen )
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  }
+  if ( !serverRoundTripNotHappen )
+  {
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK); 
+    serverRoundTripNotHappen = true;
+  }
+}
+
+private function OnGetIPStatus(event:RESTEvent):void
+{
+	if ( Common.showResponseMessage(this, event) ){
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+    enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+    serverRoundTripNotHappen = true ;
+    return;
+  }
+		
+	
+	var ip:String = event.response.IP[0].toString();
+	if (_defaultMode == "Celerra") 
+	{
+		var _celerraServer:CelerraVO = new CelerraVO();
+		_celerraServer.Name = getData(NameStep.ATTR_NAME).toString();
+		_celerraServer.IsVDM = (getData(NameStep.ATTR_VDM) == "true")? "yes":"no";
+		var _tmpIpArray:Array = new Array();    
+		for each (var _tmpip:String in getData(IPAddressList.ATTR_IPList_Static_List))
+		{
+			_tmpIpArray.push(_tmpip);
+		}
+		_celerraServer.IP = new ArrayCollection(_tmpIpArray);
+		if(ip != _celerraServer.IP.getItemAt(0)){
+			Common.showErrorDialog(this,_celerraServer.Name + " " + Common.getResource("INVALID_DNS_RESOLVE_PREFIX")  + " " +  _celerraServer.IP.getItemAt(0) + " " + Common.getResource("INVALID_DNS_RESOLVE_POSTFIX")+ " " + ip)
+			enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+			enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+			enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			serverRoundTripNotHappen = true ;
+				return ;
+		}
+		if ( getData(IPAddressList.ATTR_CSIP) != "" )
+			_celerraServer.CSIP = getData(IPAddressList.ATTR_CSIP) as String;
+		if ( getData(CIFSSpecific.ATTR_userName) != "" )
+		{
+			_celerraServer.Cifs.User = getData(CIFSSpecific.ATTR_userName)as String;
+			_celerraServer.Cifs.Password = getData(CIFSSpecific.ATTR_password)as String;
+			_celerraServer.Cifs.Domain = getData(CIFSSpecific.ATTR_domainName)as String;
+			_celerraServer.Cifs.IsFQDN = getData(CIFSSpecific.ATTR_ISQUALIFIED)as String;
+		}
+		if ( getData(NDMPSpecific.ATTR_userName) != "" )
+		{
+			_celerraServer.Ndmp.User = getData(NDMPSpecific.ATTR_userName) as String;
+			_celerraServer.Ndmp.Password = getData(NDMPSpecific.ATTR_password) as String;
+			_celerraServer.Ndmp.Port = getData(NDMPSpecific.ATTR_port) as String;
+		}
+		if ( ! (getData(CelerraAsSource.ATTR_CELERRAASSOURCE) as Boolean) )
+      _celerraServer.Source = null;
+    else
+		{
+			_celerraServer.Source.Ccd = getData(CallbackAgentSettings.ATTR_CCDNAME) as String;
+			_celerraServer.Source.Acd = getData(CallbackAgentSettings.ATTR_ACDNAME) as String;
+			
+			var _tmpDirArray:Array = new Array;    
+			for each (var _tmpDir:String in getData(DirectoryExclusion.ATTR_DIREX))
+			{
+				_tmpDirArray.push(_tmpDir);
+			}
+			_celerraServer.Source.DirExclusions.Dir = new ArrayCollection(_tmpDirArray); 
+		}
+		
+		var xml:XML = SchemaConverter.VOtoXML("FileServers",_celerraServer); 
+		trace(xml);
+		
+		RESTClient.sendPostRequest("/api/server", xml, OnSaveStatus, progress);
+		stepComplete = true;          
+	}        
+	else if ( _defaultMode == "VNX" )
+	{
+		var _vnxServer:VNXVO = new VNXVO();
+		_vnxServer.Name = getData(NameStep.ATTR_NAME).toString();
+		_vnxServer.IsVDM = (getData(NameStep.ATTR_VDM) == "true")? "yes":"no";
+		var _tmpIpArray:Array = new Array();
+		for each (var _tmpip : String in getData(IPAddressList.ATTR_IPList_Static_List))
+		{
+			_tmpIpArray.push(_tmpip);
+		}
+		_vnxServer.IP = new ArrayCollection(_tmpIpArray);
+		if(ip != _vnxServer.IP.getItemAt(0)){
+			Common.showErrorDialog(this,_vnxServer.Name + " " + Common.getResource("INVALID_DNS_RESOLVE_PREFIX")  + " " +  _vnxServer.IP.getItemAt(0) + " " + Common.getResource("INVALID_DNS_RESOLVE_POSTFIX")+ " " + ip)
+			enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+			enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+			enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			serverRoundTripNotHappen = true ;
+			return ;
+		}
+		if ( getData(IPAddressList.ATTR_CSIP) != "" )
+			_vnxServer.CSIP = getData(IPAddressList.ATTR_CSIP) as String;
+		if ( getData(CIFSSpecific.ATTR_userName) != "" )
+		{
+			_vnxServer.Cifs.User = getData(CIFSSpecific.ATTR_userName)as String;
+			_vnxServer.Cifs.Password = getData(CIFSSpecific.ATTR_password)as String;
+			_vnxServer.Cifs.Domain = getData(CIFSSpecific.ATTR_domainName)as String;
+			_vnxServer.Cifs.IsFQDN = getData(CIFSSpecific.ATTR_ISQUALIFIED)as String;
+		}
+		if ( getData(NDMPSpecific.ATTR_userName) != "" )
+		{
+			_vnxServer.Ndmp.User = getData(NDMPSpecific.ATTR_userName) as String;
+			_vnxServer.Ndmp.Password = getData(NDMPSpecific.ATTR_password) as String;
+			_vnxServer.Ndmp.Port = getData(NDMPSpecific.ATTR_port) as String;
+		}
+		if ( ! (getData(CelerraAsSource.ATTR_CELERRAASSOURCE) as Boolean ) )
+      _vnxServer.Source = null;
+    else
+		{
+			_vnxServer.Source.Ccd = getData(CallbackAgentSettings.ATTR_CCDNAME) as String;
+			_vnxServer.Source.Acd = getData(CallbackAgentSettings.ATTR_ACDNAME) as String;
+			
+			var _tmpDirArray:Array = new Array();
+			for each (var _tmpDir:String in getData(DirectoryExclusion.ATTR_DIREX))
+			{
+				_tmpDirArray.push(_tmpDir);
+			}
+			_vnxServer.Source.DirExclusions.Dir = new ArrayCollection(_tmpDirArray); 
+		}
+		
+		var xml:XML = SchemaConverter.VOtoXML("FileServers",_vnxServer); 
+		trace(xml);
+		
+		RESTClient.sendPostRequest("/api/server", xml, OnSaveStatus, progress);
+		stepComplete = true;          
+	}      
+	else if (_defaultMode == "VNXe")
+	{
+		var _vnxeServer:VNXeVO = new VNXeVO();
+		_vnxeServer.Name = getData(NameStep.ATTR_NAME).toString();
+		var _tmpIpArray:Array = new Array();
+		for each (var _tmpip : String in getData(IPAddressList.ATTR_IPList_Static_List))
+		{
+			_tmpIpArray.push(_tmpip);
+		}
+		_vnxeServer.IP = new ArrayCollection(_tmpIpArray); 
+		if(ip != _vnxeServer.IP.getItemAt(0)){
+			Common.showErrorDialog(this,_vnxeServer.Name + " " + Common.getResource("INVALID_DNS_RESOLVE_PREFIX")  + " " +  _vnxeServer.IP.getItemAt(0) + " " + Common.getResource("INVALID_DNS_RESOLVE_POSTFIX")+ " " + ip)
+			enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+			enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_FINISH);
+			enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			serverRoundTripNotHappen = true ;
+			return ;
+		}
+		if ( getData(CIFSSpecific.ATTR_userName) != "" )
+		{
+			_vnxeServer.Cifs.User = getData(CIFSSpecific.ATTR_userName)as String;
+			_vnxeServer.Cifs.Password = getData(CIFSSpecific.ATTR_password)as String;
+			_vnxeServer.Cifs.Domain = getData(CIFSSpecific.ATTR_domainName)as String;
+			_vnxeServer.Cifs.IsFQDN = getData(CIFSSpecific.ATTR_ISQUALIFIED)as String;
+		}
+		if ( getData(NDMPSpecific.ATTR_userName) != "" )
+		{
+			_vnxeServer.Ndmp.User = getData(NDMPSpecific.ATTR_userName) as String;
+			_vnxeServer.Ndmp.Password = getData(NDMPSpecific.ATTR_password) as String;
+			_vnxeServer.Ndmp.Port = getData(NDMPSpecific.ATTR_port) as String;
+		}  
+		
+		var xml:XML = SchemaConverter.VOtoXML("FileServers",_vnxeServer); 
+		trace(xml);
+		
+		RESTClient.sendPostRequest("/api/server", xml, OnSaveStatus, progress);
+		stepComplete = true;
+	}
+}
+override public function doFinish(): void
+{
+	var xml:XML = <Request/>;
+	xml.appendChild(<Name>{getData(NameStep.ATTR_NAME)}</Name> );
+	RESTClient.sendGetRequest("/api/resolve/" + encodeURIComponent(getData(NameStep.ATTR_NAME) as String), OnGetIPStatus, progress);
+	
+ 
+}
+
+      
+private function OnSaveStatus(event:RESTEvent):void
+{
+  var confirmationHandler:Function = (event.hasStandardResponse && event.response.Code == 0)? OnMessageSuccess:OnMessageFailure;
+
+  // Show response message if available
+  if ( Common.showResponseMessage(this, event, confirmationHandler) )
+    return;
+
+  // Show the XML string as response
+  Common.showErrorDialog(this, event.response.toXMLString(), confirmationHandler);
+}
+
+private function OnMessageSuccess(event:Event):void
+{
+  this.parentWizard.dispatchEvent(new ECUITWizardEvent(ECUITWizardEvent.ECUITWIZ_WIZARDCOMPLETE, this.parentWizard, ECUITWizardEvent.ECUITWIZ_WIZARD_CANCELED));
+  serverRoundTripNotHappen = false ;
+  // Need to have public updateSelf function to refresh respective component
+  this.parentDocument.updateSelf(getData(NameStep.ATTR_NAME).toString());
+}
+
+private function OnMessageFailure(event:Event):void
+{
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  serverRoundTripNotHappen = true;
+}

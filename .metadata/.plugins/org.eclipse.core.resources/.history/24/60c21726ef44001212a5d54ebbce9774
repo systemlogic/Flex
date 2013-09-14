@@ -1,0 +1,342 @@
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import flash.events.Event;
+import flash.events.KeyboardEvent;
+import flash.events.MouseEvent;
+
+import mx.controls.NumericStepper;
+import mx.events.FlexEvent;
+import mx.events.ListEvent;
+import mx.resources.ResourceManager;
+
+import spark.events.DropDownEvent;
+
+[Bindable]public var _rowsObject:Object = new Object();
+[Bindable]public var response:XMLList;
+[Bindable]public var stateChange:Boolean = false;
+[Bindable]private var minNumber:Number = 1; 
+[Bindable]private var maxNumber:Number = 99;
+
+private function onComplete(event:RESTEvent):void
+{
+	response = new XMLList(event.response);
+	private_onComplete();
+}
+
+private function onTestComplete(event:RESTEvent):void
+{
+	var obj:XMLList = new XMLList(event.response);
+	if(obj[0].msg != "" ){
+		ECUITPopupDialog.showMessageDialog(this,obj[0].msg,ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.ERROR_MESSAGE);
+		return;
+	}
+	trace(obj);
+	
+}
+
+protected function test_clickHandler(event:MouseEvent):void
+{
+	var address:String =  ip.address1.text + "." +
+		ip.address2.text + "." +
+		ip.address3.text + "." +
+		ip.address4.text;
+	var xml:XML = <REQUEST/>;
+	xml.appendChild(<action>test</action>);
+	xml.appendChild(<DestLogRotate>{address}</DestLogRotate>);
+	xml.appendChild(<UserLogRotate>{remoteUser.text}</UserLogRotate>);
+	xml.appendChild(<DirLogRotate>{remoteDirectory.text}</DirLogRotate>);
+	RESTClient.sendPostRequest("/logSettings.htm", xml, onTestComplete, viewBlock);
+	
+}
+
+private function private_onComplete():void
+{
+	viewBlock.updateProgress(100, "default");
+	setGridColumns(GridColumns);
+	_rowsObject = createRows4();
+	var state:String = response[0].RotateMode;
+	
+	if (stateChange)
+	{
+		state = rType.selectedLabel;
+		currentState = state;
+		stateChange = false;
+	}
+	else
+	{
+		currentState  = state
+		stateChange = false;
+	}
+	if (state == "size")
+	{
+		rType.selectedIndex = 0;
+		setCombos(sysLog,sysLogUnit,response[0].SizeSystemLogRotate);
+		setCombos(taskLog,taskLogUnit,response[0].SizeTaskLogRotate);
+		setCombos(recallLog,recallLogUnit,response[0].SizeRecallLogRotate);
+	}
+	else if (state == "time")
+	{
+		rType.selectedIndex = 1;
+		var rotationType:String = response[0].FrequencyLogRotate;
+		
+		if ( rotationType == "daily")
+		{
+			rfrequency.selectedIndex = 0;
+		}
+		else if ( rotationType == "weekly")
+		{
+			rfrequency.selectedIndex = 1;
+		}
+		else if ( rotationType == "monthly")
+		{
+			rfrequency.selectedIndex = 2;
+		}
+	}
+	
+	logCopies.value = parseInt(response[0].NumCopiesLogRotate);
+	
+	if (response[0].copyLogToRemoteMachine == "true" ? true:false )
+	{
+		copyLogToRemote.selected = response[0].copyLogToRemoteMachine;
+		ip.address = response[0].DestLogRotate.split(".");
+		remoteUser.text = response[0].UserLogRotate;
+		remoteDirectory.text = response[0].DirLogRotate;
+		ip.enabled = true ;
+		remoteDirectory.enabled = true ;
+		remoteUser.enabled = true ;
+	}else{
+		ip.enabled = false ;
+		remoteDirectory.enabled = false ;
+		remoteUser.enabled = false ;
+	}
+	
+}
+private function setCombos(textBox:NumericStepper, combo:ComboBox, str:String):void
+{
+	if (str.search("k") > -1)
+	{
+		textBox.value = parseInt(str.substr(0,str.length-1));
+		combo.selectedIndex = 1;
+	}
+	else if (str.search("M") > -1)
+	{
+		textBox.value = parseInt(str.substr(0,str.length-1));
+		combo.selectedIndex = 2;
+	}
+	else
+	{
+		textBox.value = parseInt(str.substr(0,str.length));
+		combo.selectedIndex = 0;
+	}
+	
+}
+protected function viewBlock_creationCompleteHandler(event:FlexEvent):void
+{
+	// TODO Auto-generated method stub
+	
+	var xml:XML = <REQUEST/>;
+	xml.appendChild(<action>getList</action>);
+	RESTClient.sendPostRequest("/logSettings.htm", xml, onComplete, viewBlock);
+	
+}
+
+
+public function setGridColumns (columns:ArrayCollection):void
+{
+	if (columns == null) return;
+	
+	trace(columns);
+	var tableColumns:ArrayCollection = new ArrayCollection();
+	
+	for (var i:int = 0; i < GridColumns.length; i++)
+	{
+		var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+		var precision:int = 0; //default precision
+		type = ECUITAdvancedDataGridColumn.TEXT;
+		var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+		// This conditional builds an instance of a Severity object through a class factory.
+		column.dataField = GridColumns[i].Name;
+		column.headerText = GridColumns[i].Title;
+		
+		switch (i)
+		{
+			case 0:
+			case 1:
+				column.width = gridBox.width/3;
+				break;
+		}
+		
+		tableColumns.addItem(column);
+	}
+	
+	logList.columns = tableColumns.toArray();
+}
+
+
+private function createRows4():ArrayCollection
+{
+	var count:int = 0;
+	var row:Array =  new Array();
+	var item:XML;
+	
+	for each(item in response.LogFile)
+	{
+		var obj:Object =
+			{ Column1:item.Type,Column2:item.Directory,Column3:item.Name};
+		++count;
+		row.push(obj);
+	}
+	
+	var rows:ArrayCollection = new ArrayCollection(row);
+	return rows;
+}
+
+protected function copyLogToRemote_clickHandler(event:MouseEvent):void
+{
+	if (!copyLogToRemote.selected)
+	{
+		ip.address1.text = "";
+		ip.address2.text = "";
+		ip.address3.text = "";
+		ip.address4.text = "";
+		remoteUser.text     = "";
+		remoteDirectory.text   = "";
+		ip.enabled = false ;
+		remoteUser.enabled = false ;
+		remoteDirectory.enabled = false ;
+		commitChanges.enabled = true;
+	}else{
+		ip.enabled = true ;
+		remoteUser.enabled = true ;
+		remoteDirectory.enabled = true ;
+		commitEnable();
+	}
+}
+
+protected function ip_creationCompleteHandler(event:FlexEvent):void
+{
+	ip.address1.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+	ip.address2.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+	ip.address3.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+	ip.address4.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+}
+protected function remoteUser_changeHandler(event:Event):void
+{
+	// TODO Auto-generated method stub
+	commitEnable();
+}
+
+private function ipAddressChangeHandler(event:KeyboardEvent):void
+{
+	commitEnable();
+}
+
+private function commitEnable():void{
+	var address:String = ip.address1.text + "." +
+		ip.address2.text + "." +
+		ip.address3.text + "." +
+		ip.address4.text;
+	
+	if (remoteUser.text != "" && ( address.search(UtilityFunctionClass.IPAddresspattern) == 0) ){
+		commitChanges.enabled = true;
+	}
+	else{
+		commitChanges.enabled = false;
+	}
+}
+protected function rType_changeHandler(event:ListEvent):void
+{
+	// TODO Auto-generated method stub
+	currentState = rType.selectedLabel;
+	stateChange = true;
+	private_onComplete();
+}
+
+protected function commit_clickHandler(event:MouseEvent):void
+{
+	
+	var xml:XML = <REQUEST/>;
+	xml.appendChild(<action>Save</action>);
+	
+	xml.appendChild(<RotateMode>
+		{rType.selectedLabel}</RotateMode>);
+	
+	if (currentState == "time")
+	{
+		xml.appendChild(<FrequencyLogRotate>
+			{rfrequency.selectedLabel}</FrequencyLogRotate>);
+	}
+	else if (currentState == "size")
+	{
+		xml.appendChild(<SizeSystemLogRotate>
+			{sysLog.value + (sysLogUnit.selectedLabel == 'B' ? '':sysLogUnit.selectedLabel.charAt(0)) }</SizeSystemLogRotate>);
+		xml.appendChild(<SizeTaskLogRotate>
+			{taskLog.value +  (taskLogUnit.selectedLabel == 'B' ? '':taskLogUnit.selectedLabel.charAt(0)) }</SizeTaskLogRotate>);
+		xml.appendChild(<SizeRecallLogRotate>
+			{recallLog.value + (recallLogUnit.selectedLabel == 'B' ? '':recallLogUnit.selectedLabel.charAt(0) )}</SizeRecallLogRotate>);
+	}
+	
+	xml.appendChild(<NumCopiesLogRotate>
+		{logCopies.value}</NumCopiesLogRotate>);
+	xml.appendChild(<copyLogToRemoteMachine>
+		{copyLogToRemote.selected}</copyLogToRemoteMachine>);
+	var address:String = ip.address[0] + "." +
+		ip.address[1] + "." +
+		ip.address[2] + "." +
+		ip.address[3];
+	
+	if (copyLogToRemote.selected && address.search(UtilityFunctionClass.IPAddresspattern) == 0 )
+	{
+		if (address == "0.0.0.0")
+		{
+			ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_IP'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+			return;
+		}
+	}
+	else if (copyLogToRemote.selected && address.search(UtilityFunctionClass.IPAddresspattern) != 0 )
+	{
+		ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_IP'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+		return;
+	}
+	
+	if (copyLogToRemote.selected && remoteUser.text == "" )
+	{
+		ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','EMPTY_USERPASS'),ResourceManager.getInstance().getString('fma','EMPTY_USERPASS_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+		return;
+	}
+	
+	if (copyLogToRemote.selected && remoteDirectory.text.search(UtilityFunctionClass.UnixPath) == -1)
+	{
+		ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_REMOTE_PATH'),ResourceManager.getInstance().getString('fma','INVALID_REMOTE_PATH_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+		return;
+	}
+	
+	xml.appendChild(<DestLogRotate>
+		{address}</DestLogRotate>);
+	xml.appendChild(<UserLogRotate>
+		{remoteUser.text}</UserLogRotate>);
+	xml.appendChild(<DirLogRotate>
+		{remoteDirectory.text}</DirLogRotate>);
+	RESTClient.sendPostRequest("/logSettings.htm", xml, onComplete, viewBlock);
+}
+private function onCanel(event:MouseEvent):void
+{
+	var navService:IUxNavigationService =
+		UxExtensionManager.getInstance().getService(UxConstants.
+			NAVIGATION_SERVICE) as IUxNavigationService;
+	var location:Array = new Array;
+	location = navService.currentLocation;
+	location.pop();
+	navService.navigate(location);
+}
+
+

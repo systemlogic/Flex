@@ -1,0 +1,123 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ * The purpose of this class is to wrap the ECUIT class with a Ux class so that
+ * extensions do not access ECUIT directly
+ *
+ */
+
+package com.emc.efx.guitoolkit.components.chart {
+    import com.emc.efx.guitoolkit.dataloading.IUxLoader;
+    import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+    import com.emc.efx.guitoolkit.dataloading.UxLoadingHandler;
+    import com.emc.efx.guitoolkit.events.UxViewEvent;
+    import com.emc.efx.utilities.automation.UxAutomationUtils;
+    
+    import mx.binding.utils.BindingUtils;
+    import mx.binding.utils.ChangeWatcher;
+    import mx.charts.LineChart;
+
+    public class UxLineChart extends LineChart implements IUxLoader {
+        /** Loading Handler for the Loading State **/
+        private var _loadingHandler:UxLoadingHandler;
+		
+		private var _dataProviderWatcher:ChangeWatcher;
+
+        public function UxLineChart() {
+            super();
+            _loadingHandler = new UxLoadingHandler();
+            automationName = UxAutomationUtils.DEFAULT_AN;
+            addEventListener(UxViewEvent.INITIALIZE_DATA, onInitializeData,
+                false, 0, true);
+            addEventListener(UxViewEvent.UNINITIALIZE_DATA, onUnInitializeData,
+                false, 0, true);
+            percentHeight = 100;
+            percentWidth = 100;
+        }
+
+        /**
+         * Function to handle UxViewEvent.INITIALIZE_DATA
+         */
+        private function onInitializeData(e:UxViewEvent):void {
+            initializeData();
+        }
+
+        /**
+         * Function to handle UxViewEvent.UNINITIALIZE_DATA
+         */
+        private function onUnInitializeData(e:UxViewEvent):void {
+            unInitializeData();
+        }
+
+        /**
+         * Function to perform initialization before displaying the component.
+         * This method is called when UxViewEvent.INITIALIZE_DATA is dispatched on the component.
+         */
+        protected function initializeData():void {
+            loadingHandler.dispatchEvent(new UxViewEvent(UxViewEvent.
+                INITIALIZE_DATA));
+			_dataProviderWatcher =
+				BindingUtils.bindSetter(onDataProviderChange, this,
+					"dataProvider");
+
+        }
+
+        /**
+         * Function to perform unInitialization before moving away from the component.
+         * This method is called when UxViewEvent.UNINITIALIZE_DATA is dispatched on the component.
+         */
+        protected function unInitializeData():void {
+			if (_dataProviderWatcher) {
+				_dataProviderWatcher.unwatch();
+				_dataProviderWatcher = null;
+			}
+            loadingHandler.dispatchEvent(new UxViewEvent(UxViewEvent.
+                UNINITIALIZE_DATA));
+        }
+
+		/**
+		 * Function to update loading state
+		 */
+		private function onDataProviderChange(data:Object):void {
+			if (data != null) {
+				loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+					LOADING_COMPLETE));
+			}
+		}
+
+        /**
+         * Automation name settings.
+         * override function to format automation name.
+         */
+        override public function set automationName(value:String):void {
+            super.automationName =
+                UxAutomationUtils.getFormattedAutomationName(this.className,
+                value, "_LCT");
+        }
+
+        /**
+         * Function to get loading handler
+         * @return UxLoadingHandler
+         */
+        [Bindable]
+        public function get loadingHandler():UxLoadingHandler {
+            return _loadingHandler;
+        }
+
+        public function set loadingHandler(handler:UxLoadingHandler):void {
+            _loadingHandler = handler;
+        }
+
+
+        /**
+         * @inheritDoc
+         */
+        public function get loadingState():int {
+            return loadingHandler.loadingState;
+        }
+
+    }
+}

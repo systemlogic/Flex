@@ -1,0 +1,23 @@
+package com.emc.fma.events
+{
+	import flash.events.Event;
+	
+	[Event(selector="EditServer",type="flash.events.Event")]
+	[Event(selector="AuthnticateServer",type="flash.events.Event")]
+	[Event(selector="DeleteServer",type="flash.events.Event")]
+	[ManagedEvents("EditServer,AuthnticateServer,DeleteServer",scope="global")]
+	public class FileServerEventDispatcher extends Event
+	{
+		[Selector]
+		public var role:String;
+		public var server:String;
+		public var ServerType:String
+		public function FileServerEventDispatcher(type:String, Server:String, ServerType:String, bubbles:Boolean=false, cancelable:Boolean=false)
+		{
+			super(type, bubbles, cancelable);
+			this.role = type;
+			this.server = Server;
+			this.ServerType = ServerType ;
+		}
+	}
+}

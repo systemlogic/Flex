@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009"
+            xmlns:s="library://ns.adobe.com/flex/spark"
+            xmlns:mx="library://ns.adobe.com/flex/mx"
+            xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+            xmlns:controls="com.emc.ecuit.flex.components.controls.*"
+            xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+            backgroundColor="#EAF5FE" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+
+  <wizards:states>
+    <mx:State name="archive" />
+    <mx:State name="delete_orphans" />
+    <mx:State name="delete_stubs" />
+    <mx:State name="migrate_file" />
+  </wizards:states>
+
+  <fx:Script source="Summary.mxml.as" />
+
+  <views:UxProgressCanvas id="progress" width="100%" height="100%" >
+
+    <mx:VBox paddingLeft="15" paddingTop="10">
+      <UxExtendedClass:UxGroupBoxCta id="idOne" title="General Information" height="100%" width="570" >
+      <mx:Form id="detailsTableModel" label="New Policy" width="100%" height="100%">
+
+        <mx:FormItem id="pt" label="Policy Type :" fontWeight="bold" >
+          <mx:Label id="policyTypeLabel" fontWeight="normal"  />
+        </mx:FormItem>
+
+        <mx:FormItem id="pn" label="Policy Name :" fontWeight="bold" >
+          <mx:Label id="policyNameLabel" fontWeight="normal"  />
+        </mx:FormItem>
+
+        <mx:FormItem  id="dp" label="Delay Period :" fontWeight="bold" includeIn="archive">
+          <mx:Label id="delayPeriodLabel" fontWeight="normal" />
+        </mx:FormItem>
+
+        <mx:FormItem id="rp" label="Retention Period :" fontWeight="bold" includeIn="archive" >
+          <mx:Label id="retentionPeriodLabel" fontWeight="normal" />
+        </mx:FormItem>
+
+        <mx:FormItem id="sr" label="Stub Retention :" fontWeight="bold" includeIn="archive" >
+          <mx:Label id="stubRetentionLabel" fontWeight="normal"/>
+        </mx:FormItem>
+
+        <mx:FormItem id="dm" label="Days Missing :" fontWeight="bold" includeIn="delete_orphans">
+          <mx:Label id="daysMissingLabel" fontWeight="normal"/>
+        </mx:FormItem>
+
+        <mx:FormItem id="da" label="Delete All :" fontWeight="bold" includeIn="delete_stubs" >
+          <mx:Label id="deleteAllLabel" fontWeight="normal"/>
+        </mx:FormItem>
+      </mx:Form>
+      </UxExtendedClass:UxGroupBoxCta>
+
+      <mx:Text />
+
+      <UxExtendedClass:UxGroupBoxCta id="idTwo" title="Rules" paddingRight="15" paddingLeft="20" paddingTop="15" paddingBottom="15" height="100%" width="570" >
+      <mx:DataGrid id="ruleDataGrid" dataProvider="{Rules}" height="95" width="530" editable="false"
+             wordWrap="true" variableRowHeight="true" allowMultipleSelection="false" >
+        <mx:columns>
+          <mx:DataGridColumn headerText="Rule" width="40" labelFunction="serialLabelFunction"/>
+          <mx:DataGridColumn headerText="Matching Expression" width="245" dataField="Expression"/>
+          <mx:DataGridColumn headerText="Action" width="245" dataField="Action"/>
+        </mx:columns>
+      </mx:DataGrid>
+      </UxExtendedClass:UxGroupBoxCta>
+
+    </mx:VBox>
+
+  </views:UxProgressCanvas>
+
+</wizards:UxWizardStep>

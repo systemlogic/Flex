@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Example taken from ECUIT Component App -->
+<views:UxDynamicViewBlock xmlns:mx="http://www.adobe.com/2006/mxml"
+                          xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+                          title="Common Tasks"
+                          showRefresh="false"
+                          showExport="false"
+                          showFind="false"
+                          showFilter="false"
+              showPrint="false"
+                          showTools="false"
+                          showClose="false"
+                          verticalGap="0"
+                          height="100%"
+                          width="100%"
+                          showLastRefresh="false"
+                          lastRefreshPosition="{ViewBlock.TOP}"
+                          showMoreInfoLink="false"
+                          viewShowMoreLinkClick="doViewShowMore(event)"
+                          xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+    <mx:Script source="CommonTasks.mxml.as" />
+
+    <buttons:UxLinkButton paddingTop="20" height="32"
+              verticalCenter="bottom"
+              fontSize="14"
+                          label="Add Task Wizard"
+                          color="#00008B"
+                          textDecoration="none"
+              icon="@Resource(key='COMMONADDTASK_IMAGE_32', bundle='fma')"
+              click="createSchedule_clickHandler(event)"
+              />
+
+</views:UxDynamicViewBlock>
+

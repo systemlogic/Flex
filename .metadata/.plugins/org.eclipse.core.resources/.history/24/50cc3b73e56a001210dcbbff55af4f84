@@ -1,0 +1,71 @@
+package com.emc.fma.views.Configuration.NASRepository.model
+{
+  import com.emc.efx.guitoolkit.components.table.UxAdvancedDataGridColumn;
+  import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+  import com.emc.efx.guitoolkit.components.table.UxTableModel;
+  import com.emc.efx.guitoolkit.components.table.events.UxTableModelEvent;
+  import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+  import com.emc.fma.utils.Common;
+  import com.emc.fma.utils.RESTClient;
+  import com.emc.fma.utils.RESTEvent;
+  import flash.events.Event;
+  import flash.events.TimerEvent;
+  import flash.utils.Timer;
+  
+  import mx.collections.ArrayCollection;
+  import mx.collections.XMLListCollection;
+  
+  /**
+   *  Table Model
+   */
+  public class NASRepositoryModel extends UxTableModel
+  {    
+    public var nasRepositoryList:XMLListCollection;
+    
+    /*Constructor*/
+    public function NASRepositoryModel()
+    {
+      super();
+    }
+    
+    /*Function to load data*/
+    override protected function loadData():void
+    {
+      RESTClient.sendGetRequest("/api/repository", setresponse, null);
+    }
+    
+    private function setresponse(event:RESTEvent):void
+    {
+      var response:XML = event.response;
+      nasRepositoryList = new XMLListCollection(response..NASRepository);
+      var nasRepositoryArray:ArrayCollection = new ArrayCollection();
+
+      for ( var j:int = 0; j < nasRepositoryList.source.length(); j++)
+      {       
+        nasRepositoryArray.addItem(
+          {
+            Name:nasRepositoryList[j].Name.toString() ,
+            Protocol:nasRepositoryList[j].Protocol.toString(),
+            Server:nasRepositoryList[j].Server.toString(),
+            Path:nasRepositoryList[j].Path.toString().replace("\\",""),
+            MaxArchivePercent:nasRepositoryList[j].MaxArchivePercent.toString()
+          });
+      }
+      
+      modelData = nasRepositoryArray;
+      
+      loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.LOADING_COMPLETE));
+    }
+    
+    /*Function to load columns.*/
+    override protected function loadColumns():void
+    {
+      var col1:UxColumnIdentifier = new UxColumnIdentifier("Name", "Name");
+      var col2:UxColumnIdentifier = new UxColumnIdentifier("Protocol", "Protocol");
+      var col3:UxColumnIdentifier = new UxColumnIdentifier("Server", "Server");
+      var col4:UxColumnIdentifier = new UxColumnIdentifier("Path", "Path");
+      var col5:UxColumnIdentifier = new UxColumnIdentifier("Maximum Limit of Disk Usage", "MaxArchivePercent");
+      columnIdentifiers = new ArrayCollection([col1, col2, col3, col4, col5]);
+    }
+  }
+}

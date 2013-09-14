@@ -1,0 +1,132 @@
+package com.emc.fma.views.Archived.ArchivedReport.model
+{
+
+
+  import com.emc.efx.guitoolkit.components.table.UxColumnIdentifier;
+  import com.emc.efx.guitoolkit.components.table.UxTableModel;
+  import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+  import com.emc.fma.utils.Common;
+  import com.emc.fma.utils.RESTClient;
+  import com.emc.fma.utils.RESTEvent;
+  import flash.events.Event;
+  import flash.events.TimerEvent;
+  import flash.sampler.NewObjectSample;
+  import flash.utils.ByteArray;
+  import flash.utils.Timer;
+
+  import mx.collections.ArrayCollection;
+  import mx.containers.HBox;
+  import mx.controls.Image;
+  import mx.core.ClassFactory;
+  import mx.resources.ResourceManager;
+
+  /**
+   * Sample class showing implementation of a ColumnDataLoader
+   */
+
+  public class ReportModel extends UxTableModel
+  {
+
+    [Bindable]public var Response:XML;
+    [Bindable]private var _rowsObject:Object = new Object();
+    [Bindable]public var ruleNameList:ArrayCollection = new ArrayCollection();
+    private var _timer:Timer;
+    [Bindable] public var completed:Boolean = false;
+    [Bindable] public var exp_array:XML;
+    public function ReportModel()
+    {
+      super();
+    }
+    override protected function loadColumns():void
+    {
+      var col1:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','FILESERVER'), "Column1");
+      var col2:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','GPH_REP_TYP'), "Column2");
+      var col3:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','GPH_TIM_STM'), "Column3");
+      var col4:UxColumnIdentifier =
+      new UxColumnIdentifier(ResourceManager.getInstance().getString('fma','GPH_RPT_NAM'), "Column4");
+      columnIdentifiers = new ArrayCollection([col1, col2, col3, col4]);
+
+    }
+
+    private function onTimer(e:TimerEvent):void
+    {
+
+      var xml:XML = <REQUEST/>;
+      xml.appendChild(<action>getList</action>);
+      RESTClient.sendPostRequest("/getChart.htm", xml, onComplete, loadingHandler);
+    }
+
+    override protected function loadData():void
+    {
+      _timer = new Timer(0, 1);
+      _timer.addEventListener(TimerEvent.TIMER_COMPLETE, onTimer);
+      _timer.start();
+    }
+
+    private function onComplete(event:RESTEvent):void
+    {
+
+      //exp_array = new XMLList(event.response);
+      var str:String = new String(event.response);
+      exp_array = XML(str);
+      _rowsObject = createRows4();
+
+      modelData = _rowsObject as ArrayCollection;
+
+      loadingHandler.dispatchEvent(new UxLoadingEvent(UxLoadingEvent.
+      LOADING_COMPLETE));
+      _timer.stop();
+      completed = true;
+    }
+    private function parseDate(str:String):Date
+    {
+      var yyyy:int = parseInt(str.substring(0,4));
+      var mm:int = parseInt(str.substring(5,7)) -1;
+      var dd:int = parseInt(str.substring(8,10));
+      var HH:int = parseInt(str.substring(11,13));
+      var MM:int = parseInt(str.substring(14,16));
+      var SS:int = parseInt(str.substring(17,19));
+      return new Date(yyyy,mm,dd,HH,MM,SS);
+
+    }
+    private function createRows4():ArrayCollection
+    {
+      var count:int = 0;
+      var row:Array =  new Array();
+      var item:XML;
+      trace(exp_array.Provider);
+
+      for each(item in exp_array.Reports)
+      {
+        var type:String;
+        var name:String = item.toString();
+        var temp:Date = parseDate(item.toString());
+        var date:String = temp.getUTCFullYear() + "/" + temp.getMonth() + "/" + temp.getDate() + " " +
+        temp.getHours() + ":" + temp.getMinutes() + ":" + temp.getSeconds();
+
+        if (item.toString().search("Aggregate") > -1)
+        {
+          type = "FileServer Group";
+          name = item.toString().substring(30,int.MAX_VALUE);
+        }
+        else if (item.toString().search("Detailed") > -1)
+        {
+          type = "FileServer";
+          name = item.toString().substring(29,int.MAX_VALUE);
+        }
+
+        var obj:Object =
+        { Column1:name,Column2:type,Column3:date,Column4:item.toString()};
+        row.push(obj);
+        trace(name);
+        trace(count);
+      }
+
+      var rows:ArrayCollection = new ArrayCollection(row);
+      return rows;
+    }
+  }
+}

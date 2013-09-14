@@ -1,0 +1,402 @@
+package com.emc.ecuit.flex.components.views
+{
+	import com.emc.ecuit.flex.components.buttons.ControlBarButton;
+	import com.emc.ecuit.flex.events.ECUITEvent;
+
+    /**
+	 * The ViewTitleBarButton class extends the default Flex Button and
+	 * applies ECUE styles, icons, and behavior for a ViewTitleBar Button. 
+	 * In addition, a ViewTitleBarButton may be associated with a menu
+	 * which is displayed under the button when it is clicked.
+	 **/
+    public class ViewTitleBarButton extends ControlBarButton
+	{
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Constants - Public
+	    //
+	    //--------------------------------------------------------------------------
+
+		/** 
+		 * Constant used to specify that the menu should be displayed
+		 * right aligned under the button.
+		 */
+		public static const MENU_ALIGN_RIGHT:String   = ControlBarButton.MENU_ALIGN_RIGHT;
+		
+		/** 
+		 * Constant used to specify that the menu should be displayed
+		 * center aligned under the button.
+		 */
+		public static const MENU_ALIGN_CENTER:String = ControlBarButton.MENU_ALIGN_CENTER;
+		
+		/** 
+		 * Constant used to specify that the menu should be displayed
+		 * left aligned under the button.
+		 */
+		public static const MENU_ALIGN_LEFT:String = ControlBarButton.MENU_ALIGN_LEFT;
+
+		/** Constant used to specify a Refresh button type*/
+		public static const REFRESH_BTN_TYPE:int = 0;
+		/** Constant used to specify a Filter button type*/
+		public static const FILTER_BTN_TYPE:int  = 1;
+		/** Constant used to specify a Find button type*/
+		public static const FIND_BTN_TYPE:int    = 2;
+		/** Constant used to specify a Layout button type*/
+		public static const LAYOUT_BTN_TYPE:int  = 3;
+		/** Constant used to specify a Tools button type*/
+		public static const TOOLS_BTN_TYPE:int   = 4;
+		public static const CONFIG_BTN_TYPE:int  = TOOLS_BTN_TYPE;
+		/** Constant used to specify a Print button type*/
+		public static const PRINT_BTN_TYPE:int   = 5;
+		/** Constant used to specify an Export button type*/
+		public static const EXPORT_BTN_TYPE:int  = 6;
+		/** Constant used to specify a Help button type*/
+		public static const HELP_BTN_TYPE:int    = 7;
+		/** Constant used to specify a Maximize button type*/
+        public static const MAXIMIZE_BTN_TYPE:int   = 8;
+        /** Constant used to specify a Restore button type*/
+        public static const RESTORE_BTN_TYPE:int   = 9;
+        /** Constant used to specify a Close button type*/
+		public static const CLOSE_BTN_TYPE:int   = 10;
+		/** Constant used to specify Zoom In button type **/
+        public static const MAP_BACK_BTN_TYPE:int = 11;
+        /** Constant used to specify Zoom Out button type **/
+        public static const MAP_FORWARD_BTN_TYPE:int = 12;
+        /** Constant used to specify a Reset button type **/
+        public static const MAP_RESET_BTN_TYPE:int = 13;
+        /** Constant used to specify an Open In New Window button type **/
+        public static const MAP_OPEN_IN_NEW_WIN_BTN_TYPE:int = 14;
+		/** Constant used to specify a Zoom In button type **/
+        public static const MAP_ZOOM_IN_BTN_TYPE:int = 15;
+        /** Constant used to specify a Zoom Out button type **/
+        public static const MAP_ZOOM_OUT_BTN_TYPE:int = 16;
+        /** Constant used to specify a Marquee Zoom button type **/
+        public static const MAP_MARQUEE_ZOOM_BTN_TYPE:int = 17;
+        /** Constant used to specify a Fit To Canvas button type **/
+        public static const MAP_FIT_BTN_TYPE:int = 18;
+        /** Constant used to specify a Pan button type **/
+        public static const MAP_PAN_BTN_TYPE:int = 19;
+        /** Constant used to specify an Expand All button type **/
+        public static const MAP_EXPAND_ALL_BTN_TYPE:int = 20;
+        /** Constant used to specify a Collapse All button type **/
+        public static const MAP_COLLAPSE_ALL_BTN_TYPE:int = 21;
+		/** Constant used to specify a Schedule button type*/
+		public static const SCHEDULE_BTN_TYPE:int   = 23;
+		/** Constant used to specify a Email button type*/
+		public static const EMAIL_BTN_TYPE:int   = 24;
+
+		/** Constant used to specify a Custom button type*/
+		public static const CUSTOM_BTN_TYPE:int  = 100;
+
+		/** Standard width for ViewTitleBarButtons **/
+		public static const STANDARD_BTN_WIDTH:int = 22;
+		/** Standard width for Drop Down ViewTitleBarButtons **/
+		public static const STANDARD_DD_BTN_WIDTH:int = 28;
+		/** Standard height for ViewTitleBarButtons **/
+		public static const STANDARD_BTN_HEIGHT:int = 20;
+		/** Width for buttons with the type MAXIMIZE_BTN_TYPE **/
+		public static const MAXIMIZE_BUTTON_WIDTH:int = 22;
+		/** Width for buttons with the type RESTORE_BTN_TYPE **/
+        public static const RESTORE_BUTTON_WIDTH:int = 22;
+        /** Width for buttons with the type CLOSE_BTN_TYPE **/
+        public static const CLOSE_BUTTON_WIDTH:int = 22;
+		/** Width for buttons with the type FILTER_BTN_TYPE with a menu **/
+		public static const FILTER_DD_BTN_WIDTH:int = 28;
+		/** Width for buttons with the type FIND_BTN_TYPE wiht a menu**/
+		public static const FIND_DD_BTN_WIDTH:int = 28;
+
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Properties - Protected
+	    //
+	    //--------------------------------------------------------------------------
+
+		/** Variable specifing the type of button (Print, Refresh, Custom, etc..) */
+		protected var _buttonType:int;
+		
+		/** Variable specifying if the placement of control is on dark title bar */
+		protected var _darkTitleBar:Boolean;
+		
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Properties - Private
+	    //
+	    //--------------------------------------------------------------------------
+
+		/** Variable to determine display order in control bar.
+		 * Lower values are to the left, higher values to the right **/
+		private var _displayOrder:int;
+		
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Source - Public
+	    //
+	    //--------------------------------------------------------------------------
+
+	    /** 
+	    * Constructor - This creates a specific type of ViewTitleBarButton.
+	    * 
+		* @param id The <code>id</code> of the 
+		* ViewTitleBarButton.  
+		* Typically set to one of the standard view title bar buttons ids.
+		* For custom ViewTitleBarButtons, <code>id</code> is provided by
+		* the application developer.
+		* @param type Set to one of the standard view title bar 
+		* button types.
+		* Used to denote the type of ViewTitleBarButton.
+		* @param displayOrder Represents the button's position within 
+		* its parent control bar in the ViewTitleBar. Lower integers position 
+		* the button towards the left; higher integers to the right.
+		*/
+	    public function ViewTitleBarButton (buttonId:String, theType:int, displayOrder:int)
+	  	{
+			super();
+
+			id  = buttonId;
+			_buttonType = theType;
+			_displayOrder = displayOrder;
+			_darkTitleBar = false;
+			
+			// Set an automation name
+			automationName = id + "_button";
+			
+			// Setup the icons and size for this button
+			setStyles();
+			setSize();
+			
+			// Listen for a hasMenuChanged event to redetermine size
+			addEventListener("hasMenuChanged", hasMenuChanged);
+	  	}
+
+		/**
+		 * Variable specifing the type of button (Print, Refresh, Custom, etc..)
+		 **/
+		public function get buttonType ():int
+		{
+			return _buttonType;
+		}
+		public function set buttonType (theType:int):void
+		{
+			_buttonType = theType;
+		}
+
+		/** 
+		 * Variable to determine display order in a control bar.
+		 * Lower values are to the left; higher values to the right.
+		 **/
+		public function get displayOrder():int
+		{
+			return _displayOrder;
+		}
+
+		public function setIsDarkTitleBar(isDark:Boolean) :void
+		{
+			_darkTitleBar=isDark;
+		}
+		
+		/** 
+	    * Sets this ViewTitleBarButton style based on the <code>type</code>.
+	    * @see #type
+		*/
+		public function setStyles ():void
+	    {
+
+			switch (_buttonType)
+	  		{
+
+				case REFRESH_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonRefresh";
+						this.menuStyle = "ViewTitleBarButtonRefreshDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					}
+					else {
+						this.buttonStyle = "LightViewTitleBarButtonRefresh";
+						this.menuStyle = "LightViewTitleBarButtonRefreshDD";					
+						this.menuStyleName = "AppMenu";
+					}
+            		break;
+				case FILTER_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonFilter";
+						this.menuStyle = "ViewTitleBarButtonFilterDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					}
+					else {
+						this.buttonStyle = "LightViewTitleBarButtonFilter";
+						this.menuStyle = "LightViewTitleBarButtonFilterDD";
+						this.menuStyleName = "AppMenu";
+					}
+            		break;
+				case FIND_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonFind";
+						this.menuStyle = "ViewTitleBarButtonFindDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonFind";
+						this.menuStyle = "LightViewTitleBarButtonFindDD";
+						this.menuStyleName = "AppMenu";
+					}
+            		break;
+				case TOOLS_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonTools";
+						this.menuStyle = "ViewTitleBarButtonToolsDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonTools";
+						this.menuStyle = "LightViewTitleBarButtonToolsDD";
+						this.menuStyleName = "AppMenu";
+					}
+            		break;
+				case SCHEDULE_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonSchedule";
+						this.menuStyle = "ViewTitleBarButtonScheduleDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonSchedule";
+						this.menuStyle = "LightViewTitleBarButtonScheduleDD";
+						this.menuStyleName = "AppMenu";
+					}
+					break;
+				case EMAIL_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonEmail";
+						this.menuStyle = "ViewTitleBarButtonEmailDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonEmail";
+						this.menuStyle = "LightViewTitleBarButtonEmailDD";
+						this.menuStyleName = "AppMenu";
+					}
+					break;
+				case PRINT_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonPrint";
+						this.menuStyle = "ViewTitleBarButtonPrintDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonPrint";
+						this.menuStyle = "LightViewTitleBarButtonPrintDD";
+						this.menuStyleName = "AppMenu";
+					}
+            		break;
+				case EXPORT_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonExport";
+						this.menuStyle = "ViewTitleBarButtonExportDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonExport";
+						this.menuStyle = "LightViewTitleBarButtonExportDD";
+						this.menuStyleName = "AppMenu";
+					} 
+            		break;
+				case LAYOUT_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonLayout";
+						this.menuStyle = "ViewTitleBarButtonLayoutDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonLayout";
+						this.menuStyle = "LightViewTitleBarButtonLayoutDD";
+						this.menuStyleName = "AppMenu";
+					}
+            		break;
+				case HELP_BTN_TYPE:
+					if (_darkTitleBar){
+						this.buttonStyle = "ViewTitleBarButtonHelp";
+						this.menuStyle = "ViewTitleBarButtonHelpDD";
+						this.menuStyleName = "AppMenuDynamicViewBlock";
+					} else {
+						this.buttonStyle = "LightViewTitleBarButtonHelp";
+						this.menuStyle = "LightViewTitleBarButtonHelpDD";
+						this.menuStyleName = "AppMenu";
+					}
+            		break;
+                case MAXIMIZE_BTN_TYPE:
+					// this is only supported for dark title bar
+					this.buttonStyle = "ViewTitleBarButtonMaximize";
+                    this.menuStyle = "ViewTitleBarButtonMaximize";
+                    break;
+                case RESTORE_BTN_TYPE:
+					// this is only supported for dark title bar
+					this.buttonStyle = "ViewTitleBarButtonRestore";
+                    this.menuStyle = "ViewTitleBarButtonRestore";
+                    break;                                		
+				case CLOSE_BTN_TYPE:
+					// this is only supported for dark title bar
+					this.buttonStyle = "ViewTitleBarButtonClose";
+					this.menuStyle = "ViewTitleBarButtonClose";
+            		break;
+                case MAP_RESET_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonResetMap";
+                    break;  
+                case MAP_OPEN_IN_NEW_WIN_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonOpenInNewWindow";
+                    break;              		
+                case MAP_BACK_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonBack";
+                    break;  
+            	case MAP_FORWARD_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonForward";
+                    break;  
+                case MAP_ZOOM_IN_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonZoomIn";
+                    break;     
+                case MAP_ZOOM_OUT_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonZoomOut";
+                    break;
+                case MAP_MARQUEE_ZOOM_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonMarqueeZoom";
+                    this.toggle = true;
+                    break;
+                case MAP_FIT_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonFitToCanvas";
+                    break;
+                case MAP_PAN_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonPan";
+                    this.toggle = true;
+                    break;   
+                case MAP_EXPAND_ALL_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonExpandAll";
+                    break;
+                case MAP_COLLAPSE_ALL_BTN_TYPE:
+                    this.buttonStyle = "ViewTitleBarButtonCollapseAll";
+                    break;                  
+                }
+	    }
+
+	   /** 
+	    * Sets the size based on the <code>type</code> and the <code>hasMenu</code> property.
+	    * @see #type
+	    * @see #hasMenu
+		*/
+		private function setSize ():void
+		{
+			// We need to manually set the size
+			if (this.hasMenu())
+	    	{
+				this.width = STANDARD_DD_BTN_WIDTH;
+	    	}
+	    	else
+	    	{
+	    		this.width = STANDARD_BTN_WIDTH;
+	    	}
+			this.height = STANDARD_BTN_HEIGHT;
+			
+		}
+
+		/**
+		 * Handle a change to the hasMenu value, update size of the button if necessary
+		 * 
+		 * @param event The event signaling the hasMenu value has changed
+		 **/
+		private function hasMenuChanged (event:ECUITEvent):void
+		{
+			setSize();
+		}
+	}
+}

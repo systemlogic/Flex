@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+        xmlns:fx="http://ns.adobe.com/mxml/2009"
+        xmlns:s="library://ns.adobe.com/flex/spark"
+        xmlns:mx="library://ns.adobe.com/flex/mx"
+        xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*"
+        xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+        xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+        implements="com.emc.efx.services.navigation.IUxHasPayload"
+        creationComplete="init()" xmlns:views="com.emc.ecuit.flex.components.views.*"
+        xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" 
+        xmlns:lists="com.emc.ecuit.flex.components.lists.*"
+        xmlns:controls="com.emc.ecuit.flex.components.controls.*">
+	
+  <!--<states>
+    <mx:State name="netAppSourceOn"/>
+    <mx:State name="netAppSourceOff"/>
+  </states>-->
+  <UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+         xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock"
+         title="Celera Properties" width="100%" height="100%"
+         showRefresh="false" showFilter="false" showFind="false"
+         showExport="false" showPrint="false" showTools="false" helpServiceID="FMAHelpService"
+         helpID="EditNetAppFileServer" xmlns:tx="com.emc.efx.guitoolkit.components.table.*"
+         keyDown="page_keyDownHandler(event)"
+         xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+    <!--<UxProgressCanvas id="progress" width="100%" height="100%" styleName="UxProgressCanvasProgressMonitor" >-->
+    <fx:Script source="NetAppFileServer.mxml.as" />
+
+    <form:NameForm id="nameForm"/>
+    <mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+         paddingBottom="10" paddingTop="10"
+         height="100%">
+      <mx:TabNavigator id="viewstack2" backgroundColor="#EAF5FE" change="viewstack2_changeHandler(event)"
+               selectedIndex="0"  tabStyleName="Tab" lastTabStyleName="Tab"
+               historyManagementEnabled="false"  firstTabStyleName="Tab"
+               width="100%" height="100%" >
+        <mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_IP_ADD')}"  id="ipa" >
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_NEW_IP_ADD')}">
+            <mx:HBox>
+              <controls:IPAddressControl id="ip" creationComplete="ip_creationCompleteHandler(event)" />
+              <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_UPD')}" click="_UpdateClickHandler(event)"/>
+              <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" id="add" click="addIP()" enabled="false"/>
+            </mx:HBox>
+          </mx:FormItem>
+          <mx:FormItem>
+            <mx:HBox>
+              <mx:List id="ips" height="50" dataProvider="{this.IPs}" width="{ip.width}" />
+              <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" click="delIP()"/>
+            </mx:HBox>
+          </mx:FormItem>
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_VFL_HST')}">
+            <controls:IPAddressControl id="CtrlStationIP" address="{ctrlSIP.split('.')}" />
+          </mx:FormItem>
+        </mx:Form>
+        <form:CifsForm id="cifsForm" label="{ResourceManager.getInstance().getString('fma','FIL_SER_CIF_SPC')}" />
+        <form:NDMPForm id="ndmpForm" label="{ResourceManager.getInstance().getString('fma','FIL_SER_NDM_SPC')}" />
+        <mx:Form id="sourceForm" label="{ServerType + ' ' + ResourceManager.getInstance().getString('fma','FIL_SER_AS_SOU')}" click="sourceForm_clickHandler(event)">
+          <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_ENBL') + ServerType + ' ' + ResourceManager.getInstance().getString('fma','FIL_SER_AS_SOUC')}">
+            <mx:CheckBox id="Initialized" change="Initialized_changeHandler(event)" selected="{asSource}"/>
+          </mx:FormItem>
+
+          <mx:TabNavigator id="viewstack3" backgroundColor="#EAF5FE"
+                   selectedIndex="0"  tabStyleName="Tab" lastTabStyleName="Tab"
+                   historyManagementEnabled="false"  firstTabStyleName="Tab"
+                   width="100%" height="100%" >
+            <mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_NTA_LCL_ADM')}" enabled="{Initialized.selected}" >
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_ADM')}"  required="false">
+                <mx:TextInput id="netAdmin" text="{netAdministrator}" change="netAdmin_changeHandler(event)" />
+              </mx:FormItem>
+              <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_PASS')}"   required="false">
+                <mx:TextInput id="netPass" text="{netPassword}" displayAsPassword="true" change="netPass_changeHandler(event)"/>
+              </mx:FormItem>
+            </mx:Form>
+            <mx:VBox label="{ResourceManager.getInstance().getString('fma','FIL_SER_DIR_EXC')}"  enabled="{Initialized.selected}">
+              <mx:Form >
+                <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_EXC_DIR')}"  required="false">
+                  <mx:HBox>
+                    <mx:TextInput id="Exclusion" change="Exclusion_changeHandler(event)"   enabled="{Initialized.selected}"/>  <!--restrict="{ResourceManager.getInstance().getString('fma','DIRECTORY_EXCLUSION')}"-->
+                    <mx:Button id="excludebtn" width="{del.width}" label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" click="addExDirs()" enabled="{Exclusion.text == '' ? false : true}"/>
+                  </mx:HBox>
+                </mx:FormItem>
+                <mx:FormItem  required="false">
+                  <mx:HBox>
+                    <mx:List id="exDirs" height="100" dataProvider="{excludedDirList}" width="{Exclusion.width}"/>
+                    <mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" id="del" click="delExDirs()" enabled="{exDirs.selectedItem == null ? false : true }"/>
+                  </mx:HBox>
+                </mx:FormItem>
+              </mx:Form>
+              <mx:Text width="100%" text="{Common.getResource('FILESERVER_WIZARD_STEP_EXCLUDEDIRECTORY_INTROTEXT')}"  />
+            </mx:VBox>
+            <mx:Form label="{ResourceManager.getInstance().getString('fma','FIL_SER_FPL_CLL_BCK')}" enabled="{Initialized.selected}">
+              <mx:FormItem required="false">
+                <lists:ListMoverControl sourceListTitle="{ResourceManager.getInstance().getString('fma','FIL_SER_PRI_AGT')}"
+                            sourceArray="{commandSourceList}"
+                            targetArray="{commandTargetList}"
+                            defaultSourceArray="{defaultCommandSourceList}"
+                            defaultTargetArray="{defaultCommandTargetList}"
+                            sourceLabelField="name"
+                            sourceDataTipFunction="getCommandTip"
+                            sourceIconFunction="getCommandImage"
+                            addButtonTooltip="Add a toolbar button"
+                            removeButtonTooltip="Remove a toolbar button"
+                            targetListTitle="{ResourceManager.getInstance().getString('fma','FIL_SER_SEC_AGT')}"
+                            targetLabelField="name"
+                            targetDataTipFunction="getCommandTip"
+                            targetIconField="image"
+                            paddingLeft="20" paddingTop="20" />
+              </mx:FormItem>
+            </mx:Form>
+          </mx:TabNavigator>
+        </mx:Form>
+      </mx:TabNavigator>
+      <mx:HBox>
+        <buttons:UxButton id="commitChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_COMMIT')}" click="onOK(event)" />
+        <buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCancel(event)" />
+      </mx:HBox>
+    </mx:Box>
+  </UxViewBlock>
+</UxVBoxWindow>

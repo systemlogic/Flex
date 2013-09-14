@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fxs="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx"
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+			  implements="com.emc.efx.services.navigation.IUxHasPayload"
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+			  xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*">
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 creationComplete="init()" 
+				 helpServiceID="FMAHelpService" helpID="NASGroupProperties"
+				 title="NAS Group Properties" width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		<fxs:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.ecuit.flex.events.ECUITEvent;
+				import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.guitoolkit.events.UxViewEvent;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				
+				import mx.collections.ArrayCollection;
+				import mx.controls.Button;
+				import mx.events.CloseEvent;
+				import mx.events.DropdownEvent;
+				import mx.events.FlexEvent;
+				import mx.resources.ResourceManager;
+				import mx.utils.ArrayUtil;
+				[Bindable]private var _client:UxHttpClient;
+				private var response:XMLList ;
+				[Bindable]private var fileAttributeArray:ArrayCollection = new ArrayCollection();
+				[Bindable]private var operatorArray:ArrayCollection = new ArrayCollection();
+				[Bindable]public var rulesArray:ArrayCollection = new ArrayCollection();
+				[Bindable]public var expArray:ArrayCollection ;
+				[Bindable]public var checkexpArray:ArrayCollection ;
+				[Bindable]public var NameValue:String ;
+				[Bindable]public var protoType:String ;
+				
+				
+				private var _currentPayload:UxHashMap = null;
+				override protected function initializeData():void {
+					super.initializeData();
+					if (currentPayload != null) {
+						var dataObj:String = currentPayload.getValue("NASGValue");
+						if (dataObj != "") {
+							NameValue 		= currentPayload.getValue("NASGValue");
+							var str:String 		= currentPayload.getValue("NASGExp");
+							var patternGreater:RegExp = /try archive to /g ;
+							str = str.replace(patternGreater, "");
+							patternGreater = /archive to /g ;
+							str = str.replace(patternGreater, "");
+							var tempExpArray:Array = str.split(" then ")  ;
+							if(expArray == null){
+								expArray = new ArrayCollection()
+								checkexpArray = new ArrayCollection();
+							}
+							for each (var num in tempExpArray){
+								expArray.addItem(num);
+								checkexpArray.addItem(num);
+							}
+							protoType = currentPayload.getValue("NASGType");
+							
+							//NASValue 		= currentPayload.getValue("NASValue");
+						}
+					}
+				}
+				[Bindable] public function set currentPayload(value:UxHashMap):void {
+					_currentPayload = value;
+				}
+				public function get currentPayload():UxHashMap {
+					return _currentPayload;
+				}
+				
+				
+				private var responseResult:XMLList ;
+				protected function init():void
+				{
+					if(checkexpArray == null){
+						checkexpArray = new ArrayCollection()
+					}
+					if(expArray == null){
+						expArray = new ArrayCollection()
+					}
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, onComplete);
+					var xml:XML = <REQUEST/>;
+					xml.appendChild(<action>getList_rain</action>);
+					var data:ByteArray = new ByteArray();
+					data.writeUTFBytes(xml);
+					_client.sendPostRequest(new UxURL(resourceManager.getString('fma','ALLICATION_CONTEXT')+ "listNASRepository.htm"), data);
+					viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+					viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+				}
+				[Bindable] private var repository_Array:XML = new XML();
+				[Bindable] private var repository_CIFS:ArrayCollection = new ArrayCollection();
+				[Bindable] private var repository_NFS:ArrayCollection = new ArrayCollection();
+				private function onComplete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					repository_Array = new XML(_client.response.body);
+					var item:XML;
+					for each(item in repository_Array.NASRepository) {
+						var name:String = item.Name;
+						var Protocol:String = item.Protocol;
+						if(Protocol == "CIFS"){
+							repository_CIFS.addItem(name);
+						}else if(Protocol == "NFS"){
+							repository_NFS.addItem(name);
+						}				
+					}
+					if(protoType == "CIFS"){
+						archDestination.dataProvider = repository_CIFS ;
+						protocol.selectedIndex = 0;
+						protocol.enabled = false ;
+					}else if(protoType == "NFS"){
+						archDestination.dataProvider = repository_NFS ;
+						protocol.selectedIndex = 1;
+						protocol.enabled = false ;
+					}else{
+						archDestination.dataProvider = repository_CIFS ;
+						protocol.selectedIndex = 0;
+						protocol.enabled = true ;
+					}
+				}
+				
+				private function onOK(event:Event):void{
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, save);
+					if(Name.text == ""){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','EMPTY_NAME'),ResourceManager.getInstance().getString('fma','EMPTY_NAME_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					var xml:XML = <REQUEST/>;
+					xml.appendChild(<action>Save</action>);
+					xml.appendChild(<Name>{Name.text}</Name>);
+					for each (var num in expArray){
+						if(!checkexpArray.contains(num)){
+							var xmlNAS:XML = <NASGroup/>;
+							xmlNAS.appendChild(<Type>nas</Type>);
+							xmlNAS.appendChild(<Repository>{num}</Repository>);
+							xml.appendChild(xmlNAS);
+						}
+					}
+					for each (var num in checkexpArray){
+						if(!expArray.contains(num)){
+							var rule:XML = <DeleteRepository/>;
+							rule.appendChild(<Index>{checkexpArray.getItemIndex(num)}</Index>);
+							xml.appendChild(rule);
+						}
+					}
+					var data:ByteArray = new ByteArray();
+					data.writeUTFBytes(xml);
+					_client.sendPostRequest(new UxURL(resourceManager.getString('fma','ALLICATION_CONTEXT')+ "saveNASGroup.htm"), data);
+					viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+					viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+				}
+				private function save(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),ResourceManager.getInstance().getString('fma','SERVER_MESSAGE_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+					dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+				}
+				private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+				{
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+					viewBlock.lastRefreshDate = new Date();
+					onCanel(event);
+				}
+				
+				protected function protocol_closeHandler(event:DropdownEvent):void
+				{
+					if(protocol.selectedLabel == "CIFS"){
+						archDestination.dataProvider = repository_CIFS ;
+					}else if(protocol.selectedLabel == "NFS"){
+						archDestination.dataProvider = repository_NFS ;
+					}
+					expArray = new ArrayCollection();
+					
+				}
+				protected function del_clickHandler(event:MouseEvent):void
+				{
+					if(exp.selectedIndex == -1){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_NASREPOSITORY'),ResourceManager.getInstance().getString('fma','INVALID_NASREPOSITORY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					expArray.removeItemAt(exp.selectedIndex);
+					if(expArray.length == 0){
+						protocol.enabled = true ;
+					}
+				}
+				
+				protected function add_clickHandler(event:MouseEvent):void
+				{
+					if(expArray.contains(archDestination.selectedItem)){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_DESTINATION_REPO'),ResourceManager.getInstance().getString('fma','INVALID_NASREPOSITORY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}else{ 
+						expArray.addItem(archDestination.selectedItem);
+					}
+					if(expArray.length > 0){
+						protocol.enabled = false ;
+					}
+					// TODO Auto-generated method stub
+				}
+				
+				
+				
+				/* protected function del_clickHandler(event:MouseEvent):void
+				{
+					if(exp.selectedIndex == -1){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_NASREPOSITORY'),ResourceManager.getInstance().getString('fma','INVALID_NASREPOSITORY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					expArray.removeItemAt(exp.selectedIndex);
+					if(expArray.length == 0){
+						protocol.enabled = true ;
+					}
+				}
+				
+				protected function add_clickHandler(event:MouseEvent):void
+				{
+					if(expArray.contains(archDestination.selectedItem)){
+						ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_DESTINATION_REPO'),ResourceManager.getInstance().getString('fma','INVALID_NASREPOSITORY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}else{ 
+						expArray.addItem(archDestination.selectedItem);
+					}
+					if(expArray.length > 0){
+						protocol.enabled = false ;
+					}
+					// TODO Auto-generated method stub
+				} */
+				
+				
+				
+				private function onCanel(event:Event):void {
+					var navService:IUxNavigationService =
+						UxExtensionManager.getInstance().getService(UxConstants.
+							NAVIGATION_SERVICE) as IUxNavigationService;
+					var location:Array = new Array;
+					location = navService.currentLocation;
+					location.pop();
+					navService.navigate(location);
+				}
+				
+			]]>
+		</fxs:Script>
+		<mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+				 paddingBottom="10" paddingTop="10"  
+				 height="100%">
+			<UxExtendedClass:UxGroupBoxCta label="NAS Group" width="50%">
+				<mx:Form id="expForm">
+					<mx:FormItem label="Name:">
+						<mx:TextInput id="Name" text="{NameValue}" width="250"/>
+					</mx:FormItem>
+					<mx:FormItem label="Protocol:">
+						<mx:ComboBox id="protocol" close="protocol_closeHandler(event)" width="{Name.width}">
+							<mx:ArrayCollection>
+								<fxs:String>CIFS</fxs:String>
+								<fxs:String>NFS</fxs:String>
+							</mx:ArrayCollection>
+						</mx:ComboBox>
+					</mx:FormItem>
+					<mx:FormItem label="Destination:">
+						<mx:HBox>
+							<mx:List id="archDestination" height="50" width="{Name.width}"/>
+							<mx:Button id="expAdd" label="Add" click="add_clickHandler(event)" width="{expDel.width}"/>
+						</mx:HBox>
+					</mx:FormItem>
+					<mx:FormItem label="Repository:">
+						<mx:HBox >
+							<mx:List id="exp" width="{Name.width}" height="50" dataProvider="{this.expArray}"/>
+							<mx:Button id="expDel" click="del_clickHandler(event)" label="Delete"/>
+						</mx:HBox>
+					</mx:FormItem>
+				</mx:Form>
+			</UxExtendedClass:UxGroupBoxCta>
+			<mx:HBox height="100%" />
+			<mx:HBox>
+				<buttons:UxButton id="commitChanges" label="Save" click="onOK(event)" />
+				<buttons:UxButton id="cancelChanges" label="Cancel" click="onCanel(event)" />
+			</mx:HBox>
+		</mx:Box>
+	</UxViewBlock>
+</UxVBoxWindow>

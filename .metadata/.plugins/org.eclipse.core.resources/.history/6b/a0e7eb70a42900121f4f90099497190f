@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	styleName="DashboardPanel"			
+	initialize="onInit(event)" creationComplete="onComplete(event)">
+	
+	<mx:Metadata>
+		/*************************************************************************
+		 * This event is dispatched when the panel's close control is clicked. 
+		 * This event should be caught and handled by the creator of the panel. 
+		 * No default processing is done upon the CLOSE_WINDOW event.
+		 * 
+	 	 * @eventType CloseEvent.CLOSE
+	 	 **/
+		[Event(name="close", type="mx.events.CloseEvent")]
+	</mx:Metadata>  
+
+	<mx:Script>
+		<![CDATA[
+		import mx.events.CloseEvent;
+		import flash.events.Event;
+
+		protected function onInit(event:Event):void
+		{
+		}
+
+		protected function onComplete(event:Event):void
+		{
+		}
+
+		override public function addChild(child:DisplayObject):DisplayObject
+		{
+			if (child == null)
+				return null;
+			if (child == contents || child == controls)
+				return super.addChild(child);
+
+			if (contents == null)
+			{
+				callLater(addChild, [ child ]);
+				return null;
+			}
+
+			return contents.addChild(child);
+		}
+
+		override public function addChildAt(child:DisplayObject, index:int):DisplayObject
+		{
+			if (child == null)
+				return null;
+			if (child == contents || child == controls)
+				return super.addChildAt(child, index);
+
+			if (contents == null)
+			{
+				callLater(addChildAt, [ child, index ]);
+				return null;
+			}
+
+			return contents.addChildAt(child, index);
+		}
+
+		override public function removeChild(child:DisplayObject):DisplayObject
+		{
+			if (child == null)
+				return null;
+			if (child == contents || child == controls)
+				return super.removeChild(child);
+
+			return contents.removeChild(child);
+		}
+
+		override public function removeChildAt(index:int):DisplayObject
+		{
+			return contents.removeChildAt(index);
+		}
+
+		override public function contains(child:DisplayObject):Boolean
+		{
+			if (child == null)
+				return false;
+			if (child == contents || child == controls)
+				return super.contains(child);
+
+			return contents.contains(child);
+		}
+
+		/*********************************************************************
+		 * @private
+		 * 
+		 * Make sure the component that created us knows that we are closed.
+		 */
+		protected function handleCloseEvent(event:MouseEvent):void
+		{
+			// let everyone know that cares
+			var ce:CloseEvent;
+			ce = new CloseEvent(CloseEvent.CLOSE);
+			dispatchEvent(ce);
+		}
+		]]>
+	</mx:Script>			 
+
+	<mx:HBox id="controls" automationName="dpControls" horizontalAlign="right"
+		styleName="DashboardPanelControls" width="100%" height="14" >
+		<mx:Button id="close" automationName="close" click="handleCloseEvent(event)"
+			width="16" height="16" styleName="DashboardPanelButtonClose" />
+	</mx:HBox>
+
+	<mx:HBox id="contents" automationName="dpContents" width="100%" 
+		styleName="DashboardPanelContents" />
+
+</mx:VBox>

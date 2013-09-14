@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*" 
+					  width="500" height="250" 
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*" xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*">
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.guitoolkit.components.wizards.UxWizard;
+			import com.emc.fma.skin.wizardSkin;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.events.FlexMouseEvent;
+			import mx.events.ListEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			
+			import spark.skins.spark.BorderContainerSkin;
+			private var _enableBackButton:Boolean = true;
+			private var _initialized:Boolean = false;
+			private static const ATTR_IPADDRESS        :String = "";
+			public static const ATTR_IPList_Static_List:String = "IPList";
+			public static const ATTR_NODECOUNT		   :String = "nodecount";
+			public static const  STEP_VALUE        	:String = "2";
+			private var ATTR_IPList:ArrayCollection	= new ArrayCollection();
+			public var _defaultEnterName:String = "";
+			[Bindable] public var _defaultType:String = "";
+			private function ipChangeHandler(event:Event):void 
+			{
+				
+				//events.text = events.text + "ipChangeHandler event: IP Address=\"" + 
+				IPAddress.address[0] + "." + 
+					IPAddress.address[1] + "." + 
+					IPAddress.address[2] + "." + 
+					IPAddress.address[3] + "\"\n";
+			}
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					// Pull defaults from wizard data
+					var def:Object;
+					
+					def = getData(ATTR_IPADDRESS);
+					if (def != null) 
+					{
+						_defaultEnterName = String(def);
+					}
+					
+					_initialized = true;
+				} 
+				updateButtons();
+				setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+			}
+			override protected function save(): void
+			{
+				var address:String = IPAddress.address[0] + "." + 
+					IPAddress.address[1] + "." + 
+					IPAddress.address[2] + "." + 
+					IPAddress.address[3];
+
+				setData(ATTR_IPList_Static_List,ATTR_IPList);
+				setData(ATTR_NODECOUNT,ATTR_IPList.length);
+				//enableStep(TvShowSelection.STEP_NAME, true);
+				stepComplete = true;
+			}
+			// Override as we have step specific validation
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			protected function _UpdateClickHandler(event:MouseEvent):void { 
+				
+			}
+			protected function _AddClickHandler(event:MouseEvent):void {
+				var abc  = ipValidator.toString();
+				if( IPAddress.address[0] != null && IPAddress.address[1] != null && 
+					IPAddress.address[2] != null && IPAddress.address[3] != null &&
+					IPAddress.accessibilityName == "" && 
+					IPAddress.errorString == ""  ){
+					var address:String = IPAddress.address[0] + "." + 
+						IPAddress.address[1] + "." + 
+						IPAddress.address[2] + "." + 
+						IPAddress.address[3];
+						ATTR_IPList.addItem(address);
+						nodeString.text = ATTR_IPList.toString();
+						nodeCount.text  = ATTR_IPList.length.toString();
+				}else{
+					ECUITPopupDialog.showMessageDialog(this,IPAddress.accessibilityName + IPAddress.errorString ,"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+				}
+			}
+			protected function _DeleteClickHandler(event:MouseEvent):void { 
+				if(ipList.selectedItem == null){
+					ECUITPopupDialog.showMessageDialog(this,"Please select an IP","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+				}else{
+					ATTR_IPList.removeItemAt(ipList.selectedIndex);
+					nodeString.text = ATTR_IPList.toString();
+					nodeCount.text  = ATTR_IPList.length.toString();
+				}	
+			}
+			private function updateButtons():void{
+				if(ATTR_IPList.length > 0){
+					enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+				}else{
+					enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+				}
+				enableButtons(_enableBackButton, UxWizard.ECUITWIZARD_BUTTONID_BACK);
+				trace(ATTR_IPList.length)
+				// TODO Auto-generated method stub
+			}
+			protected function ipList_Handler(event:FlexEvent):void
+			{
+				if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+				updateButtons();
+				
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<controls:IPAddressValidator id="ipValidator" 
+									 source="{IPAddress}" property="id" triggerEvent="focusOut" />
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<mx:Form>
+		<mx:FormItem required="false" label="Access Node IP Address" styleName="ECUITWizardBodyText">
+			<boxes:UxHBox>
+				<controls:IPAddressControl id="IPAddress" change="ipChangeHandler(event)" />
+				<buttons:UxButton label="Update" id="update" click="_UpdateClickHandler(event)"/>
+				<buttons:UxButton label="Add" click="_AddClickHandler(event)" />
+			</boxes:UxHBox>
+				<!--<s:Button label="Update" id="update" click="_UpdateClickHandler(event)" />
+				<s:Button label="Add" click="_AddClickHandler(event)" />-->
+		</mx:FormItem>
+		<mx:FormItem styleName="ECUITWizardBodyText" label="IP Address List" required="true">
+			<boxes:UxHBox>
+				<mx:List width="{IPAddress.width}" id="ipList" height="100" dataProvider="{ATTR_IPList}" updateComplete="ipList_Handler(event)"/>
+				<buttons:UxButton label="Delete" width="{update.width}" click="_DeleteClickHandler(event)" />
+			</boxes:UxHBox>
+				<!--<s:Button label="Delete" width="{update.width}" click="_DeleteClickHandler(event)" />-->
+		</mx:FormItem>
+		<mx:FormItem styleName="ECUITWizardBodyText" label="Access Node String" required="false" visible="{_defaultType == '' ? false : true  }">
+			<mx:Label id="nodeString"/>
+		</mx:FormItem>
+		<mx:FormItem styleName="ECUITWizardBodyText" label="Number of Access Nodes" required="false" visible="{_defaultType == '' ? false : true  }">
+			<mx:Label id="nodeCount"/>
+		</mx:FormItem>
+	</mx:Form>
+</wizards:UxWizardStep>

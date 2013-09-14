@@ -1,0 +1,29 @@
+package com.emc.fma.model.SchemaManager.vo
+{
+	import mx.collections.ArrayCollection;
+    
+	[Bindable]
+	public class VNXVO
+	{
+		public var Name:String;
+		public var Protocols:String;
+		public var IsVDM:String;
+		public var IP:ArrayCollection;
+		public var CSIP:String;
+		public var Cifs:CifsVO;
+		public var Ndmp:NdmpVO;
+    public var Initialize:String;
+		public var Source:SourceVO;
+
+		public function VNXVO()
+		{
+			Protocols = "";
+			CSIP = "";
+			Cifs = new CifsVO();
+			Ndmp = new NdmpVO();
+      Initialize = "false";
+			Source = new SourceVO();
+		}
+		
+	}
+}

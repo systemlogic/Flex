@@ -1,0 +1,36 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+
+import mx.utils.StringUtil;
+
+// Suggested step name for use in id field of wizard decriptor XML file
+public static const STEP_TASK         :String = "taskType" ;
+public static const STEP_PRIMARY_TYPE    :String = "primaryTypeSelection" ;
+public static const STEP_PRIMARY_SERVER  :String = "primaryServerSelection" ;
+public static const STEP_SECONDARY_TYPE   :String = "secondaryTypeSelection" ;
+public static const STEP_SECONDARY_SERVER:String = "secondaryServerSelection" ;
+public static const STEP_NAS         :String = "createNASRepository" ;
+public static const STEP_POLICY         :String = "createPolicy" ;
+public static const STEP_SCHEDULE     :String = "createSchedule";
+public static const STEP_SUMMARY     :String = "summary";
+
+private var _initialized:Boolean = false;
+
+// Override if we have step specific display work to do
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    _initialized = true;
+  }
+
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+
+// Override if we have step specific data to save
+override protected function save(): void
+{
+  stepComplete = true;
+}
+

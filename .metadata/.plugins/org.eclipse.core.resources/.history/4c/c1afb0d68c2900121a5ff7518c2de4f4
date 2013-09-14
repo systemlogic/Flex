@@ -1,0 +1,317 @@
+package com.emc.ecuit.flex.components.table
+{	
+	import flash.text.TextFormatAlign;
+	
+	import mx.controls.Button;
+	import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+	import mx.core.ClassFactory;
+	import mx.core.UITextField;
+	import mx.core.UITextFormat;
+	import mx.core.mx_internal;
+	import mx.formatters.DateFormatter;
+	import mx.formatters.NumberFormatter;
+	
+	use namespace mx_internal;
+
+	/** 
+    * ECUIT version of AdvancedDataGridColumn class
+    * It alignes table cell and header based on content type (text, number, etc..)
+	*/
+	public class ECUITAdvancedDataGridColumn extends AdvancedDataGridColumn
+	{
+		private var _type:int = TEXT;
+		private var _decimalPrecision:int = 0;
+		private var _showSeconds:Boolean;
+		public static var NUMERIC:int = 1;
+		public static var TEXT:int = 2;
+		public static var DATE:int = 3;
+		public static var ICON:int = 4;
+		public static var ICON_TEXT:int = 5;
+		public static var COLUMN_BORDER_PADDING:int = 7;  // empirical number, could be better way to determine it.
+		public static var ICON_WIDTH_AND_PADDING:int = 20;
+		
+		/** Column width which fits the widest column content. */
+		private var _fitToContentWidth:Number = NaN;
+		/** Flag indicating whether to calculate width of the colulmn to fit the content ot not. */
+		private var _fitToContent:Boolean = false;
+
+		/**
+		 * Constructor which alligns cell content and header based on data type
+		 * 
+		 * @param type of the data. It could be one of: NUMERIC, TEXT, DATE, ICON, ICON_TEXT
+		 */
+		public function ECUITAdvancedDataGridColumn(type:int=2, decimalPrecision:int=0, showSeconds:Boolean = false)
+		{		
+			super();
+			
+			// set properties
+			_decimalPrecision = decimalPrecision;
+			_type = type;
+			_showSeconds = showSeconds;
+			
+			// for the multi-line header
+			super.headerWordWrap = true;
+			super.itemRenderer = new ClassFactory(ECUITAdvancedDataGridItemRenderer);
+									
+			// set alignment and formatting
+			setAlignment();	
+			setFormatting();		 		
+		}
+		
+		/**
+		 * sets alignment to the column cells and a header
+		 */	
+		protected function setAlignment():void {
+			// set style function for an alignment 
+			styleFunction = alignText;
+			
+			// set renderes for the header
+			switch (_type) {
+				case NUMERIC:
+					headerRenderer = new ClassFactory(RightADGHeaderRenderer);
+					break;
+				case TEXT:
+				case DATE:
+				case ICON_TEXT:				
+					headerRenderer = new ClassFactory(LeftADGHeaderRenderer);
+					break;
+				case ICON:				
+					headerRenderer = new ClassFactory(CenterADGHeaderRenderer);
+					break;	
+			}
+		}	
+		
+		/**
+		 * creates and applies NumberFormatter to the column content
+		 */	
+		protected function setFormatting():void {
+			if (_type == NUMERIC && _decimalPrecision != 0) {
+				var numberFormatter:NumberFormatter = new NumberFormatter();
+				numberFormatter.precision = _decimalPrecision;
+				formatter = numberFormatter;
+			}
+			if (_type == DATE) {
+				labelFunction = dateLabelFunction;
+				// tried to set 'formatter' property, but got odd result of formatting
+				/*var dateFormatter:DateFormatter  = new DateFormatter ();
+				dateFormatter.formatString = "YYYY-MM-DD HH:NN:SS";
+				formatter = dateFormatter;*/
+			}		
+		}
+		
+		/**
+		 * @param type of the data. It could be one of: NUMERIC, TEXT, DATE, ICON, ICON_TEXT
+		 */
+		public function set type(type:int):void{
+			_type = type;
+			// set alignment and formatting
+			setAlignment();	
+			setFormatting();
+		}
+		
+		/**
+		 * @return type of the data. It could be one of: NUMERIC, TEXT, DATE, ICON, ICON_TEXT
+		 */
+		public function get type():int{
+			return _type;
+		}
+		
+
+		/**
+		 * @return decimal precision - number of the digits after the dot 
+		 */
+		public function get decimalPrecision():int{
+			return _decimalPrecision;
+		}
+	
+		/**
+		 * 
+		 * @param decimalPrecision - number of the digits after the dot
+		 */
+		public function set decimalPrecision(decimalPrecision:int):void{
+			_decimalPrecision = decimalPrecision;
+			// set alignment and formatting
+			setFormatting();		
+		}
+
+		/**
+		 * 'showSeconds' flag which determines whether to display seconds for the Date format or not.
+		 */
+		public function get showSeconds():Boolean{
+			return _showSeconds;
+		}
+		public function set showSeconds(showSeconds:Boolean):void{
+			_showSeconds = showSeconds;
+			// set alignment and formatting
+			setFormatting();		
+		}
+		
+		/**
+		 * This is style function for AdvancedDataGridColumn
+		 * @param data - content of the column
+		 * @param column - AdvancedDataGridColumn 
+		 */
+		private function alignText(data:Object, column:AdvancedDataGridColumn):Object {
+			switch (_type) {
+				case NUMERIC:
+					return { textAlign:TextFormatAlign.RIGHT };
+					break;
+				case TEXT:
+				case DATE:
+				case ICON_TEXT:				
+					return { textAlign:TextFormatAlign.LEFT };
+					break;
+				case ICON:				
+					return { textAlign:TextFormatAlign.CENTER };
+					// tried to use 'headerStyleName'. It works for AdvancedDataGrid, but not for AdvancedDataGridColumn
+					// return { textAlign:"center", headerStyleName:"HeaderCenter" };
+					break;	
+			}			
+			return { textAlign:TextFormatAlign.LEFT };							
+		}
+		
+		/**
+		 * This is label function for AdvancedDataGridColumn.
+		 * Used to format date and time
+		 * @param data - content of the column
+		 * @param column - AdvancedDataGridColumn 
+		 */
+        private function dateLabelFunction(data:Object, column:AdvancedDataGridColumn):String {
+	     	if (column is ECUITAdvancedDataGridColumn) {
+	     		var eColumn:ECUITAdvancedDataGridColumn = column as ECUITAdvancedDataGridColumn;
+	     		if (eColumn.type == ECUITAdvancedDataGridColumn.DATE) {
+	     			 if (typeof(data) == "object" || typeof(data) == "xml") {
+						try {
+							data = data[dataField];
+						}
+						catch(e:Error) {
+							data = null;
+						}
+						var dateFormatter:DateFormatter  = new DateFormatter ();
+						if (showSeconds)
+							dateFormatter.formatString = "YYYY-MM-DD HH:NN:SS";
+						else
+						    dateFormatter.formatString = "YYYY-MM-DD HH:NN";                          
+						return dateFormatter.format(data);
+	     			 }
+	     		}
+	     	}
+	     	return null;
+        }	
+		
+		/** sets size to fit column width. Used by applications with custom renderers. */
+		public function set fitToContentWidth(value:Number):void {
+			_fitToContentWidth = value;
+			width = value;
+		}
+											  
+		/** This method calculates column width to accomodate the longest text in the column. */
+		public function get fitToContentWidth():Number {
+			// if application set a value, use it. Otherwize calculate.
+			if (!isNaN(_fitToContentWidth))
+				return _fitToContentWidth;
+			
+			// column styles
+			var fontFamily:String;
+			var fontSize:int;
+			var fontWeight:String;
+			var paddingRight:int;
+			var paddingLeft:int;
+			var maxColumnWidth:int = 0;
+			
+			// try yo determine styles from the renderer
+			var classFactory:ClassFactory = itemRenderer as ClassFactory;
+			var renderer:Object = classFactory.newInstance();
+			if (renderer == null)
+				return NaN;
+			
+			var eDataGrid:ECUITAdvancedDataGrid = owner as ECUITAdvancedDataGrid;		
+			if (eDataGrid == null)
+				return NaN;
+			
+			if (renderer is UITextField) {
+				var textRenderer:UITextField = renderer as UITextField;
+				// have to add renderer to get its styles
+				eDataGrid.addChild(textRenderer);
+				if (textRenderer.getStyle("fontFamily") != null) {
+					fontFamily = textRenderer.getStyle("fontFamily");
+					fontSize = textRenderer.getStyle("fontSize");
+					fontWeight = textRenderer.getStyle("fontWeight");
+					paddingRight = textRenderer.getStyle("paddingRight"); 
+					paddingLeft = textRenderer.getStyle("paddingLeft");
+				}
+				eDataGrid.removeChild(textRenderer);
+				
+				// determine the widest text width				
+				for each (var item:Object in eDataGrid.dataProvider) {					
+					var text:String = itemToLabel(item);
+					var columnWidth:int = calculateTextWidth(text, fontFamily, fontSize, fontWeight);
+					maxColumnWidth = Math.max(maxColumnWidth, columnWidth);
+				}
+			}
+			if (renderer is Button) {
+				var buttonRenderer:Button = renderer as Button;
+				trace("buttonRenderer " + buttonRenderer);
+				if (buttonRenderer != null) {
+					// have to add renderer to get its styles
+					eDataGrid.addChild(buttonRenderer);
+					if (buttonRenderer.getStyle("fontFamily") != null) {
+						fontFamily = buttonRenderer.getStyle("fontFamily");
+						fontSize = buttonRenderer.getStyle("fontSize");
+						fontWeight = buttonRenderer.getStyle("fontWeight");
+						paddingRight = buttonRenderer.getStyle("paddingRight"); 
+						paddingLeft = buttonRenderer.getStyle("paddingLeft");
+					}
+					
+					// determine the widest text width				
+					for each (item in eDataGrid.dataProvider) {					
+						text = itemToLabel(item);
+						columnWidth = calculateTextWidth(text, fontFamily, fontSize, fontWeight);
+						maxColumnWidth = Math.max(maxColumnWidth, columnWidth);
+					}
+					var icon:Class = buttonRenderer.getStyle("icon");
+					if (icon != null) {
+						maxColumnWidth += ICON_WIDTH_AND_PADDING;
+					}
+					eDataGrid.removeChild(buttonRenderer);
+				}
+			}
+			// make column wide enough for the column header
+			var headerWidth:int = calculateTextWidth(headerText, fontFamily, fontSize, fontWeight);
+			// if header is wider than any column content, we need to provide for potential sort indicator
+			var sortIndicatorWidth:int = 20;
+			if (headerWidth + sortIndicatorWidth > maxColumnWidth)
+				headerWidth += sortIndicatorWidth;
+			maxColumnWidth = Math.max(maxColumnWidth, headerWidth);
+			// add paddings
+			maxColumnWidth += paddingRight + paddingLeft + COLUMN_BORDER_PADDING;
+			
+			return maxColumnWidth;
+		}
+
+		/** This method calculates text width in pixels. */
+		protected function calculateTextWidth(text:String, fontFamily:String, fontSize:int, fontWeight:String):int {
+			var eDataGrid:ECUITAdvancedDataGrid = owner as ECUITAdvancedDataGrid;	
+			
+			// create an instance of UITextFormat with font size and font family from the style sheet
+			var bold:Boolean;
+			if (fontWeight == "bold")
+				bold = true;
+			var uiTextFormat:UITextFormat = new UITextFormat(eDataGrid.systemManager, fontFamily, fontSize, null, bold);
+			uiTextFormat.antiAliasType = "normal";
+			uiTextFormat.gridFitType = "none";
+			
+			// determine width of the text in pixels
+			return uiTextFormat.measureText(text).width;
+		}
+		
+		/** Property indicating whether to calculate width of the colulmn to fit the content ot not. */
+		public function set fitToContent(value:Boolean):void {
+			_fitToContent =  value;
+		}
+		public function get fitToContent():Boolean {
+			return _fitToContent;
+		}
+		
+	}	
+}

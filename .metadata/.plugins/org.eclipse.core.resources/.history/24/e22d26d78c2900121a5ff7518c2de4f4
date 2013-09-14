@@ -1,0 +1,258 @@
+/**
+ *
+ * Copyright: Copyright (c) 2010
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.debug {
+    import com.emc.efx.UxConstants;
+    import com.emc.efx.core.extensionmgr.UxDefaultService;
+    import com.emc.efx.core.extensionmgr.UxExtensionManager;
+    import com.emc.efx.core.extensionmgr.UxServiceInformation;
+    import com.emc.efx.core.loggingmgr.IUxLoggingMgr;
+    import com.emc.efx.core.loggingmgr.UxLoggingMgr;
+    import com.emc.efx.core.resourcemanager.UxResourceManager;
+    import com.emc.efx.services.mode.IUxModeService;
+    import com.emc.efx.services.mode.UxModeService;
+    import com.emc.efx.services.mode.events.UxModeServiceEvent;
+    import com.emc.efx.utilities.UxApplicationUtils;
+    import com.emc.efx.utilities.errors.UxError;
+    import com.emc.efx.utilities.map.UxHashMap;
+    import com.emc.efx.utilities.map.UxHashMapEntry;
+    
+    import flash.display.DisplayObject;
+    import flash.events.MouseEvent;
+    
+    import mx.events.FlexEvent;
+
+    public class UxDebugService extends UxDefaultService
+        implements IUxDebugService {
+        /**
+         * Instance of the logging manager
+         */
+        private var loggingMgr:IUxLoggingMgr = UxLoggingMgr.getInstance();
+
+
+        /** Map of registered debug panels. The key is the unique name for debug panel.
+         * The values are in the form of Object having 'panel' and 'userFacing' as properties.
+         * 'panel' contains the actual debug panel while 'userFacing' is a Boolean property indicating whether
+         * the panel is userFacing or not. */
+        private var _registeredDebugPanels:UxHashMap = new UxHashMap();
+
+        /** Whether to show user facing panel or not. */
+        private var _enableUserFacingPanels:Boolean = true;
+        internal var debugDialog:UxDebugDialog = null;
+
+        /** Resource bundle. */
+        public static const DEBUGSERVICE_RESOURCE_BUNDLE:String = "debugservice";
+
+        /** Whether debug dialog currently open has userfacing tabs only or has all tabs. */
+        private var _userFacingOnly:Boolean = false;
+
+        /**
+         * @inheritDoc
+         */
+        override public function start(serviceInformation:UxServiceInformation):void {
+
+            // Set up default modes
+            registerDefaultDebugPanels();
+
+            // Register with Mode Service for debug mode
+            var modeService:IUxModeService =
+                UxExtensionManager.getInstance().getService(UxConstants.
+                MODE_SERVICE) as IUxModeService;
+            if (modeService != null) {
+                modeService.addEventListener(UxModeServiceEvent.MODE_STATE_CHANGED,
+                    handleModeChanged);
+            }
+            enableUserFacingPanels = true;
+            // Do rest of the default startup
+            super.start(serviceInformation);
+
+            loggingMgr.logDebug(this, "Debug Service started successfully");
+        }
+
+
+        /**
+         * @private
+         * handles the debug  mode changed
+         */
+        private function handleModeChanged(event:UxModeServiceEvent):void {
+            if (event.mode.name == UxModeService.DEBUG_MODE) {
+                if (event.mode.active) {
+                    showDebugDialog(false);
+                } else {
+                    if (debugDialog != null) {
+                        debugDialog.close();
+                    }
+                }
+            }
+        }
+
+        /**
+         * Handles application click
+         */
+        private function handleApplicationClick(event:MouseEvent):void {
+            // If clicked on top-left corner with Ctrl/Alt OR Ctrl/Shift,
+            // then display the debug dialog with user facing panels.
+            if (((event.ctrlKey && event.altKey) ||
+                (event.ctrlKey && event.shiftKey)) &&
+                (event.stageX < 100 && event.stageY < 100)) {
+                showDebugDialog(true);
+            }
+        }
+
+        /**
+         * Helper method to display debug dialog
+         */
+        public function showDebugDialog(showUserFacingPanelsOnly:Boolean=
+            false):void {
+            // If dialog already open, then check if the dialog type is the same. If not, close dialog and reopen it.
+            if (debugDialog && _userFacingOnly != showUserFacingPanelsOnly) {
+                debugDialog.close();
+            }
+            if (debugDialog == null) {
+                debugDialog =
+                    new UxDebugDialog(this,
+                    getDebugPanels(showUserFacingPanelsOnly));
+                _userFacingOnly = showUserFacingPanelsOnly;
+                if (showUserFacingPanelsOnly) {
+                    debugDialog.title =
+                        UxResourceManager.getInstance().
+                        getString(UxDebugService.DEBUGSERVICE_RESOURCE_BUNDLE,
+                        "UITRACE_DIALOG_STR");
+                } else {
+                    debugDialog.title =
+                        UxResourceManager.getInstance().
+                        getString(UxDebugService.DEBUGSERVICE_RESOURCE_BUNDLE,
+                        "DEBUG_DIALOG_STR");
+                }
+                debugDialog.addEventListener(FlexEvent.REMOVE, onDialogRemoved,
+                    false, 0, true);
+                debugDialog.show(null);
+            }
+        }
+
+        /**
+         * On dialog closed.
+         */
+        private function onDialogRemoved(event:FlexEvent):void {
+            debugDialog = null;
+        }
+
+        /**
+         * @private
+         * Registers default debug panels with the debug service
+         */
+        private function registerDefaultDebugPanels():void {
+            // Memory Log panel
+            var memoryLogPanel:UxMemoryLogPanel = new UxMemoryLogPanel();
+            addDebugPanel("MemoryLogPanel", memoryLogPanel, true);
+        }
+
+
+        /**
+         * @inheritDoc
+         */
+        public function addDebugPanel(key:String, debugPanel:DisplayObject,
+            userFacing:Boolean=false):Boolean {
+            if (key == null) {
+                throw new UxError("Debug panel key cannot be null");
+
+            }
+
+            if (debugPanel == null) {
+                throw new UxError("Debug panel cannot be null");
+            }
+
+            // check if this debug panel already exists 
+            if (_registeredDebugPanels.containsKey(key)) {
+                return false;
+            }
+
+            _registeredDebugPanels.put(key,
+                {panel: debugPanel, userFacing: userFacing});
+            return true;
+        }
+
+
+        /**
+         * @inheritDoc
+         */
+        public function removeDebugPanel(key:String):Boolean {
+            if (_registeredDebugPanels.containsKey(key)) {
+                var obj:Object = _registeredDebugPanels.remove(key);
+                return true;
+            }
+
+            return false;
+        }
+
+        /**
+         * @inheritDoc
+         */
+        public function getDebugPanel(key:String):DisplayObject {
+            var debugPanel:DisplayObject;
+            var obj:Object = _registeredDebugPanels.getValue(key);
+            if (obj.hasOwnProperty("panel") && obj["panel"] is DisplayObject) {
+                debugPanel = obj["panel"];
+            }
+            return debugPanel;
+        }
+
+        /**
+         * Helper method to get the array of debug panels from the _registeredDebugPanels hashmap.
+         */
+        private function getDebugPanels(onlyUserFacing:Boolean=false):Array {
+            var debugPanels:Array = new Array();
+            for each (var entry:UxHashMapEntry in(_registeredDebugPanels.
+                getEntries())) {
+                var obj:Object = entry.value;
+                if (obj.hasOwnProperty("panel") &&
+                    obj["panel"] is DisplayObject) {
+                    var panelUserFacing:Boolean = obj["userFacing"] as Boolean;
+                    var addPanel:Boolean = true;
+                    if (onlyUserFacing) {
+                        if (!panelUserFacing) {
+                            addPanel = false;
+                        }
+                    }
+                    if (addPanel) {
+                        debugPanels.push(obj["panel"]);
+                    }
+                }
+            }
+            return debugPanels;
+        }
+
+        /**
+         * @inheritDoc
+         */
+        public function get enableUserFacingPanels():Boolean {
+            return _enableUserFacingPanels;
+        }
+
+        public function set enableUserFacingPanels(value:Boolean):void {
+            _enableUserFacingPanels = value;
+            if (value) {
+                UxApplicationUtils.application.stage.addEventListener(MouseEvent.CLICK,
+                    handleApplicationClick, true);
+            } else {
+                UxApplicationUtils.application.stage.removeEventListener(MouseEvent.CLICK,
+                    handleApplicationClick);
+            }
+        }
+
+        /**
+         * @inheritDoc
+         */
+        public function updateDebugPanel(debugPanelName:String,
+            userFacing:Boolean):void {
+            var obj:Object = _registeredDebugPanels.getValue(debugPanelName);
+            if (obj && obj.hasOwnProperty("userFacing")) {
+                obj["userFacing"] = userFacing;
+            }
+        }
+    }
+}

@@ -1,0 +1,335 @@
+
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard;
+import com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard;
+import com.emc.fma.views.Dashboard.ConfigurationWizard.Browse;
+import com.emc.fma.views.Schedule.ScheduleWizard.TaskType;
+
+import mx.binding.utils.ChangeWatcher;
+import mx.collections.ArrayCollection;
+import mx.collections.XMLListCollection;
+import mx.events.FlexEvent;
+import mx.events.ItemClickEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+private var _initialized:Boolean = false;
+private var response:XMLList;
+public var PathValue:String;
+private var myWatcher:ChangeWatcher;
+[Bindable]
+private var listFileServers:XMLListCollection;
+[Bindable]
+private var typeArray:ArrayCollection = new ArrayCollection(["Celerra","VNX","VNXe","Isilon","NetApp"]);
+[Bindable]
+private var listFileSystems:XMLListCollection;
+[Bindable]
+private var listPath:XMLListCollection;
+private var NetappServerList:XMLListCollection;
+private var CelerraServerList:XMLListCollection;
+private var VNXServerList:XMLListCollection;
+private var VNXeServerList:XMLListCollection;
+private var IsilonServerList:XMLListCollection;
+private var SIDList:XMLListCollection;
+private var taskTypeState:String;
+private var protocolState:String;
+private var thisProtocolState:String;
+
+[Embed(source="../../../../../../../resources/images/assets/Add_16.png")]
+[Bindable]
+public var add_22x22:Class;
+[Embed(source="../../../../../../../resources/images/assets/Edit_16.png")]
+[Bindable]
+public var edit_22x22:Class;
+private var setServerName:String = "";
+
+
+protected function creationCompleteHandler():void
+{
+  if (getData(TaskType.ATTR_TASK_TYPE) == "Repository Migration")
+  {
+    if (getData(TaskType.ATTR_PRIMARYSTORAGETYPE).toString() == "NAS")
+      protocolState = getData(TaskType.ATTR_PROTOCOL).toString();
+  }
+}
+
+override public function postDisplay():void
+{
+  
+  if (getData(TaskType.ATTR_TASK_TYPE) == "File Migration")
+  {
+    this.setStepTitle("Select Secondary Server");
+    VBox1.visible = true;
+    VBox1.includeInLayout = true;
+    RepositoryMigrationsVBox.visible = false;
+    RepositoryMigrationsVBox.includeInLayout = false;
+    VBox2.visible = false;
+    VBox2.includeInLayout = false;
+  }
+  else if (getData(TaskType.ATTR_TASK_TYPE) == "Repository Migration")
+  {
+    this.setStepTitle("Select Secondary Storage");
+    VBox1.visible = false;
+    VBox1.includeInLayout = false;
+    RepositoryMigrationsVBox.visible = true;
+    RepositoryMigrationsVBox.includeInLayout = true;
+    VBox2.visible = true;
+    VBox2.includeInLayout = true;
+    
+    if (getData(TaskType.ATTR_PRIMARYSTORAGETYPE).toString() == "NAS")
+    {
+      VBox2.setProtocol(getData(TaskType.ATTR_PROTOCOL).toString(),false);
+      
+      if (protocolState != getData(TaskType.ATTR_PROTOCOL).toString())
+        VBox2.listNASRepository.removeAll();
+      
+      protocolState = getData(TaskType.ATTR_PROTOCOL).toString();
+    }
+    else
+      VBox2.setProtocol(VBox2.getProtocol(),true);
+  }
+  
+  if (!_initialized)
+  {
+    _initialized = true;
+  }
+  
+  if (VBox1.visible)
+    callLater(updateSelf);
+  
+  enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+  validateNext();
+}
+
+public function updateSelf(name:String = ""):void
+{
+  RESTClient.sendGetRequest("/api/server", onComplete1, progress);
+  setServerName = name;
+  validateNext();
+}
+
+private function onComplete1(event:RESTEvent):void
+{
+  response = new XMLList(event.response);
+  CelerraServerList   = new XMLListCollection(response.FileServer.(elements('Type') == 'Celerra' && elements('Source') == 'true').Name);
+  VNXServerList     = new XMLListCollection(response.FileServer.(elements('Type') == 'VNX' && elements('Source') == 'true').Name);
+  VNXeServerList     = new XMLListCollection(response.FileServer.(elements('Type') == 'VNXe').Name);
+  IsilonServerList   = new XMLListCollection(response.FileServer.(elements('Type') == 'Isilon').Name);
+  NetappServerList   = new XMLListCollection(response.FileServer.(elements('Type') == 'NetApp' && elements('Source') == 'true').Name);
+  
+  
+  var xml:XML = <REQUEST/>;
+  RESTClient.sendPostRequest("/getSchedulePolicyList.htm", xml, onComplete2, progress);
+  
+  if (setServerName == "")
+  {
+    secondary.dataProvider = CelerraServerList;
+  }
+  else
+  {
+    // Get Server Type & Set Combobox Dataprovider
+    var setServerType:String = (new XMLListCollection(response.FileServer.(elements('Name') == setServerName).Type))[0].toString();
+    
+    secondary.dataProvider = new XMLListCollection(response.FileServer.(elements('Type') == setServerType).Name);
+    
+    var index:Number = -1;
+    
+    for ( var j:int = 0; j < secondary.dataProvider.source.length(); j++)
+      if (secondary.dataProvider.source[j].toString() == setServerName )
+      {
+        index = j;
+        break;
+      }
+    
+    if (index != -1)
+      secondary.selectedIndex = index;
+    
+  }
+  
+  path.text = null;
+  
+  validateNext();
+}
+
+private function onComplete2(event:RESTEvent):void
+{
+  response = new XMLList(event.response);
+  SIDList = new XMLListCollection(response.sid);
+  sid.dataProvider = SIDList;
+}
+
+override protected function save():void
+{
+  if (!isCurrentStep())return;
+  
+  if (VBox1.visible)
+  {
+    setData(TaskType.ATTR_SECONDARYSERVER,secondary.selectedItem);
+    setData(TaskType.ATTR_SECONDARYFILESYSTEM,path.text);
+    setData(TaskType.ATTR_SIDFILE,sid.selectedItem.toString());
+    if (networkBW.text != "")
+      setData(TaskType.ATTR_NETWORKBANDWIDTH,networkBW.text);
+    else
+      setData(TaskType.ATTR_NETWORKBANDWIDTH,"100");
+    
+    if (getData(TaskType.ATTR_PRIMARYTYPE).toString() == "Windows")
+      parentWizard.enableStep(Optional.STEP_POLICY, false);
+    else
+      parentWizard.enableStep(Optional.STEP_POLICY, true);
+  }
+  else if (VBox2.visible)
+  {
+    if (VBox2.secondaryGroup.selectedValue == "Cloud")
+    {
+      setData(TaskType.ATTR_SECONDARYSTORAGECLOUDTYPE,VBox2.cloud.selectedItem.toString().toLowerCase());
+      setData(TaskType.ATTR_SECONDARYSTORAGEENCRYPTION,VBox2.encryptionCheckbox.selected);      
+      setData(TaskType.ATTR_SECONDARYSTORAGECOMPRESSION,VBox2.compressionCheckbox.selected); 
+    } 
+      
+    setData(TaskType.ATTR_SECONDARYSTORAGETYPE,VBox2.secondaryGroup.selectedValue);    
+    setData(TaskType.ATTR_SECONDARYSTORAGE,VBox2.getSecondaryValue());
+  }
+  
+  stepComplete = true;
+}
+
+private function changeType():void
+{
+  if (type.selectedItem == "Celerra")
+    secondary.dataProvider = CelerraServerList;
+  
+  if (type.selectedItem == "VNX")
+    secondary.dataProvider = VNXServerList;
+  
+  if (type.selectedItem == "VNXe")
+    secondary.dataProvider = VNXeServerList;
+  
+  if (type.selectedItem == "Isilon")
+    secondary.dataProvider = IsilonServerList;
+  
+  if (type.selectedItem == "NetApp")
+    secondary.dataProvider = NetappServerList;
+  
+  path.text = null;
+  validateNext();
+}
+
+private function changePrimary():void
+{
+  path.text = null;
+  validateNext();
+}
+
+private function changeProtocol():void
+{
+  path.text = null;
+  validateNext();
+}
+
+protected function clickHandler(event:MouseEvent):void
+{
+  var dir:Browse = new Browse();
+  dir.fileServer = secondary.selectedItem.toString();
+  dir.protocol = getData(TaskType.ATTR_PROTOCOL).toString();
+  dir.ref = this;
+  dir.centerDialog();
+  dir.show(this.parent);
+  myWatcher = ChangeWatcher.watch(dir, "PathValue", watchPath);
+}
+
+private function watchPath(event:Event):void
+{
+  path.text = PathValue;
+  validateNext();
+  myWatcher.unwatch();
+}
+
+public function validateNext():void
+{
+  if (VBox1.visible)
+  {
+    if (StringUtil.trim(path.text) != "" && secondary.selectedItem != null)
+      enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    else
+      enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else if (VBox2.visible)
+  {
+    if (VBox2.secondaryGroup.selectedValue == "NAS")
+    {
+      if (VBox2.listNASRepository.length != 0)
+        enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      else
+        enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+    else if (VBox2.secondaryGroup.selectedValue == "NAS Group")
+    {
+      if (VBox2.NASGroup.length != 0)
+        enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      else
+        enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+    else if (VBox2.secondaryGroup.selectedValue == "Centera")
+    {
+      if (VBox2.CenteraFileServers.length != 0)
+        enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      else
+        enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+    else if (VBox2.secondaryGroup.selectedValue == "Cloud")
+    {
+      if (VBox2.cloud.selectedItem == "Atmos" && VBox2.AtmosFileServers.length != 0)
+        enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      else if (VBox2.cloud.selectedItem == "AmazonS3" && VBox2.AmazonFileServers.length != 0)
+        enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      else if (VBox2.cloud.selectedItem == "Azure" && VBox2.AzureFileServers.length != 0)
+        enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+      else
+        enableButtons(false, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+  }
+}
+
+protected function addNewServerClickHandler(event:MouseEvent):void
+{
+  var wizard:Object;
+  
+  if (type.selectedItem == "Celerra")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('Celerra');
+    wizard.show(this);
+  }
+  
+  if (type.selectedItem == "VNX")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('VNX');
+    wizard.show(this);
+  }
+  
+  if (type.selectedItem == "VNXe")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard('VNXe');
+    wizard.show(this);
+  }
+  
+  if (type.selectedItem == "Isilon")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard();
+    wizard.show(this);
+  }
+  
+  if (type.selectedItem == "NetApp")
+  {
+    wizard = new com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard();
+    wizard.show(this);
+  }
+}
+

@@ -1,0 +1,511 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.services.layout.section {
+
+    import com.emc.efx.core.resourcemanager.UxResourceManager;
+    import com.emc.efx.guitoolkit.action.IUxDisplayHandler;
+    import com.emc.efx.guitoolkit.action.UxDisplayHandler;
+    import com.emc.efx.guitoolkit.displaybuilders.IUxDisplayBuilder;
+    import com.emc.efx.services.layout.containers.UxNavigationContainer;
+    import com.emc.efx.services.navigation.IUxWorkingPageContainer;
+    import com.emc.efx.services.navigation.UxAbstractNavigationContainer;
+    import com.emc.efx.ux_internal;
+
+    import flash.utils.getDefinitionByName;
+
+    import mx.controls.Image;
+    import mx.core.UIComponent;
+    import mx.utils.UIDUtil;
+
+
+    /**
+     * Default implementation of the IUxSection. Provides information that allows us
+     * to add a section in a navigation panel.
+     */
+    public class UxDefaultSection implements IUxSection {
+
+        /** Sort order relative to other sections*/
+        protected var _sortOrder:int = 0;
+
+        /** Section key - used for navigation*/
+        protected var _key:String;
+
+        /** Is this the default section */
+        protected var _default:Boolean = false;
+
+        /** Display Handler */
+        protected var _displayHandler:IUxDisplayHandler = null;
+
+        /** Content View **/
+        protected var _contentView:UIComponent = null;
+
+        /** Content Classname **/
+        protected var _contentClass:String = null;
+
+        /** Navigation Order **/
+        private var _navOrder:int = -1;
+
+        /** Header Text */
+        protected var _headerText:String = null;
+
+        /** Description */
+        protected var _description:String = null;
+
+        /** Short Description */
+        protected var _shortDescription:String = null;
+
+        /** Icon */
+        protected var _icon:Image = null;
+
+        /** Small Icon */
+        protected var _smallIcon:Image = null;
+
+        /** Icon class */
+        protected var _iconSource:Class = null;
+
+        /** Small Icon class */
+        protected var _smallIconSource:Class = null;
+		
+		/** Dropdown Menu Icon Icon */
+		protected var _dropDownIcon:Image = null;
+		protected var _dropDownIconSource:Class = null;
+
+        /** Tooltip */
+        protected var _tooltip:String = null;
+
+        /** The unique identifier for this object. **/
+        private var _uid:String = null;
+
+        /**
+         * If this property is set to true, then the cached containers are cleared when navigating away from a navigation hierarchy
+         * and new instance of the section's contentView is created when that section is navigated to again.
+         */
+        private var _clearCachedContainersOnNavigation:Object = null;
+
+        /**
+         * Property to determine whether to display the section if none of its subsections are visible.
+         * This property is relevant only if the content view is a Navigation Container.
+         * If this property is false, then a section is not displayed if it's contentView has no visible subsections.
+         * If this property is true, then the section is displayed even if it has no visible subsections.
+         * By default, it is false.
+         */
+        protected var _displaySectionForNoSubsections:Boolean = false;
+
+
+        /**
+         * Object that can be set to hold custom information.
+         */
+        [Bindable]
+        public var userObject:Object = null;
+
+        /**
+         * Class Constructor
+         */
+        public function UxDefaultSection() {
+        }
+
+        /**
+         *
+         * Utility function to create a section.
+         *
+         * @param keyValue
+         * @param contentViewObject
+         * @param headerTextValue
+         * @param descriptionValue
+         * @param sortOrderValue
+         * @param isDefault
+         * @param imageIcon
+         * @param smallImageIcon
+         * @param tooltipString
+         * @return
+         *
+         */
+        public static function createSection(keyValue:String=null,
+            contentViewObject:UIComponent=null, headerTextValue:String=null,
+            descriptionValue:String=null, sortOrderValue:int=0,
+            isDefault:Boolean=false, imageIcon:Image=null,
+            smallImageIcon:Image=null,
+            tooltipString:String=null):UxDefaultSection {
+
+            var section:UxDefaultSection = new UxDefaultSection();
+            section.key = keyValue;
+            section.contentView = contentViewObject;
+            section.headerText = headerTextValue;
+            section.description = descriptionValue;
+            section.sortOrder = sortOrderValue;
+            section.defaultSection = isDefault;
+            section.icon = imageIcon;
+            section.smallIcon = smallImageIcon;
+            section.tooltip = tooltipString;
+            return section;
+        }
+
+        /**
+         * If this property is set to true, then the cached containers are cleared when navigating away from a navigation hierarchy
+         * and new instance of the section's contentView is created when that section is navigated to again.
+         * Default value is false.
+         */
+        public function get clearCachedContainersOnNavigation():Object {
+            return _clearCachedContainersOnNavigation;
+        }
+
+        public function set clearCachedContainersOnNavigation(value:Object):void {
+            _clearCachedContainersOnNavigation = value;
+            // The property needs to be applied recursively from section to its contentView to the contentView's sections
+            if (_contentView && (_contentView is UxAbstractNavigationContainer)) {
+                updateCachingProperty(_contentView as
+                    UxAbstractNavigationContainer);
+            }
+        }
+
+        /**
+         * Key that represents this section.
+         * Multiple sections with the same key can be created with display handlers
+         * such that only one of them is visible at a time.
+         **/
+        public function get key():String {
+            return _key;
+        }
+
+        public function set key(keyString:String):void {
+            _key = keyString
+        }
+
+        [Bindable]
+        /**
+         * The content panel to be displayed for this section.
+         * Either contentView or contentClass should be set.
+         */
+        public function get contentView():UIComponent {
+            return _contentView;
+        }
+
+        public function set contentView(view:UIComponent):void {
+            setContentView(view);
+        }
+
+        /**
+         * Helper method to set the content view and also perform
+         * some initialization based on type of contentView.
+         *
+         * @param view
+         *
+         */
+        private function setContentView(view:UIComponent):void {
+			if (view) {
+				contentClass = flash.utils.getQualifiedClassName(view);
+			}
+            if (view != null && view is IUxWorkingPageContainer) {
+                _contentView = new UxNavigationContainer();
+                (_contentView as UxNavigationContainer).contentPanel = view;
+                (_contentView as UxNavigationContainer).sections =
+                    (view as IUxWorkingPageContainer).workingPages;
+            } else {
+                _contentView = view;
+            }
+
+            if (_contentView != null &&
+                (_contentView is UxAbstractNavigationContainer)) {
+                // Update the navigation container with navigation order.
+                //This is to auto calculate the navigation order for the
+                //hierarchy of sections and containers.
+                updateNavigationOrder(UxAbstractNavigationContainer(_contentView));
+                updateCachingProperty(UxAbstractNavigationContainer(_contentView));
+            }
+        }
+
+        [Bindable]
+        /**
+         * The classname of the content panel to be displayed for this section.
+         * If classname is set, then an object of the provided class is created
+         * and used as the content panel for the section.
+         * Either contentView or contentClass should be set.
+         */
+        public function get contentClass():String {
+            return _contentClass;
+        }
+
+        public function set contentClass(className:String):void {
+            _contentClass = className;
+        }
+
+        [Bindable]
+        /**
+         * The header text for the section.
+         */
+        public function get headerText():String {
+            return _headerText;
+        }
+
+        public function set headerText(text:String):void {
+            _headerText = text;
+        }
+
+        [Bindable]
+        /**
+         * The description for the section.
+         */
+        public function get description():String {
+            return _description;
+        }
+
+        public function set description(descText:String):void {
+            _description = descText;
+        }
+
+        [Bindable]
+        /**
+         * Short description for the section. If set, this is used in the section dropdown menu.
+         */
+        public function get shortDescription():String {
+            return _shortDescription;
+        }
+
+        public function set shortDescription(descText:String):void {
+            _shortDescription = descText;
+        }
+
+        [Bindable]
+        /**
+         * Tooltip for the section.
+         */
+        public function get tooltip():String {
+            return _tooltip;
+        }
+
+        public function set tooltip(tooltipString:String):void {
+            _tooltip = tooltipString;
+        }
+
+        [Bindable]
+        /**
+         * Icon for the section.
+         */
+        public function get icon():Image {
+            if (_icon == null) {
+                _icon = new Image();
+                if (iconSource != null) {
+                    _icon.source = iconSource;
+                }
+            }
+            return _icon;
+        }
+
+        public function set icon(image:Image):void {
+            if (image != null)
+                _icon = image;
+        }
+
+        /**
+         * Source for Icon for the section.
+         */
+        public function get iconSource():Class {
+            return _iconSource;
+        }
+
+        public function set iconSource(className:Class):void {
+            _iconSource = className;
+        }
+
+        [Bindable]
+        /**
+         * Small icon for the section.
+         */
+        public function get smallIcon():Image {
+            if (_smallIcon == null) {
+                _smallIcon = new Image();
+                if (smallIconSource != null) {
+                    _smallIcon.source = smallIconSource;
+                }
+            }
+            return _smallIcon;
+        }
+
+        public function set smallIcon(image:Image):void {
+            if (image != null)
+                _smallIcon = image;
+        }
+
+        /**
+         * Source for Small Icon for the section.
+         */
+        public function get smallIconSource():Class {
+            return _smallIconSource;
+        }
+
+        public function set smallIconSource(className:Class):void {
+            _smallIconSource = className;
+        }
+
+		/**
+		 * Source for Dropdown Icon for the section.
+		 */
+		public function get dropDownIconSource():Class {
+			return _dropDownIconSource;
+		}
+		
+		public function set dropDownIconSource(className:Class):void {
+			_dropDownIconSource = className;
+		}
+		[Bindable]
+		/**
+		 * Small icon for the section.
+		 */
+		public function get dropDownIcon():Image {
+			if (_dropDownIcon == null && dropDownIconSource != null) {
+				_dropDownIcon = new Image();
+				dropDownIcon.source = dropDownIconSource;
+			}
+			return _dropDownIcon;
+		}
+		
+		public function set dropDownIcon(image:Image):void {
+			if (image != null)
+				_dropDownIcon = image;
+		}
+        /**
+         * DisplayHandler for the section.
+         * This can have rules that control the visibility of the section.
+         */
+        [Bindable]
+        public function get displayHandler():IUxDisplayHandler {
+            if (_displayHandler == null) {
+                setDisplayHandler(new UxDisplayHandler());
+            }
+            return _displayHandler;
+        }
+
+        public function set displayHandler(handler:IUxDisplayHandler):void {
+            setDisplayHandler(handler);
+        }
+
+        /**
+         * Private helper method to set display handler
+         *
+         */
+        private function setDisplayHandler(handler:IUxDisplayHandler):void {
+            _displayHandler = handler;
+            if (_displayHandler != null && !_displaySectionForNoSubsections) {
+                _displayHandler.addRule(new UxSectionRule(this));
+            }
+        }
+
+        /**
+         * Sort order relative to other sections.
+         */
+        public function get sortOrder():int {
+            return _sortOrder;
+        }
+
+        public function set sortOrder(value:int):void {
+            _sortOrder = value;
+        }
+
+        /**
+         * Boolean property to define if the section is the default one
+         * to be displayed or not.
+         */
+        public function get defaultSection():Boolean {
+            return _default;
+        }
+
+        public function set defaultSection(value:Boolean):void {
+            _default = value;
+        }
+
+        /**
+         *
+         * Utility function to set resources for a section through a displayBuilder.
+         *
+         */
+        public function set displayBuilder(builder:IUxDisplayBuilder):void {
+            icon = builder.image;
+            smallIcon = builder.smallImage;
+            headerText = builder.localizedName;
+            description = builder.localizedText;
+            tooltip = builder.toolTip;
+        }
+
+        /**
+         * Private function.
+         * The property needs to be applied recursively from section to its contentView to the contentView's sections
+         */
+        private function updateCachingProperty(container:UxAbstractNavigationContainer):void {
+            if (clearCachedContainersOnNavigation != null) {
+                container.ux_internal::
+                    clearCachedContainersOnNavigation =
+                    clearCachedContainersOnNavigation;
+            }
+        }
+
+        /**
+         * Update the navigation container with navigation order.
+         * This is to auto calculate the navigation order for the
+         * hierarchy of sections and containers.
+         */
+        private function updateNavigationOrder(container:UxAbstractNavigationContainer):void {
+
+            if (ux_internal::navigationOrder != -1) {
+                container.navigationOrder = ux_internal::navigationOrder;
+            }
+        }
+
+        /**
+         * Navigation order for the section. Used to automatically
+         * update navigationOrder of the container.
+         * If you are defining a container, you should not need to set this property
+         */
+        ux_internal function get navigationOrder():int {
+            return _navOrder;
+        }
+
+        ux_internal function set navigationOrder(value:int):void {
+            if (value > -1) {
+                _navOrder = value;
+                if (_contentView &&
+                    (_contentView is UxAbstractNavigationContainer)) {
+                    updateNavigationOrder(UxAbstractNavigationContainer(_contentView));
+                }
+            }
+        }
+
+
+        /**
+         * Property to determine whether to display the section if none of its subsections are visible.
+         * This property is relevant only if the content view is a Navigation Container.
+         * If this property is false, then a section is not displayed if it's contentView has no visible subsections.
+         * If this property is true, then the section is displayed even if it has no visible subsections.
+         * By default, it is true.
+         */
+        public function set displaySectionForNoSubsections(value:Boolean):void {
+            _displaySectionForNoSubsections = value;
+        }
+
+        /**
+         *  The unique identifier for this object.
+         *  Multiple sections with the same key can be created with display handlers
+         *  such that only one of them is visible at a time.
+         */
+        public function get uid():String {
+            if (_uid == null) {
+                _uid = UIDUtil.createUID();
+            }
+            return _uid;
+        }
+
+        /**
+         * Required function for IMXMLObject interface
+         * @param document
+         * @param id
+         *
+         */
+        public function initialized(document:Object, id:String):void { // No PMD
+        }
+    }
+}
+

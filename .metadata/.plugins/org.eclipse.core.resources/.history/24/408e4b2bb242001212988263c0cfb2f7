@@ -1,0 +1,253 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+
+import mx.binding.utils.ChangeWatcher;
+import mx.events.ListEvent;
+import mx.resources.ResourceManager;
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+public static const ATTR_DESTINATION_STATE  :String = "DESTINATIONSTATE";
+public static const ATTR_DESTINATION_TYPE    :String = "DESTINATIONTYPE";
+public static const ATTR_DESTINATION_LIST    :String = "DESTINATION_LIST";
+public static const ATTR_DESTINATION      :String = "DESTINATION";
+public static const ATTR_DELAY_PERIOD      :String = "DELAYPERIOD";
+public static const ATTR_DEST_CENTERA    :String = "Centera";
+public static const ATTR_DEST_ATMOS      :String = "Atmos";
+public static const ATTR_DEST_AMAZONS3    :String = "AmazonS3";
+public static const ATTR_DEST_AZURE    :String = "Azure";
+public static const ATTR_NAS        :String = "nas";
+public static const ATTR_DEST_REPOSITORY    :String = "Repository";
+public static const ATTR_FILE_SERVER_SELECTION  :String = "FILE_SERVER";
+public static const ATTR_SID_SELECTION  :String = "SID_SELECTION";
+public static const ATTR_NETWORK_BANDWIDTH  :String = "NETWORK_BANDWIDTH";
+public static const ATTR_DESTINATION_PATH  :String = "DESTINATION_PATH";
+private var myWatcher:ChangeWatcher ;
+private var testDir:String ;
+public var PathValue:String ;
+
+public var _defaultEnterName:String = "";
+
+
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    // Pull defaults from wizard data
+    var def:Object;
+
+    if (def != null)
+    {
+      _defaultEnterName = String(def);
+    }
+
+    _initialized = true;
+  }
+
+  var obj_state:Object = getData(SourceSelection.ATTR_STATE).toString() ;
+
+  if ( obj_state == SourceSelection.ATTR_RMSTATE || obj_state == SourceSelection.ATTR_RMNFSSTATE)
+  {
+    var obj:Object = getData(ATTR_DESTINATION_STATE)
+
+                     if (obj != null )
+    {
+      if (obj == "fileMigration")
+      {
+        if (obj_state == SourceSelection.ATTR_RMSTATE || obj_state == SourceSelection.ATTR_RMNFSSTATE)
+        {
+          currentState = "repositoryMigration";
+          destinationType.selectedIndex = 0;
+          destinDropDown.dataProvider = getData(TaskType.ATTR_CENTERA) ;
+        }
+      }
+      else
+      {
+        currentState = getData(ATTR_DESTINATION_STATE).toString();
+      }
+
+      if (currentState == "NFS_CIFS")
+      {
+        destinList.dataProvider = getData(SourceSelection.ATTR_REPOSITORY_LIST) as ArrayCollection ;
+
+        if (getData(ATTR_DESTINATION) != null)
+        {
+          var tempArray:Array = (getData(ATTR_DESTINATION) as ArrayCollection).source ;
+          destinList.selectedItems = tempArray ;
+        }
+      }
+    }
+    else
+    {
+      currentState = "repositoryMigration";
+      destinDropDown.dataProvider = getData(TaskType.ATTR_CENTERA) ;
+    }
+
+    if (getData(ATTR_DELAY_PERIOD) == null)
+    {
+      delayPeriod.text = "0";
+    }
+  }
+  else if ( obj_state == SourceSelection.ATTR_NONRMSTATE )
+  {
+    currentState = "fileMigration";
+    fileServer.dataProvider = getData(TaskType.ATTR_ISSOURCEFS) as ArrayCollection;
+    var index_s:int = (fileServer.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_FILE_SERVER_SELECTION));
+
+    if (index_s > -1)
+    {
+      fileServer.selectedIndex = index_s ;
+    }
+
+    sid.dataProvider = getData(TaskType.ATTR_SID) as ArrayCollection;
+    var index_sid:int = (sid.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_SID_SELECTION));
+
+    if (index_sid > -1)
+    {
+      sid.selectedIndex = index_sid ;
+    }
+
+    if (getData(ATTR_NETWORK_BANDWIDTH) == null)
+    {
+      networkBandwidth.text = "0";
+      destinationPath.text = "";
+    }
+    else if (getData(ATTR_NETWORK_BANDWIDTH) != null)
+    {
+      networkBandwidth.text = getData(ATTR_NETWORK_BANDWIDTH).toString() ;
+      destinationPath.text  = getData(ATTR_DESTINATION_PATH).toString() ;
+    }
+  }
+
+  setData(ATTR_DESTINATION_STATE,currentState);
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+  _updateButton();
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+protected function _updateButton():void
+{
+  if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+
+  updateButtons();
+}
+private function updateButtons():void
+{
+  if (currentState == "repositoryMigration" && delayPeriod.text != "" && destinDropDown.dataProvider.length > 0)
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else if (currentState == "NFS_CIFS"  && delayPeriod.text != "" && destinList.selectedItems.length >0 )
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else if (currentState == "fileMigration" && destinationPath.text != ""  && networkBandwidth.text != "")
+  {
+    enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+  else {
+    enableButtons(!_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+  }
+}
+override protected function save(): void
+{
+
+  setData(ATTR_DESTINATION_STATE,currentState);
+
+  if (currentState == "fileMigration")
+  {
+    setData(ATTR_FILE_SERVER_SELECTION,fileServer.selectedLabel);
+    setData(ATTR_SID_SELECTION,sid.selectedLabel);
+    setData(ATTR_NETWORK_BANDWIDTH,networkBandwidth.text);
+    setData(ATTR_DESTINATION_PATH,destinationPath.text);
+  }
+  else if (currentState == "repositoryMigration")
+  {
+    setData(ATTR_DESTINATION_TYPE,destinationType.selectedLabel);
+    setData(ATTR_DESTINATION,destinDropDown.selectedLabel);
+    setData(ATTR_DELAY_PERIOD,delayPeriod.text);
+  }
+  else if (currentState == "NFS_CIFS")
+  {
+    setData(ATTR_DESTINATION_TYPE,destinationType.selectedLabel);
+    var arrayC:ArrayCollection = new ArrayCollection( destinList.selectedItems);
+    setData(ATTR_DESTINATION,arrayC);
+    setData(ATTR_DELAY_PERIOD,delayPeriod.text);
+  }
+
+  updateButtons();
+  stepComplete = true;
+}
+// Override as we have step specific validation
+override protected function validate(): Boolean
+{
+  return true;
+}
+protected function changeHandler(event:Event):void
+{
+  if (destinationType.selectedLabel == ATTR_DEST_CENTERA)
+  {
+    currentState = "repositoryMigration" ;
+    destinDropDown.dataProvider = getData(TaskType.ATTR_CENTERA) ;
+  }
+  else if (destinationType.selectedLabel == ATTR_DEST_ATMOS)
+  {
+    currentState = "repositoryMigration" ;
+    destinDropDown.dataProvider = getData(TaskType.ATTR_ATMOS) ;
+  }
+  else if (destinationType.selectedLabel == ATTR_DEST_AMAZONS3)
+  {
+    currentState = "repositoryMigration" ;
+    destinDropDown.dataProvider = getData(TaskType.ATTR_AMAZONS3) ;
+  }
+  else if (destinationType.selectedLabel == ATTR_DEST_AZURE)
+  {
+    currentState = "repositoryMigration" ;
+    destinDropDown.dataProvider = getData(TaskType.ATTR_AZURE) ;
+  }
+  else if (destinationType.selectedLabel == ATTR_DEST_REPOSITORY)
+  {
+    currentState = "NFS_CIFS" ;
+    var obj:Object = getData(SourceSelection.ATTR_REPOSITORY_LIST) ;
+
+    if (obj != null)
+    {
+      destinList.dataProvider = obj as ArrayCollection ;
+    }
+    else if (getData(SourceSelection.ATTR_REPOSITORY_LIST) == null)
+    {
+      destinList.dataProvider = getData(TaskType.ATTR_CIFS) as ArrayCollection ;
+      setData(SourceSelection.ATTR_REPOSITORY_LIST,destinList.dataProvider);
+    }
+  }
+
+  save();
+}
+protected function destinationType_changeHandler(event:ListEvent):void
+{
+  changeHandler(event);
+}
+protected function browse_clickHandler(event:MouseEvent):void
+{
+  var dir:DirectoryBrowser = new DirectoryBrowser();
+  dir.protocal = getData(SourceSelection.ATTR_PROTOCOL_SELECTION).toString() ;
+  dir.FileServer = fileServer.selectedLabel ;
+  dir.ref = this ;
+  dir.centerDialog() ;
+  dir.show(this.parent);
+  myWatcher = ChangeWatcher.watch(dir, "PathValue", watchPath);
+}
+public function watchPath(event:Event):void
+{
+  trace(PathValue);
+  destinationPath.text = PathValue ;
+  updateButtons();
+  myWatcher.unwatch();
+  //protocol.enabled = false ;
+}
+
+
+protected function fileServer_changeHandler(event:ListEvent):void
+{
+  destinationPath.text = "";
+  updateButtons();
+}
+

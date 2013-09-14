@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBox xmlns="com.emc.efx.guitoolkit.components.boxes.*"
+		xmlns:mx="http://www.adobe.com/2006/mxml" 
+		xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+		xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+		xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+		width="100%" paddingLeft="10" paddingRight="10" 
+		paddingBottom="10" paddingTop="10" 
+		height="100%" implements="com.emc.efx.services.navigation.IUxHasPayload"
+		xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+		xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" xmlns:s="library://ns.adobe.com/flex/spark">
+	
+	
+	<mx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.views.ProgressCanvas;
+			import com.emc.ecuit.flex.events.ECUITEvent;
+			import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+			import com.emc.ecuit.flex.services.rest.RestHTTPService;
+			import com.emc.efx.UxConstants;
+			import com.emc.efx.core.extensionmgr.UxExtensionManager;
+			import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+			import com.emc.efx.guitoolkit.events.UxViewEvent;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.efx.net.http.UxHttpResponse;
+			import com.emc.efx.services.navigation.IUxNavigationService;
+			import com.emc.efx.utilities.map.UxHashMap;
+			
+			import flash.sampler.NewObjectSample;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.AdvancedDataGrid;
+			import mx.controls.Button;
+			import mx.events.CloseEvent;
+			import mx.events.FlexEvent;
+			import mx.events.ItemClickEvent;
+			import mx.managers.PopUpManager;
+			import mx.resources.ResourceManager;
+			
+			[Bindable]public var Name:String;
+			[Bindable]public var typeValue:String   ;
+			[Bindable]public var Name_text:String = "";
+			[Bindable]public var enableCheck:Boolean = false;
+			[Bindable]private var _client:UxHttpClient;
+			[Bindable]private var dummy:String="*****" ;
+			[Bindable]private var nameEditable:Boolean=false ;
+			[Bindable]private var guid:String = "getID";
+			
+			private var _currentPayload:UxHashMap = null;
+			[Bindable] private var action:String;
+			override protected function initializeData():void {
+				super.initializeData();
+				if (currentPayload != null) {
+					var Name:String = currentPayload.getValue("Name");
+					if (Name != "") {
+						nameEditable = false ;
+						enableCheck	= "yes" == currentPayload.getValue("Enable") ? true : false ;
+						guid = currentPayload.getValue("Guid");
+						typeValue = currentPayload.getValue("Type");
+						if(typeValue == "Super User"){
+							SuperUser.selected = true;
+						}
+						
+						if(Name == "")
+							viewBlock.title=Name + " Properties" ;
+						else 
+							viewBlock.title="User Properties" ;
+						Name_text = Name;
+						action = "edit" ;
+					}else{
+						nameEditable = true ;
+						createNew();
+						action = "add" ;
+					}
+				}
+			}
+			[Bindable]
+			public function set currentPayload(value:UxHashMap):void {
+				_currentPayload = value;
+			}
+			
+			public function get currentPayload():UxHashMap {
+				return _currentPayload;
+			}
+			
+			private function getItem():void{
+				
+				
+			}
+			protected function usrType_itemClickHandler(event:ItemClickEvent):void
+			{
+				// TODO Auto-generated method stub
+				
+			}
+			private function createNew():void{
+				dummy = "" ;
+			}
+			
+			[Bindable] private var isilonIPs:ArrayCollection = new ArrayCollection();
+			[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+			[Bindable] private var response:XMLList
+			private function onComplete(event:Event):void{
+				viewBlock.updateProgress(100, "default");
+				response = new XMLList(_client.response.body);
+			}
+			
+			private function onOK(event:MouseEvent):void {
+				
+				_client = new UxHttpClient();
+				_client.addEventListener(Event.COMPLETE, save);
+				
+				if(usrName.text.length == 0){
+					ECUITPopupDialog.showMessageDialog(this,"User can not be Empty","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				}
+				
+				if(newPass.text != confPass.text){
+					ECUITPopupDialog.showMessageDialog(this,"Password and Confirm Password are not same","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				} 
+				
+				var xml:XML = <REQUEST/>;
+				xml.appendChild(<action>{action}</action>);
+				xml.appendChild(<Name>{usrName.text}</Name>);
+				xml.appendChild(<Password>{newPass.text}</Password>);
+				if(SuperUser.selected){
+					xml.appendChild(<Type>SuperUser</Type>);
+				}else if(RegularUser.selected){
+					xml.appendChild(<Type>RegularUser</Type>);
+				}
+				xml.appendChild(<enable>{usrEnable.selected.toString()}</enable>);
+				xml.appendChild(<GUID>{guid}</GUID>);
+				
+				var data:ByteArray = new ByteArray();
+				data.writeUTFBytes(xml);
+				_client.sendPostRequest(new UxURL(resourceManager.getString('fma','ALLICATION_CONTEXT')+ "saveUser.htm"), data); 
+				viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+				viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+			}
+			private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+			{
+				viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+				viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+				viewBlock.lastRefreshDate = new Date();
+				onCanel(event);
+			}
+			private function save(event:Event):void{
+				viewBlock.updateProgress(100, "default");
+				var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+				dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+			}
+			private function onCanel(event:Event):void {
+				var navService:IUxNavigationService =
+					UxExtensionManager.getInstance().getService(UxConstants.
+						NAVIGATION_SERVICE) as IUxNavigationService;
+				var location:Array = new Array;
+				location = navService.currentLocation;
+				location.pop();
+				navService.navigate(location);
+			}
+			protected function CreateNAS_creationCompleteHandler(event:FlexEvent):void
+			{
+				
+				
+				// TODO Auto-generated method stub
+			}
+			
+		]]>
+	</mx:Script>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*"
+				 xmlns:mx="http://www.adobe.com/2006/mxml" id="viewBlock"
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 title="Create User" width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		<mx:Box  width="100%" paddingLeft="10" paddingRight="10" id="tabContainer"
+				 paddingBottom="10" paddingTop="10"  
+				 height="100%">
+			<mx:Form>
+				<mx:FormItem label="Name">
+					<mx:TextInput id="usrName" text="{Name_text}" editable="{nameEditable}" width="{parseFloat(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Enabled">
+					<mx:CheckBox id="usrEnable" selected="{enableCheck}"/>
+				</mx:FormItem>
+				<mx:FormItem label="New Password">
+					<mx:TextInput id="newPass" text="{dummy}" displayAsPassword="true" width="{parseFloat(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Confirm New Password">
+					<mx:TextInput id="confPass" text="{dummy}" displayAsPassword="true" width="{parseFloat(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+				</mx:FormItem>
+				<mx:FormItem label="Type">
+					<mx:HBox>
+						<mx:RadioButtonGroup id="usrType" itemClick="usrType_itemClickHandler(event)"/>
+						<mx:RadioButton id="SuperUser" label="Super User" groupName="usrType" paddingLeft="15"/>
+						<mx:RadioButton id="RegularUser" label="Regular User" groupName="usrType" paddingLeft="15" selected="true" />	
+					</mx:HBox>
+				</mx:FormItem>
+			</mx:Form>
+		<mx:HBox height="100%" />
+			<mx:HBox>
+				<buttons:UxButton id="commitChanges" label="Save" click="onOK(event)" />
+				<buttons:UxButton id="cancelChanges" label="Cancel" click="onCanel(event)" />
+			</mx:HBox>
+		</mx:Box>
+	</UxViewBlock>
+</UxVBox>

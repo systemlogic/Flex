@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250" creationComplete="taskType_creationCompleteHandler(event)"
+					  xmlns:controls="com.emc.ecuit.flex.components.controls.*" xmlns:views="com.emc.efx.guitoolkit.components.views.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.ecuit.flex.managers.ECUITResourceManager;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.fma.views.Utility.Command;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.resources.ResourceManager;
+			import mx.utils.StringUtil;
+			
+			// Suggested step name for use in id field of wizard decriptor XML file
+			private var _initialized:Boolean = false;
+			private var response:XMLList ;
+			private var archive:ArrayCollection;
+			private var multiTier:ArrayCollection;
+			private var multiTierStub:ArrayCollection;
+			private var deleteOrphan:ArrayCollection;
+			private var deleteStub:ArrayCollection;
+			private var fileMigration:ArrayCollection;
+			private var cifs:ArrayCollection;
+			private var nfs:ArrayCollection;
+			private var fsCifsNfs:ArrayCollection;
+			private var atmos:ArrayCollection;
+			private var centera:ArrayCollection;
+			private var amazons3:ArrayCollection;
+			private var provider:ArrayCollection;
+			private var sid:ArrayCollection;
+			private var sourcePath:ArrayCollection;
+			private var destinationPath:String;
+			private var bandwidth:String;
+			private var isSourceFS:ArrayCollection;
+			
+			public static const ATTR_SCHEDULE_TYPE  :String = "SCHEDULE_TYPE";
+			public static const ATTR_ARCHIVE        :String = "ARCHIVE";
+			public static const ATTR_MULTI_TIER     :String = "MULTI_TIER";
+			public static const ATTR_MULTI_TIER_STUB:String = "MULTI_TIER_STUB";
+			public static const ATTR_DELETE_ORPHAN  :String = "DELETE_ORPHAN";
+			public static const ATTR_DELETE_STUB    :String = "DELETE_STUB";
+			public static const ATTR_FILE_MIGRATION :String = "FILE_MIGRATION";
+			public static const ATTR_CIFS	        :String = "CIFS";
+			public static const ATTR_NFS	        :String = "NFS";
+			public static const ATTR_ISSOURCEFS     :String = "ISSOURCEFS";
+			public static const ATTR_ATMOS	        :String = "ATMOS";
+			public static const ATTR_CENTERA        :String = "CENTERA";
+			public static const ATTR_AMAZONS3       :String = "AMAZONS3";
+			public static const ATTR_PROVIDER       :String = "PROVIDER";
+			
+			public static const ATTR_Archive       	:String = "Archive";
+			public static const ATTR_Auxillary      :String = "Auxillary";
+			public static const ATTR_Delete		    :String = "Delete";
+			public static const ATTR_Migration      :String = "Migration";
+			public static const ATTR_SID		    :String = "SID";
+			
+			// Override if we have step specific display work to do
+			override public function postDisplay(): void 
+			{
+				if (!_initialized) 
+				{
+					_initialized = true;
+				}
+				
+				enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				enableButtons(true, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+			}
+			
+			// Override if we have step specific data to save
+			override protected function save(): void
+			{
+				stepComplete = true;
+				setData(ATTR_SCHEDULE_TYPE,		taskType.selectedLabel); 
+				setData(ATTR_ARCHIVE,        	archive);
+				setData(ATTR_MULTI_TIER,        multiTier);
+				setData(ATTR_MULTI_TIER_STUB,   multiTierStub);
+				setData(ATTR_DELETE_ORPHAN,     deleteOrphan);
+				setData(ATTR_DELETE_STUB,       deleteStub);
+				setData(ATTR_FILE_MIGRATION,    fileMigration);
+				setData(ATTR_CIFS,        		cifs);
+				setData(ATTR_NFS,        		nfs);
+				setData(ATTR_ATMOS,        		atmos);
+				setData(ATTR_CENTERA,        	centera);
+				setData(ATTR_AMAZONS3,        	amazons3);
+				setData(ATTR_ISSOURCEFS,       	isSourceFS);
+				setData(ATTR_PROVIDER,			provider);
+				setData(ATTR_SID,				sid);
+				
+				
+			}
+			private var _client:UxHttpClient;
+			protected function taskType_creationCompleteHandler(event:FlexEvent):void
+			{
+				
+				var xml:XML = <REQUEST/>; 
+				var cmd:Command = new Command(_client,onComplete,xml,"/getSchedulePolicyList.htm",progress);
+				_client = cmd.sendCommand();
+			}
+			
+			private function onComplete(event:Event):void{
+				progress.updateProgress(100, "default");
+				response = new XMLList(_client.response.body);
+				archive = new ArrayCollection();
+				multiTier = new ArrayCollection();
+				multiTierStub = new ArrayCollection();
+				deleteOrphan = new ArrayCollection;
+				deleteStub = new ArrayCollection();
+				fileMigration = new ArrayCollection();
+				cifs = new ArrayCollection();
+				nfs = new ArrayCollection();
+				isSourceFS = new ArrayCollection();
+				atmos = new ArrayCollection();
+				centera = new ArrayCollection();
+				amazons3 = new ArrayCollection();
+				provider = new ArrayCollection();
+				sid = new ArrayCollection();
+				for each (var temp : XML in response..sid ) {
+					sid.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..archive ) {
+					archive.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..multiTier ) {
+					multiTier.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..multiTierStub ) {
+					multiTierStub.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..deleteOrphan ) {
+					deleteOrphan.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..deleteStub ) {
+					deleteStub.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..fileMigration ) {
+					fileMigration.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..isSourceFS ) {
+					isSourceFS.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..cen ) {
+					centera.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..atm ) {
+					atmos.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..amzS3 ) {
+					amazons3.addItem(temp.toString());
+				}
+				for each (var temp : XML in response..provider ) {
+					provider.addItem(temp.toString());
+				}
+				for each (var temp : XML in response.rep ) {
+					var myStr:String = temp[0].toString();
+					if( myStr.indexOf( "\\\\", 0 ) != -1 )
+					{
+						cifs.addItem(temp[0].toString())
+					}
+					else{
+						nfs.addItem(temp[0].toString())
+					}
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<views:UxProgressCanvas id="progress" width="100%" height="100%" >
+		<mx:Form>
+			<mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_TSK_TYPC')}" >
+				<mx:ComboBox selectedIndex="0" id="taskType">
+					<mx:ArrayCollection>
+						<fx:String>{ATTR_Archive}</fx:String>
+						<fx:String>{ATTR_Auxillary}</fx:String>
+						<fx:String>{ATTR_Delete}</fx:String>
+						<fx:String>{ATTR_Migration}</fx:String>
+					</mx:ArrayCollection>
+				</mx:ComboBox>
+			</mx:FormItem>		
+		</mx:Form>
+	</views:UxProgressCanvas>
+</wizards:UxWizardStep>

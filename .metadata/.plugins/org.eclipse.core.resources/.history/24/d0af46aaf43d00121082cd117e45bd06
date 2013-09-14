@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx" 
+			  implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+			  xmlns:views="com.emc.efx.guitoolkit.components.views.*" 
+			  xmlns:section="com.emc.efx.services.layout.section.*" 
+			  xmlns:datetime="com.emc.ecuit.flex.components.datetime.*" 
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+			  xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*" 
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*">
+	
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.efx.UxConstants;
+			import com.emc.efx.core.extensionmgr.UxExtensionManager;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.efx.services.navigation.IUxNavigationService;
+			import com.emc.efx.utilities.map.UxHashMap;
+			import com.emc.fma.views.Configuration.BackupRecovery.DirectoryBrowser;
+			import com.emc.fma.views.Utility.Command;
+			import com.emc.fma.views.Utility.UtilityFunctionClass;
+			
+			import flash.profiler.showRedrawRegions;
+			
+			import mx.binding.utils.ChangeWatcher;
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			import mx.resources.ResourceManager;
+			protected function getList_clickHandler(event:MouseEvent):void
+			{
+				var start:String = "NA" ;
+				if(startTime.dateEntry.selectedDate != null){	
+					start = startTime.dateEntry.selectedDate.fullYear + "-" +
+					UtilityFunctionClass.formatMonth(startTime.dateEntry.selectedDate.month ) + "-" +
+					UtilityFunctionClass.formatDate(startTime.dateEntry.selectedDate.date) + "," +
+					UtilityFunctionClass.formatTime(startTime.timeEntry.hoursIn24) + ":" +
+					UtilityFunctionClass.formatTime(startTime.timeEntry.minute) ;
+				}
+				var end:String = "NA" ;
+				if(endTime.dateEntry.selectedDate != null){	
+					end = endTime.dateEntry.selectedDate.fullYear + "-" +
+					UtilityFunctionClass.formatMonth(endTime.dateEntry.selectedDate.month ) + "-" +
+					UtilityFunctionClass.formatDate(endTime.dateEntry.selectedDate.date) + "," +
+					UtilityFunctionClass.formatTime(endTime.timeEntry.hoursIn24) + ":" +
+					UtilityFunctionClass.formatTime(endTime.timeEntry.minute) ;
+				}
+				 var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+				var map:UxHashMap = new UxHashMap();
+				var path:String ;
+				if(protocol_combo.selectedLabel == "CIFS"){
+					path = fsBrowse.text + "\\*"
+				}else if(protocol_combo.selectedLabel == "NFS"){
+					path = fsBrowse.text + "/*"
+				}
+				map.put("serverName", fileServer_combo.selectedLabel);
+				map.put("protocol", protocol_combo.selectedLabel);
+				map.put("path", fsBrowse.text);
+				map.put("startTime", start);
+				map.put("endTime", end);
+				map.put("orphanSelected", shwOrphan.selected);
+				if(shwOrphan.selected){
+					map.put("moreThan", orphanTime.selectedLabel);
+				}
+				var location:Array = new Array;
+				location = navService.currentLocation;
+				location.push(listPage.key)
+				navService.moveToChild(listPage.key, map); 
+				
+			}
+			public function get workingPages():Array {
+				var workingPageArray:Array = new Array();
+				workingPageArray.push(listPage);
+				return workingPageArray;
+			}
+			
+			protected function orphan_clickHandler(event:MouseEvent):void
+			{
+				if(shwOrphan.selected){
+					currentState = "orphan" ; 
+				}else if(!shwOrphan.selected){
+					currentState = "nonorphan" ; 
+				}
+			}
+			private var  _client:UxHttpClient ;
+			protected function init(event:FlexEvent):void
+			{
+				var xml:XML = <REQUEST/>;
+				xml.appendChild(<action>getSettings</action>);
+				var cmd:Command = new Command(_client,getLists,xml,"createChart.htm",viewBlock);
+				_client = cmd.sendCommand();
+								
+			}
+			[Bindable] private var response:XMLList ;
+			[Bindable] private var fsCollection:ArrayCollection ;
+			[Bindable]private var protoArray:ArrayCollection ;
+			[Bindable]private var lastSeen:ArrayCollection ;
+			private var myWatcher:ChangeWatcher ;
+			public var PathValue:String ;
+			private function getLists(event:Event):void{
+				viewBlock.updateProgress(100, "default");
+				response = new XMLList(_client.response.body);
+				/* for each (var fsg : XML in response..fsGroup ) {
+					fsgCollection.addItem(fsg.toString());
+				} */
+				fsCollection = new ArrayCollection();
+				for each (var fs : XML in response..fileserver ) {
+					fsCollection.addItem(fs.toString());
+				}
+				protoArray = new ArrayCollection();
+				protoArray.addItem("CIFS");
+				protoArray.addItem("NFS");
+				lastSeen = new ArrayCollection();
+				lastSeen.addItem("30");
+				lastSeen.addItem("60");
+				lastSeen.addItem("90");
+				lastSeen.addItem("180");
+			}
+			protected function browse_clickHandler(event:MouseEvent):void
+			{
+				var dir:DirectoryBrowser = new DirectoryBrowser();
+				dir.protocal = protocol_combo.selectedLabel ;
+				dir.FileServer = fileServer_combo.selectedLabel ;
+				dir.ref = this ;
+				dir.centerDialog() ;
+				dir.show(this.parent); 
+				myWatcher = ChangeWatcher.watch(dir, "PathValue", watchPath);
+			}
+			private function watchPath(event:Event):void {
+				fsBrowse.text = PathValue ;
+				myWatcher.unwatch();
+				//protocol.enabled = false ;
+			}
+			private function browser(dir:DirectoryBrowser):void{
+				dir = new DirectoryBrowser();
+				dir.protocal = protocol_combo.selectedLabel ;
+				dir.FileServer = fileServer_combo.selectedLabel ;
+				dir.ref = this ;
+				dir.centerDialog() ;
+				dir.show(this.parent);
+			}
+			
+			protected function protocol_combo_changeHandler(event:ListEvent):void
+			{
+				fsBrowse.text = "" ;	
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<section:UxLazyLoadSection id="listPage" key="listPage" headerText="@Resource(key='HISPRO', bundle='fma')" 
+								   contentClass="com.emc.fma.views.Archived.ArchivedReport.ArchiveFileList.List"/>	
+	</fx:Declarations>
+	<states>
+		<mx:State name="nonorphan"/>
+		<mx:State name="orphan"/>
+	</states>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock" 
+				 title="{ResourceManager.getInstance().getString('fma','VIEWARCHIVE')}" 
+				 width="100%" height="100%" creationComplete="init(event)"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 helpServiceID="FMAHelpService" helpID="ArchivedFileList">
+		<mx:Box width="100%" height="100%">
+			<UxExtendedClass:UxGroupBoxCta title="{ResourceManager.getInstance().getString('fma','VIEWARCHIVE')}" width="50%" >
+				<mx:Form>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_FIL_LST_SRCC')}" >
+						<mx:ComboBox id="fileServer_combo" dataProvider="{fsCollection}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}" />
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_PROT_PRTC')}">
+						<mx:ComboBox id="protocol_combo" change="protocol_combo_changeHandler(event)" dataProvider="{protoArray}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}" />
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_REPO_PTHC')}">
+						<mx:HBox>
+							<mx:TextInput id="fsBrowse" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"  />
+							<mx:Button label="{ResourceManager.getInstance().getString('fma','BUTTON_BRO')}" click="browse_clickHandler(event)"/>
+						</mx:HBox>
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_FROM')}">
+						<datetime:DateTimePicker id="startTime" />
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_TO')}">
+						<datetime:DateTimePicker id="endTime" />
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_SHOW_ORPHAN')}">
+						<mx:CheckBox id="shwOrphan" click="orphan_clickHandler(event)"/>
+					</mx:FormItem>
+					<mx:FormItem label="{ResourceManager.getInstance().getString('fma','ARCH_LAST_SEEN')}" includeIn="orphan">
+						<boxes:UxHBox>
+							<mx:ComboBox id="orphanTime" dataProvider="{lastSeen}" width="{parseInt(ResourceManager.getInstance().getString('fma','CONTROL_WIDTH'))}"/>
+							<mx:Label text="{ResourceManager.getInstance().getString('fma','ARCH_DAYS_AGO')}"/>
+						</boxes:UxHBox>
+					</mx:FormItem>
+				</mx:Form>
+			</UxExtendedClass:UxGroupBoxCta>
+		</mx:Box>
+		<mx:HBox paddingBottom="10">
+			<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_GET_LIST')}" click="getList_clickHandler(event)"/>
+		</mx:HBox>
+	</UxViewBlock>
+</UxVBoxWindow>

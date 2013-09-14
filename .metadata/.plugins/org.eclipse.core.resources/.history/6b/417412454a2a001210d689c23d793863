@@ -1,0 +1,48 @@
+/**
+ *
+ * Copyright: Copyright (c) 2012
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.guitoolkit.effects {
+    import com.emc.efx.services.mode.UxModeService;
+    
+    import mx.effects.effectClasses.MoveInstance;
+    
+    /**
+     * Extended support for high latency mode.
+     */
+    public class UxMoveInstance extends MoveInstance {
+        
+        /**
+         * @inherit-doc
+         */
+        public function UxMoveInstance(target:Object) {
+            super(target);
+        }
+        
+        /**
+         * @private
+         */
+        protected function isHighLatencyMode():Boolean {
+            return UxModeService.isModeActive(
+                UxModeService.HIGH_LATENCY_MODE_KEY);
+        }
+        
+        /**
+         * @inherit-doc
+         */
+        override public function play():void {
+            var originalDuration:Number = this.duration;
+            
+            if (isHighLatencyMode()) {
+                this.duration = 0;
+            }
+            
+            super.play();
+            
+            this.duration = originalDuration;
+        }
+    }
+}

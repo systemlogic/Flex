@@ -1,0 +1,109 @@
+<UxWizard>
+				<type>SIMPLE</type>
+				<wizardResourceBundle>fma</wizardResourceBundle>
+				<title>Create Schedule Task</title>
+				<wizardNavHelp>CreateShareWiz</wizardNavHelp>
+				<cancelPrompt>CREATE_SHARE_WIZARD_CANCEL_PROMPT</cancelPrompt>
+				<showHelpPanel>TRUE</showHelpPanel>
+				<snippetsFile>fma_snippet.xml</snippetsFile>
+				<width>500</width>
+				<stepsWidth>250</stepsWidth>
+				<WizardSteps>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.TaskType</stepClass>
+						<id>taskType</id>
+						<title>Task Type</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.TaskSelection</stepClass>
+						<id>taskSelection</id>
+						<title>Task</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.PolicySelection</stepClass>
+						<id>policySelection</id>
+						<title>Policy</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.SourceSelection</stepClass>
+						<id>sourceSelection</id>
+						<title>Source</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.DestinationSelection</stepClass>
+						<id>destinationSelection</id>
+						<title>Destination</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.ImportFileList</stepClass>
+						<id>importFileList</id>
+						<title>Import File List</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.TimeSelection</stepClass>
+						<id>timeSelection</id>
+						<title>Schedule Task</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+					<WizardStep>
+						<stepClass>com.emc.fma.views.Schedule.Archiver.CreateSchedule.Summary</stepClass>
+						<id>Summary</id>
+						<title>Summary Page</title>
+						<width>500</width>
+						<height>250</height>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<helpTitle>Instructions Panel</helpTitle>
+						<required>FALSE</required>
+						<helpSnippet>DefaultSnippet</helpSnippet>
+						<stepHelpServiceID>FMAHelpService</stepHelpServiceID>
+					</WizardStep>
+				</WizardSteps>
+			</UxWizard>

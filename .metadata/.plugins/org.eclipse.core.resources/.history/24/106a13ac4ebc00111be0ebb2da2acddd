@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fxs="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx"
+			  xmlns:ux="com.emc.efx.guitoolkit.components.boxes.*"
+			  implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+			  xmlns:views="com.emc.efx.guitoolkit.components.views.*" 
+			  xmlns:FileServer="com.emc.fma.views.Configuration.FileServer.*" 
+			  xmlns:section="com.emc.efx.services.layout.section.*" 
+			  xmlns:combobox="com.emc.efx.guitoolkit.components.combobox.*" 
+			  xmlns:action="com.emc.efx.guitoolkit.action.*" 
+			  xmlns:details="com.emc.efx.guitoolkit.components.details.*">
+	<fxs:Declarations>
+		<fxs:XML format="e4x" id="titleBarAddFileserverButtonMenuList">
+			<root>
+				<menuitem  label="AmazonS3"/>
+				<menuitem  label="Atmos"/> 
+				<menuitem  label="Celerra"/> 
+				<menuitem  label="Centera"/>
+				<menuitem  label="Data Domain"/>
+				<menuitem  label="Isilon"/>
+				<menuitem  label="NetApp"/> 
+				<menuitem  label="Windows"/> 
+				<separator type="separator"/>
+				<menuitem  label="VNX"/> 
+				<menuitem  label="VNXe"/> 
+			</root>
+		</fxs:XML>
+		<section:UxLazyLoadSection id="atmosPage" key="ATMOSPRO" headerText="@Resource(key='ATMOSPRO', bundle='fma')" 
+								   contentClass="com.emc.fma.views.Configuration.FileServer.ATMOSFileServer"/>
+		
+		<section:UxLazyLoadSection id="celerraPage" key="CELERRAPRO" headerText="@Resource(key='CELERRAPRO', bundle='fma')"
+								   contentClass="com.emc.fma.views.Configuration.FileServer.celerraFileServer"/>
+		
+		<section:UxLazyLoadSection  id="centeraPage" key="CENTERAPRO" headerText="@Resource(key='CENTERAPRO', bundle='fma')"
+									contentClass="com.emc.fma.views.Configuration.FileServer.centraFileServer"/>
+		
+		<section:UxLazyLoadSection  id="dataDomainPage" key="DATADOMAINPRO" headerText="@Resource(key='DATADOMAINPRO', bundle='fma')"
+									contentClass="com.emc.fma.views.Configuration.FileServer.dataDomainFileServer"/>
+		
+		<section:UxLazyLoadSection  id="isilonPage" key="ISILONPRO" headerText="@Resource(key='ISILONPRO', bundle='fma')"
+									contentClass="com.emc.fma.views.Configuration.FileServer.isilonFileServer"/>
+		
+		<section:UxLazyLoadSection  id="netAppPage" key="NETAPPPRO" headerText="@Resource(key='NETAPPPRO', bundle='fma')"
+									contentClass="com.emc.fma.views.Configuration.FileServer.netAppFileServer"/>
+		
+		<section:UxLazyLoadSection  id="windowsPage" key="WINDOWSPRO" headerText="@Resource(key='WINDOWSPRO', bundle='fma')"
+									contentClass="com.emc.fma.views.Configuration.FileServer.windowsFileServer"/>
+		
+		<section:UxLazyLoadSection  id="amazonS3Page" key="AMAZONS3PRO" headerText="@Resource(key='AMAZONS3PRO', bundle='fma')"
+									contentClass="com.emc.fma.views.Configuration.FileServer.AmazonS3FileServer"/>
+	</fxs:Declarations>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+				 id="viewBlock"
+				 title="File Server List" width="100%" height="100%"
+				 xmlns:fx="com.emc.efx.guitoolkit.components.table.filter.*"
+				 xmlns:table="com.emc.ecuit.flex.components.table.*" 
+				 xmlns:views="com.emc.ecuit.flex.components.views.*"
+				 showRefresh="true" showExport="true" showFind="false" 
+				 showPrint="false" showTools="true" showFilter="true" 
+				 helpServiceID="FMAHelpService" helpID="GetFileServerList" 
+				 xmlns:tx="com.emc.efx.guitoolkit.components.table.*"
+				 viewTitleBarButtonClick="_viewTitleBarButtonClickHandler(event)"
+				 creationComplete="_init(event)"
+				 xmlns:filter="com.emc.efx.guitoolkit.components.filter.*"
+				 xmlns:filter1="com.emc.efx.guitoolkit.filter.*"
+				 xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*"
+				 xmlns:rules="com.emc.efx.guitoolkit.components.table.rules.*">
+		
+		
+		<fxs:Script>
+			<![CDATA[
+				import com.emc.ecuit.flex.components.application.ProgressMonitor;
+				import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+				import com.emc.ecuit.flex.components.filter.FilterPanel;
+				import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGrid;
+				import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+				import com.emc.ecuit.flex.components.table.ECUITLinkButton;
+				import com.emc.ecuit.flex.components.table.LinkButtonClickEvent;
+				import com.emc.ecuit.flex.components.views.ViewBlock;
+				import com.emc.ecuit.flex.components.views.ViewTitleBarButton;
+				import com.emc.ecuit.flex.components.views.ViewTitleBarButtonEvent;
+				import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+				import com.emc.efx.UxConstants;
+				import com.emc.efx.core.extensionmgr.UxExtensionManager;
+				import com.emc.efx.guitoolkit.components.table.UxAdvancedDataGridColumn;
+				import com.emc.efx.guitoolkit.components.views.UxViewTitleButtonHandler;
+				import com.emc.efx.guitoolkit.dataloading.UxLoadingEvent;
+				import com.emc.efx.guitoolkit.displaybuilders.UxActionInformation;
+				import com.emc.efx.guitoolkit.events.UxViewEvent;
+				import com.emc.efx.net.UxURL;
+				import com.emc.efx.net.UxURLRequest;
+				import com.emc.efx.net.http.UxHttpClient;
+				import com.emc.efx.services.navigation.IUxNavigationService;
+				import com.emc.efx.utilities.map.UxHashMap;
+				import com.emc.fma.views.Configuration.FileServer.celerraFileServer;
+				import com.emc.fma.views.Configuration.FileServer.centraFileServer;
+				import com.emc.fma.views.Configuration.FileServer.dataDomainFileServer;
+				import com.emc.fma.views.Configuration.FileServer.isilonFileServer;
+				import com.emc.fma.views.Configuration.FileServer.model.FileServerModel;
+				import com.emc.fma.views.Configuration.FileServer.netAppFileServer;
+				import com.emc.fma.views.Configuration.FileServer.windowsFileServer;
+				import com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.ServerWizard;
+				import com.emc.fma.views.Configuration.FileServer.wizard.Atmos.ServerWizard;
+				import com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard;
+				import com.emc.fma.views.Configuration.FileServer.wizard.Centera.ServerWizard;
+				import com.emc.fma.views.Configuration.FileServer.wizard.DataDomain.ServerWizard;
+				import com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard;
+				import com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard;
+				import com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard;
+				
+				import mx.controls.Image;
+				import mx.controls.Menu;
+				import mx.core.BitmapAsset;
+				import mx.events.CloseEvent;
+				import mx.events.FlexEvent;
+				import mx.events.ListEvent;
+				import mx.events.MenuEvent;
+				import mx.managers.PopUpManager;
+				import mx.resources.ResourceManager;
+				import mx.utils.ArrayUtil;
+				
+				[Bindable]private var _client:UxHttpClient;
+				[Bindable]public var ServerList:XML;
+				private var _section:UxLazyLoadSection ;
+				
+				protected function _addFileServer(event:MouseEvent):void
+				{
+					var fss:FileServerSelection = new FileServerSelection();
+					fss.centerDialog();
+					fss.show(this.parent);
+				}
+				
+				[Embed(source="../../../../../../../resources/images/assets/add_16x16.png")]
+				[Bindable]
+				public var addFileServer_16x16:Class;
+				[Embed(source="../../../../../../../resources/images/assets/add_22x22.png")]
+				[Bindable]
+				public var addFileServer_22x22:Class;
+				protected function _init(event:FlexEvent):void
+				{
+					var custViewTitleButton:ViewTitleBarButton = 
+						new ViewTitleBarButton(resourceManager.getString('fma','ADD_BTN'), 
+							ViewTitleBarButton.CUSTOM_BTN_TYPE, 0);
+					custViewTitleButton.buttonMenuList = titleBarAddFileserverButtonMenuList;
+					custViewTitleButton.buttonMenuEventHandler = add_clickHandler;
+					viewBlock.addCustomTitleBarButton(custViewTitleButton);
+					custViewTitleButton.setStyle("icon",addFileServer_16x16);  
+					custViewTitleButton.setStyle("overIcon", addFileServer_22x22); 
+					// TODO Auto-generated method stub
+				}
+				[Bindable]private var serverSelected:String = "No Server selected" ;
+				protected function add_clickHandler(event:MenuEvent):void{
+					var wizard:Object ;
+					serverSelected = event.label ;
+					if(serverSelected == "AmazonS3"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.AmazonS3.ServerWizard();
+					}else if(serverSelected == "Atmos"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Atmos.ServerWizard();
+					}else if(serverSelected == "Celerra"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard(ResourceManager.getInstance().getString('fma','CELERRA'));;
+					}else if(serverSelected == "Centera"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Centera.ServerWizard();
+					}else if(serverSelected == "Data Domain"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.DataDomain.ServerWizard();
+					}else if(serverSelected == "Isilon"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Isilon.ServerWizard()
+					}else if(serverSelected == "NetApp"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.NetApp.ServerWizard();
+					}else if(serverSelected == "Windows"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Windows.ServerWizard();
+					}else if(serverSelected == "VNX"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard(ResourceManager.getInstance().getString('fma','VNX'));
+					}else if(serverSelected == "VNXe"){
+						wizard = new com.emc.fma.views.Configuration.FileServer.wizard.Celerra.ServerWizard(ResourceManager.getInstance().getString('fma','VNXE'));
+					}
+					wizard.show(this);
+				}
+				protected function _viewTitleBarButtonClickHandler(event:ViewTitleBarButtonEvent):void
+				{
+					/* if(event.viewTitleBarButton.id.toString() == FILTER_BTN_I){
+					
+					}else if(event.viewTitleBarButton.id.toString() == EXPORT_BTN_ID){
+					
+					}else if(event.viewTitleBarButton.id.toString() == REFRESH_BTN_ID){
+					
+					} */ 
+				}
+				private function fileServerActionHandler(dataObj:Object,pageType:String,serverName:String,serverType:String):void {
+					var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+					var map:UxHashMap = new UxHashMap();
+					map.put(pageType, dataObj);
+					map.put("ServerType", serverType);
+					map.put("Server", serverName);
+					var location:Array = new Array;
+					_section.headerText = dataObj["key"];
+					location = navService.currentLocation;
+					location.push(pageType)
+					navService.moveToChild(pageType, map);
+				}
+				
+				protected function _verifyFileServer(event:MouseEvent):void
+				{
+					if(fileServerList.selectedItem == null ){
+						ECUITPopupDialog.showMessageDialog(this,"No Server Selected","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					var type:String = fileServerList.selectedItem.Column2 ;
+					var name:String = fileServerList.selectedItem.Column1 ;
+					var issource:String = fileServerList.selectedItem.Column3 ;
+					if(type == "Celerra" || type == "VNX" || type == "VNXe"){
+						var verify:VerifyCelerra = new VerifyCelerra();
+						verify.centerDialog();
+						add_Rule.show(this); 
+						return ;
+					}else if(type == "Centera"){
+					}else if(type == "NetApp"){
+					}else if(type == "Windows"){
+					}else if(type == "DataDomain"){
+					}else if(type == "Isilon"){
+					}else if(type == "Atmos"){
+					}else if(type == "AmazonS3"){
+					} 
+					
+					_client = new UxHttpClient();
+					_client.addEventListener(Event.COMPLETE, onVerify);
+					var data:ByteArray = new ByteArray();
+					var xml:XML = <REQUEST/>; 
+					xml.appendChild(<Name>{name}</Name>);
+					xml.appendChild(<Type>{type}</Type>);
+					data.writeUTFBytes(xml);
+					_client.sendPostRequest(new UxURL(ResourceManager.getInstance().getString('fma','ALLICATION_CONTEXT')+ "verifyFileServer.htm"), data);
+					viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+					viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+					
+				}
+				
+				private function onVerify(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+					dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+				}
+				
+				protected function _detailFileServer(event:MouseEvent):void
+				{
+					if(fileServerList.selectedItem == null ){
+						ECUITPopupDialog.showMessageDialog(this,"No Server Selected","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					var type:String = fileServerList.selectedItem.Column2 ;
+					var name:String = fileServerList.selectedItem.Column1 ;
+					if(type == "Celerra"){
+						_section = celerraPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },celerraPage.key,name,type)
+					}else if(type == "Centera"){
+						_section = centeraPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },centeraPage.key,name,type)
+					}else if(type == "NetApp"){
+						_section = netAppPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },netAppPage.key,name,type)
+					}else if(type == "Windows"){
+						_section = windowsPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },windowsPage.key,name,type)
+					}else if(type == "DataDomain"){
+						_section = dataDomainPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },dataDomainPage.key,name,type)
+					}else if(type == "Isilon"){
+						_section = isilonPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },isilonPage.key,name,type)
+					}else if(type == "Atmos"){
+						_section = atmosPage ;
+						fileServerActionHandler({key: name+ "(" + type + ")" },atmosPage.key,name,type)
+					}else if(type == "VNX"){
+						_section = celerraPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },celerraPage.key,name,type)
+					}else if(type == "VNXe"){
+						_section = celerraPage ;
+						fileServerActionHandler({key: name + "(" + type + ")" },celerraPage.key,name,type)
+					} else if(type == "AmazonS3"){
+						_section = amazonS3Page ;
+						fileServerActionHandler({key: name + "(" + type + ")" },amazonS3Page.key,name,type)
+					} 
+				}
+				
+				protected function _deleteFileServer(event:MouseEvent):void
+				{
+					if(fileServerList.selectedItem == null ){
+						ECUITPopupDialog.showMessageDialog(this,"No Server Selected","Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+						return ;
+					}
+					var type:String = fileServerList.selectedItem.Column2 ;
+					var name:String = fileServerList.selectedItem.Column1 ;
+					var mess:String  = "Your archived files may be stored on " + name + ". If you delete this " + type + " configuration, you will not be able to recall archived files. Do you want to proceed?" ;
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showConfirmDialog(this,mess, "Delete", ECUITPopupDialog.YES_NO_OPTION );
+					dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleYesNoDeleteResult);
+				}
+				
+				private function handleYesNoDeleteResult(event:ECUITPopupDialogEvent) : void 
+				{
+					var type:String = fileServerList.selectedItem.Column2 ;
+					var name:String = fileServerList.selectedItem.Column1 ;
+					var user_selection:String = event.resultLabel; 
+					if(user_selection == "Yes"){
+						_client = new UxHttpClient();
+						_client.addEventListener(Event.COMPLETE, onDelete);
+						var data:ByteArray = new ByteArray();
+						var xml:XML = <REQUEST/>; 
+						xml.appendChild(<Name>{name}</Name>);
+						xml.appendChild(<Type>{type}</Type>);
+						data.writeUTFBytes(xml);
+						_client.sendPostRequest(new UxURL(resourceManager.getString('fma','ALLICATION_CONTEXT')+ "deleteFileServer.htm"), data);
+						viewBlock.progressMonitor.styleName = "UxProgressCanvasProgressMonitor";
+						viewBlock.progressCanvas.setupProgressMonitor(ProgressMonitor.PROGBAR_INDETERMINATE);
+					}    			
+				}
+				private function handleConfirmMessage(event:ECUITPopupDialogEvent) : void 
+				{
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.UNINITIALIZE_DATA));
+					viewBlock.progressCanvas.dispatchEvent(new UxViewEvent(UxViewEvent.INITIALIZE_DATA));
+					viewBlock.lastRefreshDate = new Date(); 
+				}
+				private function onDelete(event:Event):void{
+					viewBlock.updateProgress(100, "default");
+					var dlg : ECUITPopupDialog = ECUITPopupDialog.showMessageDialog(this,(new XMLList(_client.response.body)).Result[0].toString(),"Alert",ECUITPopupDialog.INFORMATION_MESSAGE);
+					dlg.addEventListener(ECUITPopupDialogEvent.POPUP_DIALOG_RESULT, handleConfirmMessage);
+				}
+				
+				[Bindable]private var _rowsObject:Object = new Object();
+				public var iconSelection:int = 1;
+				
+				public function get workingPages():Array {
+					var workingPageArray:Array = new Array();
+					workingPageArray.push(atmosPage);
+					workingPageArray.push(celerraPage);
+					workingPageArray.push(centeraPage);
+					workingPageArray.push(dataDomainPage);
+					workingPageArray.push(isilonPage);
+					workingPageArray.push(netAppPage);
+					workingPageArray.push(windowsPage);
+					workingPageArray.push(amazonS3Page);
+					return workingPageArray;
+				}
+				
+			]]>
+		</fxs:Script>
+		<tx:UxTablePanel width="100%" height="100%">
+			<tx:filterPanel>
+				<fx:UxTableFilterPanel id="myTableFilterPanel">
+					<fx:filterGroups>
+						<fxs:Array>
+							<filter:UxFilterComboxBox label="Server Type">
+								<filter:filterOptions>
+									<fxs:Array>
+										<filter1:UxAllFilter label="All">
+										</filter1:UxAllFilter>
+										
+										<fx:UxTableColumnFilter label="AmazonS3">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="AmazonS3"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="Atmos">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Atmos"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										<fx:UxTableColumnFilter label="Celerra">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Celerra"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="Centera">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Centera"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="Data Domain">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Data Domain"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="Isilon">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Isilon"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="NetApp">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="NetApp"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="Windows">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="Windows"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="VNX">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="VNX"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										
+										<fx:UxTableColumnFilter label="VNXe">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="1" searchValue="VNXe"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+									</fxs:Array>
+								</filter:filterOptions>
+							</filter:UxFilterComboxBox>
+							<filter:UxFilterComboxBox label="Is Source">
+								<filter:filterOptions>
+									
+									
+									<fxs:Array>
+										<filter1:UxAllFilter label="All">
+										</filter1:UxAllFilter>
+										<fx:UxTableColumnFilter label="yes">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="2" searchValue="yes"/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+										<fx:UxTableColumnFilter label="">
+											<fx:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="2" searchValue=""/>
+											</fx:rules>
+										</fx:UxTableColumnFilter>
+									</fxs:Array>
+								</filter:filterOptions>
+							</filter:UxFilterComboxBox>
+						</fxs:Array>
+					</fx:filterGroups>
+				</fx:UxTableFilterPanel>
+			</tx:filterPanel>
+			<tx:UxAdvancedDataGrid id="fileServerList" tableModel="{new FileServerModel()}" 
+								   showHeaders = "true" 
+								   editable="false" useRollOver="false"	  			 
+								   allowMultipleSelection="false">
+				<tx:tableColumnViewInfo>
+					<mx:ArrayCollection>
+						<tx:UxTableColumnViewInformation columnKey="Column1" colWidth="400"  />
+						<tx:UxTableColumnViewInformation columnKey="Column2" colWidth="400"  />
+						<tx:UxTableColumnViewInformation columnKey="Column3" colWidth="300" colHidden="true"/>
+						<tx:UxTableColumnViewInformation columnKey="Column4" colWidth="400"/>
+					</mx:ArrayCollection>
+				</tx:tableColumnViewInfo>
+				
+			</tx:UxAdvancedDataGrid>
+			<tx:commandPanel>
+				<tx:UxTableCommandPanel>
+					<!--<mx:PopUpMenuButton id="pb2" dataProvider="{createServerList}" labelField="@label"
+					showRoot="false" />-->
+					<!--<mx:PopUpButton id="popB" label="Edit" creationComplete="initMenu();" width="135" />-->
+					<buttons:UxButton label="Create Server" click="_addFileServer(event)" id="_addserver" />
+					<buttons:UxButton label="Details" click="_detailFileServer(event)" />
+					<buttons:UxButton label="Verify" click="_verifyFileServer(event)" />
+					<buttons:UxButton label="Delete" click="_deleteFileServer(event)"/>
+				</tx:UxTableCommandPanel>
+			</tx:commandPanel>
+		</tx:UxTablePanel>	
+		
+	</UxViewBlock>
+</UxVBoxWindow>

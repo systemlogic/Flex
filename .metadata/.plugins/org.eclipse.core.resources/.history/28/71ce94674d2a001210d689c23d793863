@@ -1,0 +1,259 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+package com.emc.efx.guitoolkit.components.buttonpage {
+    import com.emc.ecuit.flex.components.views.LandingPage;
+    import com.emc.efx.guitoolkit.action.IUxDisplayHandler;
+    import com.emc.efx.guitoolkit.components.application.IUxHasTasks;
+    import com.emc.efx.guitoolkit.events.UxViewEvent;
+    import com.emc.efx.ux_internal;
+    
+    import flash.display.DisplayObject;
+    import flash.events.Event;
+    
+    import mx.collections.ArrayCollection;
+    import mx.collections.ICollectionView;
+    import mx.collections.Sort;
+    import mx.collections.SortField;
+    import mx.controls.listClasses.IListItemRenderer;
+    import mx.core.ClassFactory;
+    import mx.core.ScrollPolicy;
+    import mx.core.UIComponent;
+    import mx.events.FlexEvent;
+
+    /**
+     *
+     * The BigButtonPage is a container to display big buttons. It extends ECUIT LandingPage.
+     * Additional functionality included in this class in addition to ECUIT's LandingPage:
+     * - Support for asynchronous changing of visible and enabled state of LandingPageButton via 'displayHandler' property in dataProvider.
+     * - Support for sorting via 'sortOrder' property in dataProvider.
+     * - It implements UxHasTasks
+     *
+     */
+    public class UxBigButtonPage extends LandingPage implements IUxHasTasks {
+        /**
+         * The tasks panel displayed on the right hand side.
+         */
+        private var _tasksPanel:DisplayObject = null;
+
+        /** If dataInitialized or not. **/
+        private var _dataInitialized:Boolean = false;
+
+        /**
+         * This is required when bigbuttons in the bigbuttons represent IUxSections.
+         * In this case, the UxAbstractNavigationContainer is responsible for initializing/uninitializing the displayHandler.
+         * And so, when this property is true, the component itself does not do the initializing/uninitializing of displayHandler.
+         */
+        ux_internal var autoCreatedInBigButtonContainer:Boolean = false;
+
+        /**
+         * Constructor.
+         */
+        public function UxBigButtonPage() {
+            super();
+            percentWidth = 100;
+            percentHeight = 100;
+            horizontalScrollPolicy = ScrollPolicy.AUTO;
+            verticalScrollPolicy = ScrollPolicy.AUTO;
+            // Create UxLandingPageButton instead of LandingPageButton
+            itemRenderer = new ClassFactory(UxBigButton);
+            addEventListener(UxViewEvent.INITIALIZE_DATA, onInitializeData,
+                false, 0, true);
+            addEventListener(UxViewEvent.UNINITIALIZE_DATA, onUnInitializeData,
+                false, 0, true);
+            addEventListener(FlexEvent.CREATION_COMPLETE, onCreationComplete,
+                false, 0, true);
+        }
+
+        /**
+         * Function to handle UxViewEvent.INITIALIZE_DATA
+         */
+        private function onInitializeData(e:UxViewEvent):void {
+            initializeData();
+        }
+
+        /**
+         * Function to handle UxViewEvent.UNINITIALIZE_DATA
+         */
+        private function onUnInitializeData(e:UxViewEvent):void {
+            unInitializeData();
+        }
+
+        /**
+         * Function to perform initialization before displaying the component.
+         * This method is called when UxViewEvent.INITIALIZE_DATA is dispatched on the component.
+         */
+        protected function initializeData():void {
+            _dataInitialized = true;
+            if (listContent && listItems) {
+                var n:int = listItems.length;
+                for (var i:int = 0; i < n; i++) {
+                    var m:int = listItems[i].length;
+                    for (var j:int = 0; j < m; j++) {
+                        if (listItems[i][j]) {
+                            var item:UIComponent = listItems[i][j];
+                            if (item.initialized) {
+                                item.dispatchEvent(new UxViewEvent(UxViewEvent.
+                                    INITIALIZE_DATA));
+                            } else {
+                                item.addEventListener(FlexEvent.CREATION_COMPLETE,
+                                    function onCreationComplete(event:Event):void {
+                                    item.
+                                        dispatchEvent(new UxViewEvent(UxViewEvent.
+                                        INITIALIZE_DATA));
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Function to perform unInitialization before moving away from the component.
+         * This method is called when UxViewEvent.UNINITIALIZE_DATA is dispatched on the component.
+         */
+        protected function unInitializeData():void {
+            _dataInitialized = false;
+            if (listContent && listItems) {
+                var n:int = listItems.length;
+                for (var i:int = 0; i < n; i++) {
+                    var m:int = listItems[i].length;
+                    for (var j:int = 0; j < m; j++) {
+                        if (listItems[i][j]) {
+                            listItems[i][j].
+                                dispatchEvent(new UxViewEvent(UxViewEvent.
+                                UNINITIALIZE_DATA));
+                        }
+                    }
+                }
+            }
+        }
+
+        /**
+         * Handle creation complete. Apply visibility listeners here.
+         */
+        private function onCreationComplete(event:Event):void {
+            var array:Array;
+            if (dataProvider is Array) {
+                array = (dataProvider as Array).concat();
+            } else if (dataProvider is ArrayCollection) {
+                array = (dataProvider.source as Array).concat();
+            }
+            if (array) {
+                for each (var obj:Object in array) {
+                    if (obj && obj.hasOwnProperty("displayHandler") &&
+                        obj.displayHandler is IUxDisplayHandler) {
+                        // Using eventListener here instead of BindingUtils.bindProperty
+                        // This is because addEventListener allows weak reference
+                        obj.displayHandler.addEventListener("visiblePropertyChanged",
+                            onDisplayHandlerVisibilityChanged, false, 0, true);
+                    }
+                }
+            }
+            // Calling this function here so that it is atleast called once even if visiblePropertyChanged event is not fired.
+            onDisplayHandlerVisibilityChanged(null);
+        }
+
+        /**
+         * Handle button displayhandler visibility changed.
+         * Apply filter function, sorting and refresh to reflect changes.
+         */
+        private function onDisplayHandlerVisibilityChanged(event:Event):void {
+            if (dataProvider as ICollectionView) {
+                (dataProvider as ICollectionView).filterFunction =
+                    filterDataProvider;
+                var sort:Sort = new Sort();
+                sort.fields = [new SortField("sortOrder")];
+                (dataProvider as ICollectionView).sort = sort;
+                (dataProvider as ICollectionView).refresh();
+            }
+        }
+
+        /**
+         * Filter function to filter out non-visible buttons.
+         */
+        private function filterDataProvider(item:Object):Boolean { // No PMD
+            var toKeep:Boolean = true;
+            if (item.hasOwnProperty("displayHandler") &&
+                item.displayHandler is IUxDisplayHandler) {
+                toKeep = (item.displayHandler as IUxDisplayHandler).visible;
+            }
+            return toKeep;
+        }
+
+        /**
+         * The tasks panel displayed on the right hand side.
+         */
+        [Bindable]
+        public function get tasksPanel():DisplayObject {
+            return _tasksPanel;
+        }
+
+        public function set tasksPanel(panel:DisplayObject):void {
+            _tasksPanel = panel;
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override protected function getReservedOrFreeItemRenderer(data:Object):IListItemRenderer {
+            var itemRenderer:IListItemRenderer =
+                super.getReservedOrFreeItemRenderer(data);
+            if (itemRenderer) {
+                if (itemRenderer is UxBigButton && data &&
+                    data.hasOwnProperty("displayHandler") &&
+                    data.displayHandler is IUxDisplayHandler) {
+                    (itemRenderer as UxBigButton).displayHandler =
+                        data.displayHandler as IUxDisplayHandler;
+                }
+                if (_dataInitialized) {
+                    itemRenderer.addEventListener(FlexEvent.CREATION_COMPLETE,
+                        function onCreationComplete(event:Event):void {
+                        itemRenderer.dispatchEvent(new UxViewEvent(UxViewEvent.
+                            INITIALIZE_DATA));
+                    });
+                }
+            }
+            return itemRenderer;
+
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function createItemRenderer(data:Object):IListItemRenderer {
+            var itemRenderer:IListItemRenderer = super.createItemRenderer(data);
+            if (itemRenderer is UxBigButton) {
+                (itemRenderer as UxBigButton)._autoCreatedInBigButtonContainer =
+                    (ux_internal::autoCreatedInBigButtonContainer) as Boolean;
+                if (data && data.hasOwnProperty("displayHandler") &&
+                    data.displayHandler is IUxDisplayHandler) {
+                    (itemRenderer as UxBigButton).displayHandler =
+                        data.displayHandler as IUxDisplayHandler;
+                }
+            }
+            if (_dataInitialized) {
+                itemRenderer.addEventListener(FlexEvent.CREATION_COMPLETE,
+                    function onCreationComplete(event:Event):void {
+                    itemRenderer.dispatchEvent(new UxViewEvent(UxViewEvent.
+                        INITIALIZE_DATA));
+                }, false, 0, true);
+            }
+            return itemRenderer;
+        }
+
+		/**
+		 * @inheritDoc
+		 */
+        override protected function handleDataChange(event:FlexEvent=null):void {
+            super.handleDataChange(event);
+			// To ensure that scroll bars appear
+            percentHeight = 100;
+        }
+    }
+}

@@ -1,0 +1,126 @@
+import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+import com.emc.efx.guitoolkit.components.wizards.UxWizard;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+
+import flash.events.MouseEvent;
+
+import mx.events.FlexEvent;
+import mx.resources.ResourceManager;
+import mx.utils.StringUtil;
+
+private var _enableBackButton:Boolean = true;
+private var _initialized:Boolean = false;
+public static const ATTR_CCDNAME        :String = "CCDNAME";
+public static const ATTR_ACDNAME        :String = "ACDNAME";
+public var _defaultEnterName:String = "";
+private var _textInputId:String;
+private var _requestInProgress:Boolean;
+private var currentObject:*;
+private var relatedObject:*;
+
+override public function postDisplay(): void
+{
+  if (!_initialized)
+  {
+    // Pull defaults from wizard data
+    var def:Object;
+    def = getData(ATTR_CCDNAME);
+    
+    if (def != null)
+    {
+      _defaultEnterName = String(def);
+    }
+    
+    _initialized = true;
+  }
+  introText.text = Common.getResource('FILESERVER_WIZARD_STEP_6_CCDACD_INTROTEXT');
+  setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+  updateButtons();
+  enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+}
+override protected function save(): void
+{
+  if (_requestInProgress)return;
+  
+  setData(ATTR_CCDNAME,        ccdName.text);
+  setData(ATTR_ACDNAME,        acdName.text);
+  //enableStep(TvShowSelection.STEP_NAME, true);
+  stepComplete = true;
+  
+}
+// Override as we have step specific validation
+override protected function validate(): Boolean
+{
+  return true;
+}
+
+private function updateButtons():void
+{
+  enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+  
+  if (!(noteID1.visible || noteID2.visible))
+  {
+    var location:int = ccdName.text.search(UtilityFunctionClass.DotSeprated);
+    trace(location);
+    
+    if ((ccdName.text.search(UtilityFunctionClass.DotSeprated) == 0 || ccdName.text == "") &&
+      (acdName.text.search(UtilityFunctionClass.DotSeprated) == 0 || acdName.text == ""))
+    {
+      enableButtons(true, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+    }
+  }
+}
+
+private function nameChangeHandler(event:Event):void
+{
+  if (StringUtil.trim(event.currentTarget.text) == "")
+    event.currentTarget.id == "ccdName" ? noteID1.visible=false : noteID2.visible=false;
+  
+  updateButtons();
+}
+
+protected function resolveToIP(event:FocusEvent = null):void
+{ 
+  if (! _requestInProgress)
+  {
+    currentObject = event.currentTarget;
+    relatedObject = event.relatedObject;
+    
+    if (StringUtil.trim(currentObject.text) == "")
+    {
+      currentObject.tabIndex == "1" ? noteID1.visible=false : noteID2.visible=false;
+      updateButtons();
+    }
+    else
+    {
+      _requestInProgress = true;
+      enableButtons(false, UxWizard.ECUITWIZARD_BUTTONID_NEXT);
+      RESTClient.sendGetRequest("/api/common/resolve/" + encodeURIComponent(currentObject.text), OnGetIPStatus, progress);    
+    }
+  }
+}
+
+private function OnGetIPStatus(event:RESTEvent):void
+{
+  _requestInProgress = false;
+  
+  if (event.response.IP[0] != null && UtilityFunctionClass.IPAddresspattern.test(event.response.IP[0].toString()) && currentObject.text.search(UtilityFunctionClass.DotSeprated) == 0)
+  {
+    currentObject.tabIndex == "1" ? noteID1.visible=false : noteID2.visible=false;    
+    if(relatedObject != null && relatedObject.className == "Button" && relatedObject.label == "Next >")
+    {
+      this.parentWizard.gotoStep(ECUITWizard.ECUITWIZARD_STEPID_NEXT);
+      return;
+    }
+  }
+  else
+    currentObject.tabIndex == "1" ? noteID1.visible=true : noteID2.visible=true;
+  
+  if(relatedObject != null)
+    relatedObject.setFocus();
+  
+  updateButtons();
+}

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250">
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.UxURLRequest;
+			import com.emc.efx.net.http.UxHttpClient;
+			
+			import mx.events.FlexEvent;
+			import mx.events.FlexMouseEvent;
+			import mx.events.ItemClickEvent;
+			import mx.events.ListEvent;
+			import mx.resources.ResourceManager;
+			private var _enableBackButton:Boolean = true;
+			public static const ATTR_ITEMSELECTED  	    :String = "itemSelected";
+			private var _initialized:Boolean = false;
+			public var _defaultSelection:String = "";
+			private var  _client:UxHttpClient ;
+			
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					// Pull defaults from wizard data
+					var def:Object;
+					
+					def = getData(ReportTypeSelection.ATTR_fileServerType);
+					if (def != null) 
+					{
+						_defaultSelection = String(def);
+					}
+					_initialized = true;
+				}
+				
+				setData(ResourceManager.getInstance().getString("fma", "STEP"), this.name);
+				updates();
+				enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+				def = getData(ReportTypeSelection.ATTR_fileServerType);
+				_defaultSelection = String(def);
+				reportItem.label = _defaultSelection + ":" ;
+				list.dataProvider = getData(ReportTypeSelection.ATTR_GroupFileServer);
+				trace(list.dataProvider) ;
+			}
+			private function updates():void{
+				if (getData(ResourceManager.getInstance().getString("fma", "STEP")) != this.name ) return;
+				updateButtons(); 
+			}
+			private function updateButtons():void{
+				if(list.selectedItem == null){
+					enableButtons(!_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				}else{
+					enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				}
+			}
+			protected function _updateCompleteHandler(event:FlexEvent):void
+			{
+				
+				
+			}
+			override protected function save(): void
+			{
+				setData(ATTR_ITEMSELECTED,list.selectedLabel);
+			}
+
+			protected function list_changeHandler(event:ListEvent):void
+			{
+				
+					// TODO Auto-generated method stub
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<mx:Form>
+		<mx:FormItem id="reportItem" styleName="ECUITWizardBodyText">
+			<mx:ComboBox id="list"/>
+		</mx:FormItem>
+	</mx:Form>
+</wizards:UxWizardStep>

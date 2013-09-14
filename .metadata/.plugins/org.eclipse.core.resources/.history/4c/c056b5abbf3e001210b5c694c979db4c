@@ -1,0 +1,384 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*" 
+			  xmlns:table="com.emc.ecuit.flex.components.table.*" 
+			  xmlns:controls="com.emc.ecuit.flex.components.controls.*" 
+			  xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*" xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+	<fx:Declarations>
+		<mx:ArrayCollection id="GridColumnsCommunityString" >
+			<fx:Object Name="Column1" Title="{ResourceManager.getInstance().getString('fma','SMP_SET_COM_STR')}" />
+			<fx:Object Name="Column2" Title="{ResourceManager.getInstance().getString('fma','SMP_SET_SCR_TYP')}" />
+		</mx:ArrayCollection>
+		<mx:ArrayCollection id="GridColumnsNotifyString" >
+			<fx:Object Name="Column1" Title="{ResourceManager.getInstance().getString('fma','SMP_SET_IP_ADD')}" />
+			<fx:Object Name="Column2" Title="{ResourceManager.getInstance().getString('fma','SMP_SET_UDP_PRT')}" />
+			<fx:Object Name="Column3" Title="{ResourceManager.getInstance().getString('fma','SMP_SET_COM_STR')}" />
+			<fx:Object Name="Column4" Title="{ResourceManager.getInstance().getString('fma','SMP_SET_SCR_TYP')}" />
+		</mx:ArrayCollection>
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.application.ProgressMonitor;
+			import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+			import com.emc.ecuit.flex.components.table.ECUITAdvancedDataGridColumn;
+			import com.emc.efx.UxConstants;
+			import com.emc.efx.core.extensionmgr.UxExtensionManager;
+			import com.emc.efx.net.UxURL;
+			import com.emc.efx.net.http.UxHttpClient;
+			import com.emc.efx.services.navigation.IUxNavigationService;
+			import com.emc.fma.views.Utility.Command;
+			import com.emc.fma.views.Utility.UtilityFunctionClass;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			import mx.resources.ResourceManager;
+			[Bindable]public var _rowsObjectCommunityString:Object = new Object();
+			[Bindable]public var _rowsObjectNotifyString:Object = new Object();
+			[Bindable]private var _client:UxHttpClient;
+			[Bindable] private var response:XMLList;
+			private function onComplete(event:Event):void{
+				viewBlock.updateProgress(100, "default");
+				response = new XMLList(_client.response.body);
+				_rowsObjectCommunityString = createRows4CommunityString();
+				_rowsObjectNotifyString = createRows4NotifyString();
+				if(response.msg.toString() != ""){
+					ECUITPopupDialog.showMessageDialog(this,response.msg.toString() ,"Error",ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				}
+			}
+			private function createRows4NotifyString():ArrayCollection {
+				var count:int = 0;
+				var row:Array =  new Array();
+				var item:XML;
+				for each(item in response.notify) {
+					var obj:Object = { Column1:item.notifyAddress,Column2:item.notifyPort,Column3:item.notifycommunity.communityString,Column4:item.notifycommunity.securityString};
+					++count;
+					row.push(obj); 
+				}
+				var rows:ArrayCollection = new ArrayCollection(row);
+				return rows;
+			}
+			private function createRows4CommunityString():ArrayCollection {
+				var count:int = 0;
+				var row:Array =  new Array();
+				var item:XML;
+				for each(item in response.community) {
+					var obj:Object = { Column1:item.communityString,Column2:item.securityString};
+					++count;
+					row.push(obj); 
+				}
+				var rows:ArrayCollection = new ArrayCollection(row);
+				return rows;
+			}
+			protected function _creationCompleteHandler(event:FlexEvent):void
+			{
+				
+				var xml:XML = <REQUEST/>; 
+				xml.appendChild(<action>getList</action>);
+				var cmd:Command = new Command(_client,onComplete,xml,"snmpConfiguration.htm",viewBlock);
+				_client = cmd.sendCommand("POST");
+				communityString.columns = setGridColumns(GridColumnsCommunityString);
+				notifyString.columns = setGridColumns(GridColumnsNotifyString);
+				
+			}
+			public function setGridColumns (columns:ArrayCollection):Array
+			{
+				var tableColumns:ArrayCollection = new ArrayCollection();
+				var len:int = columns.length ;
+				for (var i:int = 0; i < columns.length; i++){
+					var type:int = ECUITAdvancedDataGridColumn.TEXT; //default column type
+					var precision:int = 0; //default precision
+					type = ECUITAdvancedDataGridColumn.TEXT;
+					
+					var column:ECUITAdvancedDataGridColumn = new ECUITAdvancedDataGridColumn(type, precision);
+					
+					// This conditional builds an instance of a Severity object through a class factory.
+					
+					column.dataField = columns[i].Name;
+					column.headerText = columns[i].Title;
+					column.width = cString.width/(len+1);
+					tableColumns.addItem(column);
+				}	
+				return tableColumns.toArray();
+			}
+			
+			private var addRowtoTable:XML ; 
+			private var addRow:Boolean = false ;
+			
+			protected function notify_clickHandler(event:MouseEvent):void
+			{
+				var address:String = ip.address1.text + "." + 
+					ip.address2.text + "." + 
+					ip.address3.text + "." + 
+					ip.address4.text;
+				addRowtoTable = <notify/>;
+				addRowtoTable.appendChild(<IP>{address}</IP>);
+				addRowtoTable.appendChild(<Port>{udpPort.text}</Port>);
+				addRowtoTable.appendChild(<communityString>{notifyCString.text}</communityString>);
+				addRowtoTable.appendChild(<securityString>{notifySType.selectedLabel}</securityString>);
+				
+				ip.address1.text = ""; 
+				ip.address2.text = ""; 
+				ip.address3.text = ""; 
+				ip.address4.text = "";
+				udpPort.text = "" ;
+				notifyCString.text = "" ;
+				notifySType.selectedIndex = 0 ;
+				addRow = true ;
+				save();
+			}
+			protected function community_clickHandler(event:MouseEvent):void
+			{
+				if(communityCString.text.length == 0){
+					ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','EMPTY_COMMUNITY'),ResourceManager.getInstance().getString('fma','EMPTY_COMMUNITY_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+					return ;
+				}
+				addRowtoTable = <community/>;
+				addRowtoTable.appendChild(<communityString>{communityCString.text}</communityString>);
+				addRowtoTable.appendChild(<securityString>{communitySType.selectedLabel}</securityString>);
+				communityCString.text = "";
+				communitySType.selectedIndex = 0 ;
+				addRow = true ;
+				save();
+				
+			}
+			protected function save():void{
+				
+				var xml:XML = <REQUEST/>; 
+				xml.appendChild(<action>Save</action>);
+				var comm:XML ;
+				for each(var obj:Object in communityString.dataProvider){
+					if(deleteCommunity && obj.Column1.toString() == communityString.selectedItem.Column1 && obj.Column2.toString() == communityString.selectedItem.Column2){
+						deleteCommunity = false ;
+					}else{
+						comm = <community/>;
+						comm.appendChild(<communityString>{obj.Column1.toString()}</communityString>);
+						comm.appendChild(<securityString>{obj.Column2.toString()}</securityString>);
+						xml.appendChild(comm);
+					}
+				}
+				for each(var obj:Object in notifyString.dataProvider){
+					if(deletenotify && (obj.Column1.toString() == notifyString.selectedItem.Column1)
+						&& obj.Column2.toString() == notifyString.selectedItem.Column2 
+						&& obj.Column3.toString() == notifyString.selectedItem.Column3 
+						&& obj.Column4.toString() == notifyString.selectedItem.Column4){
+						deletenotify = false ;
+					}else{
+						comm = <notify/>;
+						comm.appendChild(<IP>{obj.Column1.toString()}</IP>);
+						comm.appendChild(<Port>{obj.Column2.toString()}</Port>);
+						comm.appendChild(<communityString>{obj.Column3.toString()}</communityString>);
+						comm.appendChild(<securityString>{obj.Column4.toString()}</securityString>);
+						xml.appendChild(comm);
+					}
+				}
+				if(addRow){
+					xml.appendChild(addRowtoTable);
+					addRow = false ;
+				}
+				var cmd:Command = new Command(_client,onComplete,xml,"snmpConfiguration.htm",viewBlock);
+				_client = cmd.sendCommand("POST");
+				communityString.columns = setGridColumns(GridColumnsCommunityString);
+				notifyString.columns = setGridColumns(GridColumnsNotifyString);
+			}
+			
+			
+			protected function ip_creationCompleteHandler(event:FlexEvent):void
+			{
+				ip.address1.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+				ip.address2.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+				ip.address3.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+				ip.address4.addEventListener(KeyboardEvent.KEY_UP,ipChangeHandler);
+				
+			}
+			[Bindable]private var buttonEnable:Boolean = false ;
+			private var address:String ;
+			private function ipChangeHandler(event:KeyboardEvent):void 
+			{
+				address = ip.address1.text + "." + 
+					ip.address2.text + "." + 
+					ip.address3.text + "." + 
+					ip.address4.text;
+				var _port:String = udpPort.text;
+				var _notifyStr:String = notifyCString.text ;
+				if( address.search(UtilityFunctionClass.IPAddresspattern) == 0 ){
+					buttonEnable = true ;
+				}else{
+					buttonEnable = false  ;
+				}
+				_notify_btn();
+			}
+			
+			private function _notify_btn():void{
+				var _address:String = address ;
+				var _port:String = udpPort.text;
+				var _notifyStr:String = notifyCString.text ;
+				var _SecType:String = notifySType.selectedItem.toString();
+				for each(var obj:Object in notifyString.dataProvider ){
+					var address:String = obj.Column1[0].toString();
+					var port:String = obj.Column2[0].toString();	
+					var notifyStr:String = obj.Column3[0].toString();
+					var SecType:String = obj.Column4[0].toString();
+					
+					if (buttonEnable && address == _address)
+					{
+						if(_port != "" && _port == port)
+						{
+							if(_notifyStr != ""  && _notifyStr == notifyStr)
+							{
+								notifyBtn.enabled = true;
+							}
+						}
+					}
+					else
+						notifyBtn.enabled = false;
+/* 					
+					if(_address == "" && _port == "" && _notifyStr == "" && _SecType == "" ){
+						notifyBtn.enabled = false ;
+					}else if(!buttonEnable && address == _address && (_port == port && _SecType == SecType && _notifyStr == notifyStr)){
+						notifyBtn.enabled = false ;
+					}else{
+						notifyBtn.enabled = true ;
+					} */
+					
+				}
+			}
+			
+			protected function notify_changeHandler(event:Event):void
+			{
+				_notify_btn();
+			}
+			
+			protected function notifySType_changeHandler(event:ListEvent):void
+			{
+				_notify_btn();
+			}
+			
+			[Bindable]private var deleteCommunity:Boolean = false ;
+			[Bindable]private var deletenotify:Boolean = false ;
+			protected function delete_communityHandler(event:MouseEvent):void
+			{
+				deleteCommunity = true ;
+				save();
+			}
+			
+			protected function delete_notifyHandler(event:MouseEvent):void
+			{
+				deletenotify = true ;
+				save();
+			}
+			private function onCanel(event:MouseEvent):void {
+				var navService:IUxNavigationService =
+					UxExtensionManager.getInstance().getService(UxConstants.
+						NAVIGATION_SERVICE) as IUxNavigationService;
+				var location:Array = new Array;
+				location = navService.currentLocation;
+				location.pop();
+				navService.navigate(location);
+			}
+			
+			protected function communityCString_changeHandler(event:Event):void
+			{
+				communityCString_ButtonHandler();
+			}
+			private function communityCString_ButtonHandler():void{
+				var _tempComunityStr:String = communityCString.text.toString() ;
+				var _tempComunitySec:String = communitySType.selectedItem.toString();
+				for each(var obj:Object in communityString.dataProvider ){
+					var tempComunityStr:String = obj.Column1[0].toString();
+					var tempComunitySec:String = obj.Column2[0].toString();	
+					if(tempComunityStr == _tempComunityStr  && tempComunitySec == _tempComunitySec ){
+						communityAddBtn.enabled = false ;
+						break;
+					}else{
+						communityAddBtn.enabled = true ;
+					}
+				}
+				
+				
+			}
+			protected function communitySType_changeHandler(event:ListEvent):void
+			{
+				// TODO Auto-generated method stub
+				communityCString_ButtonHandler();
+			}
+			
+		]]>
+	</fx:Script>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" 
+				 xmlns:mx="library://ns.adobe.com/flex/mx" id="viewBlock" 
+				 title="{ResourceManager.getInstance().getString('fma','SNMPSETTINGS')}" width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 helpServiceID="FMAHelpService" helpID="SNMPSettings"  
+				 creationComplete="_creationCompleteHandler(event)">
+		<mx:HBox width="100%" height="100%">
+			<UxExtendedClass:UxGroupBoxCta id="cString" height="100%" title="{ResourceManager.getInstance().getString('fma','SMP_SET_COM_STR')}" width="50%" >
+				<mx:VBox height="100%" width="100%">
+					<mx:Form>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','SMP_SET_COM_STRC')}">
+							<mx:TextInput id="communityCString" restrict="{UtilityFunctionClass.UsernameRestrict}" change="communityCString_changeHandler(event)"/>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','SMP_SET_SCR_TYPC')}">
+							<mx:HBox>
+								<mx:ComboBox id="communitySType" dataProvider="{UtilityFunctionClass.SECURITYARRAY}" change="communitySType_changeHandler(event)"/>
+								<mx:Button  id="communityAddBtn" label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" 
+											click="community_clickHandler(event)" width="{communityCString.width - communitySType.width -8}"
+											/>
+							</mx:HBox>
+						</mx:FormItem>
+						<mx:FormItem/>
+						<mx:FormItem/>
+					</mx:Form>
+					
+					<table:ECUITAdvancedDataGrid id="communityString" dataProvider="{_rowsObjectCommunityString}" sortableColumns="false"
+												 showHeaders = "true" rowCount="20" 
+												 editable="false" useRollOver="false"	  			 
+												 allowMultipleSelection="false" />
+					<mx:HBox>
+						<mx:Button click="delete_communityHandler(event)" label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" enabled="{communityString.selectedItem == null ? false : true }"/>
+					</mx:HBox>
+					
+				</mx:VBox>
+			</UxExtendedClass:UxGroupBoxCta>
+			<UxExtendedClass:UxGroupBoxCta id="notifyGBox" height="100%" title="{ResourceManager.getInstance().getString('fma','SMP_SET_NTF_STR')}" width="50%" >
+				<mx:VBox height="100%" width="100%">
+					<mx:Form>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','SMP_SET_IP_ADDC')}">
+							<controls:IPAddressControl id="ip" creationComplete="ip_creationCompleteHandler(event)" />
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','SMP_SET_UDP_PRTC')}">
+							<mx:TextInput id="udpPort" restrict="0-9" change="notify_changeHandler(event)"/>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','SMP_SET_COM_STRC')}">
+							<mx:TextInput id="notifyCString" restrict="{UtilityFunctionClass.UsernameRestrict}" change="notify_changeHandler(event)"/>
+						</mx:FormItem>
+						<mx:FormItem label="{ResourceManager.getInstance().getString('fma','SMP_SET_SCR_TYPC')}">
+							<mx:HBox>
+								<mx:ComboBox id="notifySType" dataProvider="{UtilityFunctionClass.SECURITYARRAY}" change="notifySType_changeHandler(event)"/>
+								<mx:Button id="notifyBtn" label="{ResourceManager.getInstance().getString('fma','BUTTON_ADD')}" 
+										   click="notify_clickHandler(event)" width="{notifyCString.width - notifySType.width -8}" 
+										   enabled="{notifyCString.text == '' ? false : udpPort.text == '' ? false : buttonEnable}"/>
+							</mx:HBox>
+						</mx:FormItem>
+					</mx:Form>
+					<table:ECUITAdvancedDataGrid id="notifyString" dataProvider="{_rowsObjectNotifyString}" sortableColumns="false"
+												 showHeaders = "true" rowCount="18"
+												 editable="false" useRollOver="false"	  			 
+												 allowMultipleSelection="false" />
+					<mx:HBox>
+						<mx:Button click="delete_notifyHandler(event)" label="{ResourceManager.getInstance().getString('fma','BUTTON_DEL')}" enabled="{notifyString.selectedItem == null ? false : true }"/>
+					</mx:HBox>
+					
+				</mx:VBox>
+			</UxExtendedClass:UxGroupBoxCta>
+		</mx:HBox>
+		<mx:HBox paddingBottom="10" paddingTop="10">
+			<buttons:UxButton id="cancelChanges" label="{ResourceManager.getInstance().getString('fma','BUTTON_CANCEL')}" click="onCanel(event)" />
+		</mx:HBox>
+	</UxViewBlock>
+</UxVBoxWindow>

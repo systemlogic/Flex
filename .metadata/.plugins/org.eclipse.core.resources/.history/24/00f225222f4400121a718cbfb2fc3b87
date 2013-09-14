@@ -1,0 +1,98 @@
+package com.emc.ecuit.flex.components.controls
+{
+	import mx.validators.Validator;
+	import mx.validators.ValidationResult;
+	import mx.events.ValidationResultEvent;
+	import com.emc.ecuit.flex.managers.ECUITResourceManager;
+
+	/*************************************************************************
+	 * Validates an ipAddress control.  Assumes that the control has four
+	 * TextInputs and four validators.  Each validator is run to make sure 
+	 * the text fields are valid.
+	 * <p/>
+	 * If more specific validation needs to be done, developers should 
+	 * subclass this validator and implement <code>doValidation</code> to do further 
+	 * validation.
+	 * <p/>
+	 * When using the validator, be sure to set the <code>source</code> 
+	 * property to the <code>IPAddressControl</code> to validate and set 
+	 * the <code>triggerEvent</code> to <code>focusOut</code>.
+	 *  
+	 * <h3>Example</h3>
+	 * <pre>
+	 *   &lt;c:IPAddressValidator id="ipValidator" 
+	 *  	source="{myIPAddress}" property="id" triggerEvent="focusOut" /&gt;
+	 * </pre>
+	 */
+	public class IPAddressValidator extends Validator
+	{
+		/** ECUIT Resource Manager - All strings come from here. */
+		protected var _resMgr:ECUITResourceManager = 
+										ECUITResourceManager.getInstance();
+
+		/** Resource Key used to find the string to display when the address is invalid. */
+		protected var addressMsgKey:String = "INVALID_ADDRESS_MSG";
+
+        /** Return value of <code>doValidation()</code>. */
+        protected var results:Array;
+
+		/*********************************************************************
+		 * Null constructor.
+		 */
+		public function IPAddressValidator()
+		{
+			super();
+		}
+
+		/*********************************************************************
+		 * Message to display when the user enters an invalid address.
+		 */
+		public function get invalidAddressMessage():String
+		{
+			return _resMgr.getString(addressMsgKey);			
+		}
+		public function set invalidAddressMessage(msg:String):void
+		{
+			if (msg != null && msg.length > 0)
+				addressMsgKey = msg;
+		}
+
+		/*********************************************************************
+		 * This method calls validate on the constituent TextInput objects.
+		 * Override this method to do more sophisticated validation. 
+	 	 */ 
+        override protected function doValidation(value:Object):Array 
+        {
+        	// Grab the IPAddressControl as the source
+        	var ipAddress:IPAddressControl = source as IPAddressControl;
+        	if (ipAddress == null)
+        		return results;
+
+            // Clear results Array.
+            results = [];
+
+            // Call base class doValidation().
+            results = super.doValidation(value);        
+            // Return if there are errors.
+            if (results.length > 0)
+                return results;
+
+			// Individually evaluate the address fields
+			var vre:ValidationResultEvent;
+			vre = ipAddress.validator1.validate(ipAddress.address1.text);
+			if (vre.results != null && vre.results.length > 0)
+				return vre.results;
+			vre = ipAddress.validator2.validate(ipAddress.address2.text);
+			if (vre.results != null && vre.results.length > 0)
+				return vre.results;
+			vre = ipAddress.validator3.validate(ipAddress.address3.text);
+			if (vre.results != null && vre.results.length > 0)
+				return vre.results;
+			vre = ipAddress.validator4.validate(ipAddress.address4.text);
+			if (vre.results != null && vre.results.length > 0)
+				return vre.results;
+
+            return results;
+        }
+    }
+}

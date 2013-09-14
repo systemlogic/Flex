@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009" 
+					  xmlns:s="library://ns.adobe.com/flex/spark" 
+					  xmlns:mx="library://ns.adobe.com/flex/mx" 
+					  xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+					  width="500" height="250">
+	<wizards:states>
+		<s:State name="arcState"/>
+		<s:State name="auxState"/>
+		<s:State name="delState"/>
+		<s:State name="migState"/>
+	</wizards:states>
+	<mx:VBox>
+		<mx:Text id="skipStep"  text="{ResourceManager.getInstance().getString('fma','EDT_TSK_TYPC')}"/>
+		<mx:RadioButtonGroup id="taskType" />
+		<mx:RadioButton id="ar" label="{ATTR_ARCHIVE}" groupName="taskType" paddingLeft="15"  includeIn="arcState" change="taskSelection_changeHandler(event)"/>
+		<mx:RadioButton id="mu" label="{ATTR_MULTITIER}" groupName="taskType" paddingLeft="15" includeIn="arcState"/>
+		<mx:RadioButton id="ms" label="{ATTR_MULTITIERSTUB}" groupName="taskType" paddingLeft="15" includeIn="arcState"/>
+		<mx:RadioButton id="dor" label="{ATTR_DELETEORPHAN}" groupName="taskType" paddingLeft="15" includeIn="delState"/>
+		<mx:RadioButton id="ds" label="{ATTR_DELETESTUB}" groupName="taskType" paddingLeft="15" includeIn="delState"/>
+		<mx:RadioButton id="rm" label="{ATTR_REPOMIGRATION}" groupName="taskType" paddingLeft="15"  includeIn="migState"/>
+		<mx:RadioButton id="fm" label="{ATTR_FILEMIGRATION}" groupName="taskType" paddingLeft="15" includeIn="migState"/>
+		<mx:RadioButton id="ss" label="{ATTR_SCANSTUB}" groupName="taskType" paddingLeft="15" includeIn="auxState"/>
+		<mx:RadioButton id="bk" label="{ATTR_BACKUP}" groupName="taskType" paddingLeft="15"  includeIn="auxState"/>
+	</mx:VBox>
+	<fx:Script>
+		<![CDATA[
+			import com.emc.ecuit.flex.components.wizards.ECUITWizard;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.ListEvent;
+			import mx.resources.ResourceManager;
+			private var _enableBackButton:Boolean = true;
+			private var _initialized:Boolean = false;
+			public static const ATTR_POLICY_TYPE    :String = "Policy Type";
+			public static const ATTR_ARCHIVE        :String = "Archive";
+			public static const ATTR_MULTITIER	    :String = "Multi Tier";
+			public static const ATTR_MULTITIERSTUB  :String = "Multi Tier Stub";
+			public static const ATTR_DELETEORPHAN   :String = "Delete Orpan";
+			public static const ATTR_DELETESTUB  	:String = "Delete Stub";
+			public static const ATTR_REPOMIGRATION  :String = "Repository Migration";
+			public static const ATTR_FILEMIGRATION  :String = "File Migration";
+			public static const ATTR_SCANSTUB   	:String = "Scan stubs";
+			public static const ATTR_BACKUP  		:String = "Backup";
+			
+			public var _defaultEnterName:String = "";
+			
+			
+			override public function postDisplay(): void 
+			{
+				if (!_initialized)
+				{
+					_initialized = true;
+				}
+				enableButtons(validate(), ECUITWizard.ECUITWIZARD_BUTTONID_NEXT);
+				enableButtons(_enableBackButton, ECUITWizard.ECUITWIZARD_BUTTONID_BACK);
+				var taskSelectionArray:ArrayCollection = new ArrayCollection();
+				if(getData(TaskType.ATTR_SCHEDULE_TYPE) == TaskType.ATTR_Archive){
+					/* taskSelectionArray.addItem(ATTR_ARCHIVE);
+					taskSelectionArray.addItem(ATTR_MULTITIER);
+					taskSelectionArray.addItem(ATTR_MULTITIERSTUB);
+					taskSelection.dataProvider = taskSelectionArray ; */
+					//parentWizard.enableStep(Optional.STEP_POLICY, !validate());
+					currentState = "arcState" ;
+					enable_state();
+				}else if(getData(TaskType.ATTR_SCHEDULE_TYPE) == (TaskType.ATTR_Auxillary)){
+					/* taskSelectionArray.addItem(ATTR_SCANSTUB);
+					taskSelectionArray.addItem(ATTR_BACKUP);
+					taskSelection.dataProvider = taskSelectionArray ; */
+					currentState = "auxState" ;
+					parentWizard.enableStep(Optional.STEP_POLICY, !validate());
+					parentWizard.enableStep(Optional.STEP_DESTINATION, !validate());
+					parentWizard.enableStep(Optional.STEP_IMPORT_FILE, !validate());
+					refreshStepTitle();
+				}else if(getData(TaskType.ATTR_SCHEDULE_TYPE) == (TaskType.ATTR_Delete)){
+					/* taskSelectionArray.addItem(ATTR_DELETEORPHAN);
+					taskSelectionArray.addItem(ATTR_DELETESTUB);
+					taskSelection.dataProvider = taskSelectionArray ; */
+					currentState = "delState" ;
+					enable_state();
+				}else if(getData(TaskType.ATTR_SCHEDULE_TYPE) == (TaskType.ATTR_Migration)){
+					/* taskSelectionArray.addItem(ATTR_REPOMIGRATION);
+					taskSelectionArray.addItem(ATTR_FILEMIGRATION);
+					taskSelection.dataProvider = taskSelectionArray ; */
+					currentState = "migState" ;
+					change_migration_handler();
+					if(ATTR_REPOMIGRATION == getData(ATTR_POLICY_TYPE)){
+						parentWizard.enableStep(Optional.STEP_POLICY, !validate());
+					}else if(ATTR_FILEMIGRATION == getData(ATTR_POLICY_TYPE)){
+						parentWizard.enableStep(Optional.STEP_POLICY, validate());
+					}else{
+						parentWizard.enableStep(Optional.STEP_POLICY, !validate());
+					}
+					
+				}
+				/* var index:int = (taskSelection.dataProvider as ArrayCollection).getItemIndex(getData(ATTR_POLICY_TYPE));
+				if(index > -1){
+					taskSelection.selectedIndex = index ;
+				} */
+			}
+			override protected function save(): void
+			{
+				var tempTask:String ;
+				
+				if(currentState == "arcState"  && ar.selected){
+					tempTask = ar.label ;
+				}else if(currentState == "arcState"  && mu.selected){
+					tempTask = mu.label ;
+				}else if(currentState == "arcState"  && ms.selected){
+					tempTask = ms.label ;
+				}else if(currentState = "delState" && dor.selected){
+					tempTask = dor.label ;
+				}else if(currentState = "delState" && ds.selected){
+					tempTask = ds.label ;
+				}else if(fm.selected){
+					tempTask = fm.label ;
+				}else if(rm.selected){
+					tempTask = rm.label ;
+				}else if(bk.selected){
+					tempTask = bk.label ;
+				}else if(ss.selected){
+					tempTask = ss.label ;
+				}
+				setData(ATTR_POLICY_TYPE,		tempTask);
+				//enableStep(TvShowSelection.STEP_NAME, true);
+				stepComplete = true;
+			}
+			// Override as we have step specific validation
+			override protected function validate(): Boolean
+			{
+				return true;
+			}
+			private function enable_state():void{
+				parentWizard.enableStep(Optional.STEP_POLICY, validate());
+				refreshStepTitle();
+			}
+			private function change_migration_handler():void{
+				parentWizard.enableStep(Optional.STEP_IMPORT_FILE, !validate());
+				parentWizard.enableStep(Optional.STEP_SOURCE, validate());
+				if(getData(TaskType.ATTR_SCHEDULE_TYPE) != (TaskType.ATTR_Auxillary)){
+					parentWizard.enableStep(Optional.STEP_DESTINATION, validate());
+				}else if(getData(TaskType.ATTR_SCHEDULE_TYPE) == (TaskType.ATTR_Auxillary)){
+					parentWizard.enableStep(Optional.STEP_DESTINATION, !validate());
+					if(bk.selected){
+						parentWizard.enableStep(Optional.STEP_SOURCE, !validate());
+					}
+				}
+				refreshStepTitle();
+			}
+			protected function taskSelection_changeHandler(event:Event):void
+			{
+				change_migration_handler();
+				if(rm.selected){
+					parentWizard.enableStep(Optional.STEP_POLICY, !validate());
+				}else if(fm.selected){
+					parentWizard.enableStep(Optional.STEP_POLICY, validate());
+				}
+				refreshStepTitle();
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	
+	<mx:Form>
+		<!--<mx:FormItem label="{ResourceManager.getInstance().getString('fma','EDT_TSK_TYPC')}" >
+			<mx:ComboBox selectedIndex="0" id="taskSelection" change="taskSelection_changeHandler(event)"/>
+		</mx:FormItem>-->		
+	</mx:Form>
+</wizards:UxWizardStep>

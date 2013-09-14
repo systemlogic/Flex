@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<boxes:UxVBox label="Master Details View"
+        xmlns:mx="http://www.adobe.com/2006/mxml"
+        xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+        xmlns:views="com.emc.efx.guitoolkit.components.views.*"
+        horizontalScrollPolicy="off"
+        verticalScrollPolicy="off"
+        width="100%"
+        height="100%"
+        creationComplete="init()"
+        xmlns:table="com.emc.efx.guitoolkit.components.table.*"
+        xmlns:tables="com.emc.uemri.samples.tables.*"
+        xmlns:views1="com.emc.ecuit.flex.components.views.*"
+        xmlns:sample="com.emc.sample.sampletable.*"
+        xmlns:masterDetailsView="com.emc.fma.views.Policies.Policy.*" 
+        xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*" 
+        xmlns:model="com.emc.fma.views.Policies.Policy.model.*">
+  
+  <mx:Script source="PolicyList.mxml.as" />
+  
+  <views:UxMasterDetailsView id="myMasterDetailsView"
+                 direction="{BoxDirection.VERTICAL}"
+                 height="100%"
+                 width="100%">
+
+    <!-- Set the Master View property -->
+    <views:masterView>
+      <views:UxViewBlock title="Policy List" height="100%" width="100%" id="masterViewBlock"
+               keyDown="page_keyDownHandler(event)"
+               xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*">
+        <table:UxTablePanel height="100%" width="100%">
+          <table:UxAdvancedDataGrid id="sampleMasterTable" height="100%" width="100%" allowMultipleSelection="false" 
+                                    doubleClickEnabled="true" itemDoubleClick="clickEdit();">
+            <table:tableModel>
+              <model:PolicyModel/>
+            </table:tableModel>
+            <table:tableColumnViewInfo>
+              <mx:ArrayCollection>
+                <table:UxTableColumnViewInformation columnKey="Name" colWidth="300"/>
+                <table:UxTableColumnViewInformation columnKey="Type" colWidth="300"/>
+              </mx:ArrayCollection>
+            </table:tableColumnViewInfo>
+          </table:UxAdvancedDataGrid>
+        </table:UxTablePanel>
+        <mx:HBox paddingBottom="10">
+          <mx:Button id="addButton" label="Add" width="80" click="clickAdd()" />
+          <mx:Button id="editButton" label="Details" width="80" click="clickEdit()" enabled="false" />
+          <mx:Button id="deleteButton" label="Delete" width="80" click="clickDelete()" enabled="false" />
+          <buttons:UxButton id="cancelChanges" label="{Common.getResource('BUTTON_CANCEL')}" click="OnCancel(event)" />
+        </mx:HBox>
+      </views:UxViewBlock>
+    </views:masterView>
+
+    <!-- Set the Details View property -->
+    <views:detailsView>
+      <views:UxDetailsView height="100%"
+                 width="100%"
+                 id="detailsView"
+                 title=""
+                 showRefresh="false"
+                 showFilter="false"
+                 showFind="false"
+                 showTools="false"
+                 showExport="false"
+                 showPrint="false"
+                 showHelp="false"
+                 >
+        <mx:VBox>
+
+          <mx:HBox>
+            <UxExtendedClass:UxGroupBoxCta id="idOne" title="General Information" height="200" width="400" >
+              <mx:Form id="detailsTableModel" label="New Policy" width="100%" height="100%">
+
+                <mx:FormItem id="pt" label="Policy Type :" fontWeight="bold" >
+                  <mx:Label id="policyTypeLabel" fontWeight="normal"  />
+                </mx:FormItem>
+
+                <mx:FormItem id="pn" label="Policy Name :" fontWeight="bold" >
+                  <mx:Label id="policyNameLabel" fontWeight="normal"  />
+                </mx:FormItem>
+
+                <mx:FormItem  id="dp" label="Delay Period :" fontWeight="bold">
+                  <mx:Label id="delayPeriodLabel" fontWeight="normal" />
+                </mx:FormItem>
+
+                <mx:FormItem id="rp" label="Retention Period :" fontWeight="bold" >
+                  <mx:Label id="retentionPeriodLabel" fontWeight="normal" />
+                </mx:FormItem>
+
+                <mx:FormItem id="sr" label="Stub Retention :" fontWeight="bold" >
+                  <mx:Label id="stubRetentionLabel" fontWeight="normal"/>
+                </mx:FormItem>
+
+                <mx:FormItem id="dm" label="Days Missing :" fontWeight="bold" >
+                  <mx:Label id="daysMissingLabel" fontWeight="normal"/>
+                </mx:FormItem>
+
+                <mx:FormItem id="da" label="Delete All :" fontWeight="bold" >
+                  <mx:Label id="deleteAllLabel" fontWeight="normal"/>
+                </mx:FormItem>
+              </mx:Form>
+            </UxExtendedClass:UxGroupBoxCta>
+
+
+            <UxExtendedClass:UxGroupBoxCta id="idTwo" title="Rules" paddingRight="15" paddingLeft="20" paddingTop="15" paddingBottom="15" height="200" width="570" >
+
+              <mx:HBox>
+
+                <mx:DataGrid id="ruleDataGrid" dataProvider="{PolicyRules}" height="142" width="530" editable="false"
+                       wordWrap="true" variableRowHeight="true" allowMultipleSelection="false" >
+                  <mx:columns>
+                    <mx:DataGridColumn headerText="Rule" width="40" dataField="Rule"/>
+                    <mx:DataGridColumn headerText="Matching Expression" width="245" dataField="Expression"/>
+                    <mx:DataGridColumn headerText="Action" width="245" dataField="Action"/>
+                  </mx:columns>
+                </mx:DataGrid>
+
+              </mx:HBox>
+
+            </UxExtendedClass:UxGroupBoxCta>
+
+          </mx:HBox>
+
+        </mx:VBox>
+
+      </views:UxDetailsView>
+    </views:detailsView>
+  </views:UxMasterDetailsView>
+</boxes:UxVBox>

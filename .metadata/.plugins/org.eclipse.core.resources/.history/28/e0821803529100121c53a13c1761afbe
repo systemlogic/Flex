@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxExtendedClass:UxGroupBoxCta xmlns:fx="http://ns.adobe.com/mxml/2009"
+                               xmlns:s="library://ns.adobe.com/flex/spark" title=" {Common.getResource('SYS_SECU_LDP')}"
+                               xmlns:mx="library://ns.adobe.com/flex/mx" xmlns:UxExtendedClass="com.emc.fma.UxExtendedClass.*" width="50%">
+  <fx:Script source="ldapSetting.mxml.as" />
+  <fx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+  </fx:Declarations>
+  <UxExtendedClass:states>
+    <s:State name="None"/>
+    <s:State name="EveryThing"/>
+  </UxExtendedClass:states>
+  <mx:Form>
+    <mx:FormItem label=" {Common.getResource('SYS_SECU_LDP_AUTH')}">
+      <mx:Label id="LDAPAuthentication"/>
+    </mx:FormItem>
+    <mx:FormItem label=" {Common.getResource('SYS_LDP_SRC')}" includeIn="EveryThing">
+      <mx:Label id="srhlmt"/>
+    </mx:FormItem>
+    <mx:FormItem label=" {Common.getResource('SYS_LDP_BND')}" includeIn="EveryThing">
+      <mx:Label id="bindLmt"/>
+    </mx:FormItem>
+    <mx:FormItem label=" {Common.getResource('SYS_LDP_POL')}" includeIn="EveryThing">
+      <mx:Label id="bindPol"/>
+    </mx:FormItem>
+    <mx:FormItem label=" {Common.getResource('SYS_LDP_SRV')}" includeIn="EveryThing">
+      <mx:Label id="ldapServer"/>
+    </mx:FormItem>
+    <mx:FormItem label=" {Common.getResource('SYS_LDP_BAS')}" includeIn="EveryThing">
+      <mx:Label id="base"/>
+    </mx:FormItem>
+  </mx:Form>
+</UxExtendedClass:UxGroupBoxCta>

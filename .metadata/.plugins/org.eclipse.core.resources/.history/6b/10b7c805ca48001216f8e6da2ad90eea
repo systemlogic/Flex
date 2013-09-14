@@ -1,0 +1,391 @@
+import com.emc.ecuit.flex.components.application.AppTitleBar;
+import com.emc.ecuit.flex.components.application.Breadcrumb;
+import com.emc.ecuit.flex.components.application.BreadcrumbBar;
+import com.emc.ecuit.flex.components.application.BreadcrumbEvent;
+import com.emc.ecuit.flex.components.application.ProgressMonitor;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.efx.UxConstants;
+import com.emc.efx.core.extensionmgr.UxExtensionManager;
+import com.emc.efx.services.navigation.IUxNavigationService;
+import com.emc.efx.utilities.map.UxHashMap;
+import com.emc.fma.views.Configuration.FileServer.wizard.Centera.UserProfile;
+import com.emc.fma.views.Utility.UtilityFunctionClass;
+import com.emc.fma.utils.Common;
+import com.emc.fma.utils.RESTClient;
+import com.emc.fma.utils.RESTEvent;
+import com.emc.fma.model.SchemaManager.SchemaConverter;
+import com.emc.fma.model.SchemaManager.vo.CelerraVO;
+import com.emc.fma.model.SchemaManager.vo.VNXVO;
+import com.emc.fma.model.SchemaManager.vo.VNXeVO;
+import com.emc.fma.model.SchemaManager.vo.SourceVO;
+import com.emc.fma.model.SchemaManager.vo.DirExclusionsVO;
+
+import flash.sampler.NewObjectSample;
+
+import mx.collections.ArrayCollection;
+import mx.controls.AdvancedDataGrid;
+import mx.events.CloseEvent;
+import mx.events.FlexEvent;
+import mx.managers.PopUpManager;
+import mx.resources.ResourceManager;
+import mx.controls.Alert;
+
+[Bindable] public var Server:String;
+[Bindable] public var ServerType:String;
+
+[Bindable] private var IPs:ArrayCollection = new ArrayCollection();
+[Bindable] private var excludedDirList:ArrayCollection = new ArrayCollection();
+[Bindable] private var ctrlSIP:String;
+[Bindable] public var cifsUser:String;
+[Bindable] public var cifsPassword:String;
+[Bindable] public var cifsDomain:String;
+[Bindable] public var ndmpUser:String;
+[Bindable] public var ndmpPassword:String;
+[Bindable] public var ndmpPort:String;
+[Bindable] private var ccd:String = "";
+[Bindable] private var acd:String = "";
+[Bindable] private var asSource:Boolean = false;
+[Bindable] public var isQualified:Boolean;
+
+private var _serverVO:Object = null;
+private var _currentPayload:UxHashMap = null;
+
+override protected function initializeData():void
+{
+  super.initializeData();
+  Common.setFocusOnFirstChild(this);
+
+  if (currentPayload != null)
+  {
+    var dataObj:String = currentPayload.getValue("ServerType");
+    nameForm.updateState(dataObj);
+
+    if (dataObj != null)
+    {
+      Server = currentPayload.getValue("Server");
+      ServerType = currentPayload.getValue("ServerType");
+      viewBlock.title=ServerType + " "+ ResourceManager.getInstance().getString('fma','FIL_SER_PRP');
+      currentState = (ServerType == "VNXe")? "VNXe":"Celerra";
+
+      // Send GET request to the server
+      RESTClient.sendGetRequest("/api/server/"+Server, OnGetServerStatus, viewBlock);
+    }
+  }
+}
+
+private function OnGetServerStatus(event:RESTEvent):void
+{
+  if ( event.hasStandardResponse )
+  {
+    Common.showResponseMessage(this, event, onCancel);
+    return;
+  }
+  var response:XML = event.response;
+  trace(response);
+
+  try
+  {
+    var serverType:String = response.children()[0].localName();
+    if ( serverType != ServerType )
+      throw new Error("Expecting " + ServerType + " server, but returned " + serverType);
+    _serverVO = SchemaConverter.XMLtoVO(serverType, response);
+    if ( _serverVO == null )
+      throw new Error("Error converting XML to " + serverType + "VO.\n" + response.toXMLString());
+
+    nameForm.FileServerName.text = _serverVO.Name;
+    nameForm.IsVDM.selected = ( _serverVO.IsVDM == "true" )? true:false;
+    for each ( var ip:String in _serverVO.IP )
+      IPs.addItem(ip);
+    ctrlSIP = _serverVO.CSIP;
+
+    cifsForm.setData(_serverVO.Cifs);
+    ndmpForm.setData(_serverVO.Ndmp);
+
+    if ( ServerType == "Celerra" || ServerType == "VNX" )
+    {
+      /////////////////////////////////////////////////////////////////////////////////////
+      // Ugly Fix: if there are no elements under <Source> make it as null in the VO object
+      var xmlServer:XML = response.children()[0];
+      if ( xmlServer.child("Source").length() == 0 || xmlServer.child("Source").children().length() == 0 )
+        _serverVO.Source = null;
+      /////////////////////////////////////////////////////////////////////////////////////
+      if ( _serverVO.Source == null )
+      {
+        asSource = false;
+        ccd = "";
+        acd = "";
+      }
+      else
+      {
+        asSource = true;
+        ccd = _serverVO.Source.Ccd;
+        acd = _serverVO.Source.Acd;
+
+        for each (var dir:String in _serverVO.Source.DirExclusions.Dir )
+          excludedDirList.addItem(dir);
+      }
+    }
+  }
+  catch (error:Error)
+  {
+    Common.showErrorDialog(this, error.message, onCancel);
+  }
+}
+
+private function page_keyDownHandler(event:KeyboardEvent):void
+{
+  if (event.keyCode == Keyboard.ESCAPE)
+    onCancel(new MouseEvent(MouseEvent.CLICK));
+}
+
+[Bindable]
+public function set currentPayload(value:UxHashMap):void
+{
+  _currentPayload = value;
+}
+
+public function get currentPayload():UxHashMap
+{
+  return _currentPayload;
+}
+
+private function init():void
+{
+}
+
+private function titleWindow_close(evt:CloseEvent):void
+{
+  PopUpManager.removePopUp(this);
+}
+
+protected function Initialized_changeHandler(event:Event):void
+{
+  asSource = Initialized.selected;
+}
+
+private function onCancel(event:MouseEvent):void
+{
+  var navService:IUxNavigationService =
+  UxExtensionManager.getInstance().getService(UxConstants.
+  NAVIGATION_SERVICE) as IUxNavigationService;
+  var location:Array = new Array;
+  location = navService.currentLocation;
+  location.pop();
+  navService.navigate(location);
+}
+
+private function onOK(event:MouseEvent):void
+{
+  if ( _serverVO == null )
+  {
+    Common.showErrorDialog(this, "Cannot save the changes as getting server details failed");
+    return;
+  }
+
+  var _tmpArray:Array = new Array();
+  for each ( var _tmpip:String in IPs )
+    _tmpArray.push(_tmpip);
+
+  // Create and populate VO object
+  _serverVO.Name = nameForm.FileServerName.text;
+  _serverVO.IP = new ArrayCollection(_tmpArray); 
+  cifsForm.getData(_serverVO.Cifs);
+  ndmpForm.getData(_serverVO.Ndmp);
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Ugly Fix: if it is not source make Source as null
+  if ( !asSource )
+    _serverVO.Source = null;
+  else if ( Initialized != null )
+  {
+    if ( _serverVO.Source == null )
+      _serverVO.Source = new SourceVO();
+
+    _serverVO.Source.Ccd = CelerraCallbackDNSName.text;
+    _serverVO.Source.Acd = AtmosCallbackDNSName.text;
+
+    _serverVO.Source.DirExclusions = new DirExclusionsVO();
+    for each ( var dir:String in excludedDirList )
+      _serverVO.Source.DirExclusions.Dir.addItem(dir);
+  }
+
+  // Validate VO object
+  if ( _serverVO.IP.length == 0 )
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','EMPTY_IPLIST'),ResourceManager.getInstance().getString('fma','EMPTY_IPLIST_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    viewstack2.selectedIndex = 0; 
+    return;
+  }
+
+  // Validate CIFS credentials
+  if ( _serverVO.Cifs.User == "" )
+  {
+    viewstack2.selectedIndex = 1;
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_USERNAME'),ResourceManager.getInstance().getString('fma','INVALID_USERNAME_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+  else if ( _serverVO.Cifs.Password == "" )
+  {
+    viewstack2.selectedIndex = 1;
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_PASSWORD'),ResourceManager.getInstance().getString('fma','INVALID_PASSWORD_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+  else
+  {
+    var check:int = _serverVO.Cifs.Domain.search(UtilityFunctionClass.Domain);
+    trace(check);
+    if ( check == -1 )
+    {
+      viewstack2.selectedIndex = 1;
+      ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_QUALIDFIED_DOMAIN'),ResourceManager.getInstance().getString('fma','INVALID_QUALIDFIED_DOMAIN_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+      return;
+    }
+  }
+
+  // Validate NDMP Credentials
+  if ( !((_serverVO.Ndmp.User == "" && _serverVO.Ndmp.Password == "" && _serverVO.Ndmp.Port == "" ) ||
+         (_serverVO.Ndmp.User != "" && _serverVO.Ndmp.Password != "" && _serverVO.Ndmp.Port != "" )
+        )
+     )
+  {
+    viewstack2.selectedIndex = 2; 
+    if ( _serverVO.Ndmp.User == "" )
+      ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_USERNAME'),ResourceManager.getInstance().getString('fma','INVALID_USERNAME_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    else if ( _serverVO.Ndmp.Password == "" )
+      ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_PASSWORD'),ResourceManager.getInstance().getString('fma','INVALID_PASSWORD_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    else if ( _serverVO.Ndmp.Port == "" )
+      ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_PORT'),ResourceManager.getInstance().getString('fma','INVALID_PORT_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+  }
+
+  var xml:XML = SchemaConverter.VOtoXML("FileServers", _serverVO);
+  trace(xml);
+
+  RESTClient.sendPutRequest("/api/server/" + _serverVO.Name, xml, OnSaveStatus, viewBlock);
+}
+
+private function OnSaveStatus(event:RESTEvent):void
+{
+  Common.showResponseMessage(this, event);
+}
+
+private function containTest():Boolean
+{
+  var temp:ArrayCollection = exDirs.dataProvider as ArrayCollection;
+
+  for each(var item:String in temp)
+  {
+    if (item == Exclusion.text)
+      return true;
+  }
+
+  return false;
+}
+
+public function addExDirs():void
+{
+  // regulare expression for unix path suggested by anand "^((/)|(/[^/]+)+)$"
+  excludedDirList.addItem(Exclusion.text);
+  Exclusion.text = "";
+}
+
+public function delExDirs():void
+{
+  if (exDirs.selectedIndex == -1)
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_SELECTION'),ResourceManager.getInstance().getString('fma','INVALID_EXCLUDE_SELECTION_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+
+  excludedDirList.removeItemAt(exDirs.selectedIndex);
+}
+
+public function addIP():void
+{
+  var address:String =  ip.address1.text + "." +
+  ip.address2.text + "." +
+  ip.address3.text + "." +
+  ip.address4.text;
+  trace(address.search(UtilityFunctionClass.IPAddresspattern));
+
+  if (!IPs.contains(address))
+  {
+    IPs.addItem(address);
+    ip.address1.text = "";
+    ip.address2.text = "";
+    ip.address3.text = "";
+    ip.address4.text = "";
+    add.enabled = false;
+  }
+  else if (IPs.contains(address))
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','ALREADY_IP'),ResourceManager.getInstance().getString('fma','ALREADY_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+  else
+  {
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_IP'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+    return;
+  }
+}
+
+public function delIP():void
+{
+  if ( ips.selectedItem == null )
+    ECUITPopupDialog.showMessageDialog(this,ResourceManager.getInstance().getString('fma','INVALID_DELETION'),ResourceManager.getInstance().getString('fma','INVALID_IP_HEADER'),ECUITPopupDialog.INFORMATION_MESSAGE);
+  else
+    IPs.removeItemAt(ips.selectedIndex);
+}
+
+protected function ip_creationCompleteHandler(event:FlexEvent):void
+{
+  ip.address1.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  ip.address2.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  ip.address3.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+  ip.address4.addEventListener(KeyboardEvent.KEY_UP,ipAddressChangeHandler);
+}
+
+private function ipAddressChangeHandler(event:KeyboardEvent):void
+{
+  var address:String = ip.address1.text + "." +
+                       ip.address2.text + "." +
+                       ip.address3.text + "." +
+                       ip.address4.text;
+
+  if (!ips.dataProvider.contains(address) && ( address.search(UtilityFunctionClass.IPAddresspattern) == 0))
+    add.enabled = true;
+  else
+    add.enabled = false;
+}
+
+private var domainArray:ArrayCollection;
+
+
+protected function _UpdateClickHandler(event:MouseEvent):void
+{
+  RESTClient.sendGetRequest("/api/resolve/" + nameForm.FileServerName.text, OnGetIPStatus, viewBlock);
+}
+
+private function OnGetIPStatus(event:RESTEvent):void
+{
+  if ( Common.showResponseMessage(this, event) )
+    return;
+
+  var ipString:String = event.response.IP[0].toString();
+
+  if ( UtilityFunctionClass.IPAddresspattern.test(ipString) )
+    ip.address = ipString.split(".");
+  else
+    ECUITPopupDialog.showMessageDialog(this, ipString, ResourceManager.getInstance().getString('fma','CLIENT_ALR'), ECUITPopupDialog.INFORMATION_MESSAGE);
+}
+
+protected function Exclusion_changeHandler(event:Event):void
+{
+  if (Exclusion.text != "" && (Exclusion.text.search(UtilityFunctionClass.UnixPath) == 0))
+  {
+    if (excludedDirList.contains(Exclusion.text))
+      excludebtn.enabled = false;
+    else
+      excludebtn.enabled = true;
+  }
+}

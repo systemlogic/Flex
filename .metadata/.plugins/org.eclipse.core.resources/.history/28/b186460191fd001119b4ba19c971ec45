@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UxVBoxWindow xmlns="com.emc.fma.UxExtendedClass.*"
+			  xmlns:fxs="http://ns.adobe.com/mxml/2009" 
+			  xmlns:s="library://ns.adobe.com/flex/spark" 
+			  xmlns:mx="library://ns.adobe.com/flex/mx"
+			  xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+			  xmlns:containers="com.emc.ecuit.flex.components.containers.*"
+			  xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*"
+			  implements="com.emc.efx.services.navigation.IUxWorkingPageContainer"
+			  xmlns:buttons="com.emc.efx.guitoolkit.components.buttons.*" 
+			  xmlns:form="com.emc.fma.views.Configuration.FileServer.form.*" 
+			  xmlns:table="com.emc.efx.guitoolkit.components.table.*" 
+			  xmlns:filter="com.emc.efx.guitoolkit.components.table.filter.*" 
+			  xmlns:filter1="com.emc.efx.guitoolkit.filter.*" 
+			  xmlns:rules="com.emc.efx.guitoolkit.components.table.rules.*" 
+			  xmlns:filter2="com.emc.efx.guitoolkit.components.filter.*" 
+			  xmlns:section="com.emc.efx.services.layout.section.*">
+	<fxs:Declarations>
+		<section:UxLazyLoadSection id="edit" key="PTRNEDT" headerText="@Resource(key='PTRNEDT', bundle='fma')" 
+								   contentClass="com.emc.fma.views.System.logPatternEdit"/>
+	</fxs:Declarations>
+	
+	<fxs:Script>
+		<![CDATA[
+		import com.emc.ecuit.flex.components.application.ProgressMonitor;
+		import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+		import com.emc.ecuit.flex.components.views.ProgressCanvas;
+		import com.emc.ecuit.flex.events.ECUITEvent;
+		import com.emc.ecuit.flex.events.ECUITPopupDialogEvent;
+		import com.emc.ecuit.flex.services.rest.RestHTTPService;
+		import com.emc.efx.UxConstants;
+		import com.emc.efx.core.extensionmgr.UxExtensionManager;
+		import com.emc.efx.guitoolkit.components.dialogs.UxDialog;
+		import com.emc.efx.guitoolkit.events.UxViewEvent;
+		import com.emc.efx.net.UxURL;
+		import com.emc.efx.net.UxURLRequest;
+		import com.emc.efx.net.http.UxHttpClient;
+		import com.emc.efx.net.http.UxHttpResponse;
+		import com.emc.efx.services.layout.section.UxLazyLoadSection;
+		import com.emc.efx.services.navigation.IUxNavigationService;
+		import com.emc.efx.utilities.map.UxHashMap;
+		import com.emc.fma.views.System.model.LogPattern;
+		import com.emc.fma.views.System.model.UserModel;
+		import com.emc.fma.views.Utility.UtilityFunctionClass;
+		
+		import flash.sampler.NewObjectSample;
+		
+		import mx.collections.ArrayCollection;
+		import mx.controls.AdvancedDataGrid;
+		import mx.controls.Button;
+		import mx.events.CloseEvent;
+		import mx.events.FlexEvent;
+		import mx.events.ItemClickEvent;
+		import mx.managers.PopUpManager;
+		import mx.resources.ResourceManager;
+		
+		private var _currentPayload:UxHashMap = null;
+		[Bindable] private var action:String;
+		override protected function initializeData():void {
+		super.initializeData();
+		
+		}
+		[Bindable]
+		public function set currentPayload(value:UxHashMap):void {
+		_currentPayload = value;
+		}
+		
+		public function get currentPayload():UxHashMap {
+		return _currentPayload;
+		}
+		private var _section:UxLazyLoadSection ;
+		protected function edit_clickHandler(event:MouseEvent):void
+		{
+		_section = edit ;
+		var navService:IUxNavigationService = UxExtensionManager.getInstance().getService(UxConstants.NAVIGATION_SERVICE) as IUxNavigationService;
+		var map:UxHashMap = new UxHashMap();
+		map.put(UtilityFunctionClass.INDEX,				patternList.selectedItem.Column0);
+		map.put(UtilityFunctionClass.PATTERN, 			patternList.selectedItem.Column1);
+		map.put(UtilityFunctionClass.DESCRIPTION, 		patternList.selectedItem.Column2);
+		map.put(UtilityFunctionClass.STATUS, 			patternList.selectedItem.Column3);
+		map.put(UtilityFunctionClass.INCLUDE_SUMMARY, 	patternList.selectedItem.Column4);
+		map.put(UtilityFunctionClass.DEFULT_THROTTLE, 	patternList.selectedItem.Column5);
+		map.put(UtilityFunctionClass.CURRENT_THROTTLE, 	patternList.selectedItem.Column6);
+		
+		
+		var location:Array = new Array;
+		_section.headerText = ResourceManager.getInstance().getString('fma','PTRNEDT');
+		location = navService.currentLocation;
+		location.push(edit.key)
+		navService.moveToChild(edit.key, map);
+		
+		}
+		public function get workingPages():Array {
+		var workingPageArray:Array = new Array();
+		workingPageArray.push(edit);
+		return workingPageArray;
+		}
+		
+		]]>
+	</fxs:Script>
+	<UxViewBlock xmlns="com.emc.efx.guitoolkit.components.views.*" id="viewBlock"
+				 xmlns:carousel="com.emc.efx.guitoolkit.components.carousel.*" 
+				 title="{ResourceManager.getInstance().getString('fma','LOG_PTRN_LIST')}" width="100%" height="100%"
+				 showRefresh="false" showFilter="false" showFind="false" 
+				 showExport="false" showPrint="false" showTools="false"
+				 helpServiceID="FMAHelpService" helpID="logPattern" 
+				 xmlns:boxes="com.emc.efx.guitoolkit.components.boxes.*" 
+				 xmlns:containers="com.emc.ecuit.flex.components.containers.*">
+		<table:UxTablePanel width="100%" height="100%">
+			<table:filterPanel>
+				<filter:UxTableFilterPanel id="myTableFilterPanel">
+					<filter:filterGroups>
+						<fxs:Array>
+							<filter2:UxFilterComboxBox label="{ResourceManager.getInstance().getString('fma','LOG_PTRN_STATUS')}">
+								<filter2:filterOptions>
+									<fxs:Array>
+										<filter1:UxAllFilter label="All">
+										</filter1:UxAllFilter>
+										
+										<filter:UxTableColumnFilter label="disabled">
+											<filter:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="3" searchValue="disabled"/>
+											</filter:rules>
+										</filter:UxTableColumnFilter>
+										
+										<filter:UxTableColumnFilter label="enabled">
+											<filter:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="3" searchValue="enabled"/>
+											</filter:rules>
+										</filter:UxTableColumnFilter>
+									</fxs:Array>
+								</filter2:filterOptions>
+							</filter2:UxFilterComboxBox>
+							<filter2:UxFilterComboxBox label="{ResourceManager.getInstance().getString('fma','LOG_PTRN_INC_SUM')}">
+								<filter2:filterOptions>
+									<fxs:Array>
+										<filter1:UxAllFilter label="All">
+										</filter1:UxAllFilter>
+										
+										<filter:UxTableColumnFilter label="included">
+											<filter:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="4" searchValue="included"/>
+											</filter:rules>
+										</filter:UxTableColumnFilter>
+										
+										<filter:UxTableColumnFilter label="not included">
+											<filter:rules>
+												<rules:UxTableModelColumnIDRule filterColumnIndex="4" searchValue="not included"/>
+											</filter:rules>
+										</filter:UxTableColumnFilter>
+									</fxs:Array>
+								</filter2:filterOptions>
+							</filter2:UxFilterComboxBox>
+						</fxs:Array>
+					</filter:filterGroups>
+				</filter:UxTableFilterPanel>
+			</table:filterPanel>
+			<table:UxAdvancedDataGrid id="patternList" tableModel="{new LogPattern()}" 
+									  showHeaders = "true" 
+									  editable="false" useRollOver="false"	 
+									  allowMultipleSelection="false">
+				<table:tableColumnViewInfo>
+					<mx:ArrayCollection>
+						<table:UxTableColumnViewInformation columnKey="Column0" colWidth="210"/>
+						<table:UxTableColumnViewInformation columnKey="Column1" colWidth="220"/>
+						<table:UxTableColumnViewInformation columnKey="Column2" colWidth="210" />
+						<table:UxTableColumnViewInformation columnKey="Column3" colWidth="210"/>
+						<table:UxTableColumnViewInformation columnKey="Column4" colWidth="210"/>
+						<table:UxTableColumnViewInformation columnKey="Column5" colWidth="0" colHidden="true"/>
+						<table:UxTableColumnViewInformation columnKey="Column6" colWidth="210" />
+					</mx:ArrayCollection>
+				</table:tableColumnViewInfo>
+				
+			</table:UxAdvancedDataGrid>
+			<table:commandPanel>
+				<table:UxTableCommandPanel>
+					<buttons:UxButton label="{ResourceManager.getInstance().getString('fma','BUTTON_EDT')}" click="edit_clickHandler(event)" />
+				</table:UxTableCommandPanel>
+			</table:commandPanel>
+		</table:UxTablePanel>	
+	</UxViewBlock>
+</UxVBoxWindow>

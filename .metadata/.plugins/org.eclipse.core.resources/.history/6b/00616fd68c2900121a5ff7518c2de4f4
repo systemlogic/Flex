@@ -1,0 +1,372 @@
+package com.emc.ecuit.flex.components.buttons
+{
+	import com.emc.ecuit.flex.events.ECUITEvent;
+	import com.emc.ecuit.flex.utils.UITrace;
+	
+	import flash.display.DisplayObjectContainer;
+	import flash.events.MouseEvent;
+	import flash.geom.Point;
+	import flash.text.TextFormatAlign;
+	
+	import mx.core.Application;
+	import mx.controls.Button;
+	import mx.controls.Menu;
+	import mx.events.MenuEvent;
+
+    /**
+     * Dispatched when the hasMenu value changed.
+     * 
+     * @eventType ECUITEvent
+     */
+	[Event(name="hasMenuChanged", type="com.emc.ecuit.flex.events.ECUITEvent")]
+
+    /**
+	 * The CommandBarButton class extends the default Flex Button and
+	 * applies ECUE styles, icons, and behavior for a CommandBarButton. 
+	 * In addition, a CommandBarButton may be associated with a Menu
+	 * which is displayed under the button when it is clicked.
+	 **/
+    public class ControlBarButton extends Button
+	{
+		/** 
+		 * Constant used to specify that the Menu should be displayed
+		 * right aligned under the button.
+		 */
+		public static const MENU_ALIGN_RIGHT:String   = TextFormatAlign.RIGHT;
+	
+		/** 
+		 * Constant used to specify that the Menu should be displayed
+		 * center aligned under the button.
+		 */
+		public static const MENU_ALIGN_CENTER:String = TextFormatAlign.CENTER;
+		
+		/** 
+		 * Constant used to specify that the Menu should be displayed
+		 * left aligned under the button.
+		 */
+		public static const MENU_ALIGN_LEFT:String = TextFormatAlign.LEFT;
+
+		/** Width for standard control buttons **/
+		public static const STANDARD_BUTTON_WIDTH:int = 22;
+
+		/** Height for standard control buttons **/
+		public static const STANDARD_BUTTON_HEIGHT:int = 20;
+
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Properties - public
+	    //
+	    //--------------------------------------------------------------------------
+
+		/** 
+		 * Variable specifing what function to use for handling the 
+		 * menu item click event for the Menu associated with this button.
+		 */
+		[Bindable]
+		public var buttonMenuEventHandler:Function = buttonMenuClick;
+
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Properties - Private
+	    //
+	    //--------------------------------------------------------------------------
+
+		// Private vars
+		private var _menuAlignment:String = MENU_ALIGN_LEFT;	
+		private var _buttonMenuList:XML;
+	
+		// Vars to hold the style dependant upon if the button has a menu or not
+		private var _menuStyle:String = "ECUEButton";
+		private var _buttonStyle:String = "ECUEButton";
+
+		private var _menuStyleName:String = "AppMenu";
+		
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Source - Public
+	    //
+	    //--------------------------------------------------------------------------
+
+	    /** 
+	    * Constructor which creates a ControlBarButton.
+	    * 
+		*/
+	    public function ControlBarButton ()
+	  	{
+			super();
+			
+			// Use the default width/heights
+			width = STANDARD_BUTTON_WIDTH;
+			height = STANDARD_BUTTON_HEIGHT;
+
+		   // send click event to internal controlBarButtonClickHandler
+		   addEventListener(MouseEvent.CLICK, controlBarButtonClickHandler, false, 0, true);
+	  	}
+
+		public function get menuStyleName ():String
+		{
+			return _menuStyleName;
+		}
+		public function set menuStyleName (mStyleName:String):void
+		{
+			_menuStyleName = mStyleName;
+		}
+		
+		/** Style name to use when the button has a drop down menu **/
+		public function get menuStyle ():String
+		{
+			return _menuStyle;
+		}
+		public function set menuStyle (style:String):void
+		{
+			_menuStyle = style;
+			if (hasMenu())
+			{
+				this.styleName = style;
+			}
+		}
+
+		/** Style name to use when the button does not have a drop down menu **/
+		public function get buttonStyle ():String
+		{
+			return _buttonStyle;
+		}
+		public function set buttonStyle (style:String):void
+		{
+			_buttonStyle = style;
+			if (!hasMenu())
+			{
+				this.styleName = style;
+			}
+		}
+
+       /** 
+        * The menu to display for this button. When a ControlBarButton has it's 
+        * <code>buttonMenuList</code> set it turns into a Toggle button and displays
+        * the ECUE icons with drop down arrows.
+		*/	  	       
+		public function get buttonMenuList ():XML
+		{
+			return _buttonMenuList;
+		}
+	    public function set buttonMenuList (theButtonMenuList:XML):void
+		{
+			// Save our currnt hasMenu state
+			var origHasMenu:Boolean = hasMenu();
+
+			_buttonMenuList = theButtonMenuList;
+			if (theButtonMenuList != null)
+			{
+				this.toggle = true;
+				this.styleName = _menuStyle;
+			}
+			else
+			{
+                this.toggle = false;
+				this.styleName = _buttonStyle;
+			}
+			
+			// if the hasMenu value changed, dispatch an event
+			if (hasMenu() != origHasMenu)
+			{
+				dispatchEvent(new ECUITEvent("hasMenuChanged"));
+			}
+		}
+		
+		/** 
+	    * Indicates whether this ControlBarButton currently has a 
+	    * drop down Menu. 
+	    * @return True indicates that this button has a Menu. False 
+	    * indicates that this button does not have a menu.
+	    * @see #buttonMenuList
+		*/
+		public function hasMenu ():Boolean
+		{
+			return ((buttonMenuList != null) && (buttonMenuList.length() > 0));
+		}
+		
+		/** 
+	    * Sets the alignment of the Menu under the ControlBarButton.
+	    * 
+	    * @param value Set to one of three values:<br/>
+	    * ControlBarButton.RIGHT<br/>
+	    * ControlBarButton.CENTER<br/>
+	    * ControlBarButton.LEFT<br/>
+		*/
+		public function set menuAlignment (value:String):void
+		{
+			_menuAlignment = value;
+		}
+		
+		/** 
+	    * Gets the alignment setting of the ControlBarButton's Menu
+	    * 
+	    * @return One of three values:<br/>
+	    * ControlBarButton.RIGHT<br/>
+	    * ControlBarButton.CENTER<br/>
+	    * ControlBarButton.LEFT<br/>
+		*/
+		public function get menuAlignment ():String
+		{
+			return _menuAlignment;
+		}
+		
+		/** 
+	    * Displays a Menu under the ControlBarButton based on the 
+	    * alignment setting.  Also associates the Menu with the specified
+	    * menu event listener.
+	    * 
+	    * @param event Event which triggered the display of the
+	    * menu.
+	    * @param parent Parent container which contains the ControlBarButton.
+	    * @see #setMenuAlignment()
+	    * @see #buttonMenuEventHandler
+		*/
+        public function showMenu (event:MouseEvent, parent:DisplayObjectContainer):void
+        {
+            var buttonMenu:Menu = Menu.createMenu (parent, buttonMenuList, false);
+            buttonMenu.automationName = this.id + "_menu";
+            buttonMenu.labelField = "@label"
+			buttonMenu.setStyle("styleName", this.menuStyleName);
+			if (buttonMenuEventHandler != null)
+			{
+	            buttonMenu.addEventListener (MenuEvent.ITEM_CLICK, buttonMenuEventHandler, false, 0, true);
+	  		}
+	  		else
+	  		{
+	  			UITrace.doTrace(this, 
+	  							"Menu provided for button " + this.id + " but no menu event handler was provided.",
+	  							UITrace.LEVEL_WARN);
+	  		}
+
+            buttonMenu.addEventListener (MenuEvent.ITEM_CLICK, internalButtonMenuClick, false, 0, true);
+            buttonMenu.addEventListener (MenuEvent.MENU_HIDE, internalButtonMenuClick, false, 0, true);
+
+            /* 
+             * This displays the menu at the exact x,y of mouse click
+             * var pt:Point = new Point(event.localX, event.localY);
+             * pt = event.target.localToGlobal(pt);
+             * buttonMenu.show(pt.x, pt.y);
+             */
+            
+            // Get the longest label in the top level of the MenuItems
+            var maxLabelLength:int = getMaxMenuLabelLength(buttonMenuList);
+       		
+       		// Calculate local X,Y position of the menu based on alignment setting. 
+       		var point1:Point = new Point();
+            point1.y = this.y + parent.height;
+            
+            if (_menuAlignment == MENU_ALIGN_RIGHT)
+            {
+               point1.x = this.x - (maxLabelLength * 7);
+            }
+            else if (_menuAlignment == MENU_ALIGN_CENTER)
+            { 
+               point1.x = this.x - (maxLabelLength * 3);
+            }
+            else
+            {
+               point1.x = this.x;
+            }         
+
+            // Calculate position of Menu in Application's coordinates. 
+            point1 = parent.localToGlobal(point1);
+
+			// Keep the menu within the application boundaries
+			var appParent:Application = parentApplication as Application;
+			var appPoint:Point = new Point(appParent.x, appParent.y);
+			appPoint = appParent.localToGlobal(appPoint);
+			var appRightX:int = appPoint.x + appParent.width;
+
+			// adjust position if off the screen
+			var menuWidth:int = maxLabelLength * 7;
+		    if (point1.x + menuWidth + 20 > appRightX)
+		    {
+	            if (_menuAlignment == MENU_ALIGN_CENTER)
+               		point1.x += (maxLabelLength * 3) - 10;
+            	point1.x -= menuWidth - 10; // align to the right side
+      		}
+
+            // Finally show the menu.
+            buttonMenu.show (point1.x, point1.y);
+		}
+
+		/**
+		 * Override the enabled method so we can pseudo-grey out the button
+		 **/
+		public override function set enabled(value:Boolean):void
+		{
+			super.enabled = value;
+			if (value)
+			{
+				this.alpha = 1.0;
+			}
+			else
+			{
+				this.alpha = 0.5;
+			}
+		}
+	    
+	    //--------------------------------------------------------------------------
+	    //
+	    //  Source - Private
+	    //
+	    //--------------------------------------------------------------------------
+
+       /**
+        * @private
+        * 
+  	    * This method is called after any ControlBarButton is clicked. If the button
+  	    * has an associated menu, it will display the menu for the button.
+  	    **/
+		private function controlBarButtonClickHandler (event:MouseEvent):void
+		{
+			var button:ControlBarButton = event.target as ControlBarButton;
+	        
+	        if (button == null)
+	        {
+	           return;
+	        }
+	        
+	        // Show menu if button selected
+			if(button.hasMenu() && button.selected)
+			{
+				button.showMenu(event, button.parent);
+			}
+
+		}
+
+        /**
+        * @private
+        *  
+	    * Cycles through the menuList XML and finds the longest
+	    * label width.
+		*/
+        private function getMaxMenuLabelLength (menuList:XML):int
+        {
+        	var maxLength:Number = 0;
+        	var menuItems:XMLList = menuList.children();
+
+			// Find the maximum length for all menu labels        	
+        	for (var i:int=0; i < menuItems.length(); i++)
+        	{
+        		maxLength = Math.max(maxLength, String(menuItems[i].attribute("label")).length);
+        	}
+
+        	return maxLength;
+        }
+		
+	    // Default menu handler
+	    private function buttonMenuClick (event:MenuEvent):void
+		{
+			UITrace.doTrace(this, "View Button menu handler not set!");
+		}
+ 
+        // Internal button click handler to unselect the button
+        // when menu is clicked.
+	    private function internalButtonMenuClick (event:MenuEvent):void
+		{
+			selected = false;
+		}
+  }
+}

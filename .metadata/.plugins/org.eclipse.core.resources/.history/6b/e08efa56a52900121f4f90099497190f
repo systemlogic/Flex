@@ -1,0 +1,593 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ *
+ */
+package com.emc.efx.guitoolkit.components.dashboards {
+    import com.emc.ecuit.flex.components.dashboards.Dashboard;
+    import com.emc.ecuit.flex.components.dashboards.DashboardColumn;
+    import com.emc.ecuit.flex.components.views.DynamicViewBlock;
+    import com.emc.efx.UxConstants;
+    import com.emc.efx.core.extensionmgr.UxExtensionManager;
+    import com.emc.efx.core.resourcemanager.UxResourceManager;
+    import com.emc.efx.guitoolkit.action.UxDisplayHandlerEvent;
+    import com.emc.efx.guitoolkit.components.dashboards.events.UxDashboardEvent;
+    import com.emc.efx.guitoolkit.components.views.UxDVBDisplayHandler;
+    import com.emc.efx.guitoolkit.components.views.UxDVBDisplayHandlerEvent;
+    import com.emc.efx.guitoolkit.components.views.UxDVBPlaceHolder;
+    import com.emc.efx.guitoolkit.components.views.UxDynamicViewBlock;
+    import com.emc.efx.guitoolkit.events.UxViewEvent;
+    import com.emc.efx.services.persistence.IUxPersistableUserSettings;
+    import com.emc.efx.services.persistence.IUxPersistenceService;
+    import com.emc.efx.utilities.automation.UxAutomationUtils;
+    import com.emc.efx.ux_internal;
+
+    import flash.errors.IllegalOperationError;
+    import flash.events.Event;
+    import flash.utils.getDefinitionByName;
+    import flash.utils.getQualifiedClassName;
+
+    import mx.events.FlexEvent;
+
+    /**
+     * EFX implementation of Dashboard.
+     * ECUIT provides 2 ways of adding DynamicViewblocks to the Dashboard.
+     * 1. Using contentListProvider and layoutProvider xmls.
+     * 2. Adding viewblock to a DashboardColumn and adding DashboardColumn to Dashboard.
+     *
+     * EFX Framework provides additional way:
+     * 3. Passing viewblock instance to addToUxCustomizableDashboard() function.
+     * -Multiple viewblocks having different classnames can be added using this function.
+     * -Framework will layout the viewblocks in alternate columns.
+     *
+     * This class also provides feature to persist dashboard layout on different visits to the same Dashboard.
+     *
+     *
+     */
+    // TODO - artf55880 - Ability to specify bundle for gadget icons.
+    public class UxDashboard extends Dashboard
+        implements IUxPersistableUserSettings {
+        
+        public static const DELIMITER:String = "#";
+        
+        [ArrayElementType("UxDynamicViewBlock")]
+        protected var InvalidDVBs:Array = new Array();
+        protected var _dataInitialized:Boolean = false;
+        /** Array of viewblocks **/
+        protected var _viewBlocks:Array = new Array();
+        /* The number of columns in the Dashboard */
+        private var _numCols:int = 0;
+
+        [Bindable]
+        /** Resource key for the dashboard **/
+        private var _resourceKey:String = null;
+
+        /** Template for dynamic viewblock content list xml **/
+        protected var _dynamicviewblockTemplate:String =
+            "<dynamicviewblock id=''>" + "<short_title></short_title>" +
+            "<long_title></long_title>" + "<image>" + "</image>" +
+            "<tooltip></tooltip>" + "<list_order></list_order>" +
+            "<displayedByDefault></displayedByDefault>" + "</dynamicviewblock>";
+
+        /** Template for dynamic viewblock content layout xml **/
+        protected var _dashboardLayoutContentTemplate:String =
+            "<dynamicviewblock id=''>" +
+            "<dashboard_column>1</dashboard_column>" +
+            "<dashboard_row>1</dashboard_row>" +
+            "<minimized>false</minimized>" + "<maximized>false</maximized>" +
+            "</dynamicviewblock>";
+
+
+        /** Variable to store externally set dashboardLayoutContent so that it can be used to reset user settings.**/
+        protected var _dashboardLayoutContent:XML;
+
+        /** Persistence Key **/
+        private var _persistenceKey:String = null;
+
+        /** List provider **/
+        private var _listProvider:XML = null;
+
+        /** Set to true when applyUserSettings() is called and false on unInitializeData() **/
+        private var _persistenceEvaluated:Boolean = false;
+
+        /** type of layout to use for this dashboard.  ECUIT has a depricated version
+         * of this.  To maintain backwards compatibility without deprication warnings
+         * use this.
+         */
+        public var useStaticLayout:Boolean = false;
+
+        public function UxDashboard() {
+            super();
+            automationName = UxAutomationUtils.DEFAULT_AN;
+            addEventListener(UxViewEvent.INITIALIZE_DATA, onInitializeData,
+                false, 0, true);
+            addEventListener(UxViewEvent.UNINITIALIZE_DATA, onUnInitializeData,
+                false, 0, true);
+            showAddContentLink = true;
+
+            // AR 465097
+            // Default tooltip for tab label.
+            addEventListener(FlexEvent.CREATION_COMPLETE, onCreationComplete,
+                false, 0, true);
+
+            // 2 columns by default for dynamic dashboard
+            horizontalUnitsCount = 2;
+            removeThumbnailOnAdd = false;
+            
+            FLEXSDK::flex3 {
+                delimiter = DELIMITER;
+            }
+        }
+
+        /**
+         * Function to handle UxViewEvent.INITIALIZE_DATA
+         */
+        private function onInitializeData(e:UxViewEvent):void {
+            initializeData();
+        }
+
+        /**
+         * Function to handle UxViewEvent.UNINITIALIZE_DATA
+         */
+        private function onUnInitializeData(e:UxViewEvent):void {
+            unInitializeData();
+        }
+
+        /**
+         * Function to handle creationComplete
+         */
+        private function onCreationComplete(e:Event):void {
+            // AR 465097
+            // If no tooltip is defined in mxml, default it
+            // to the label.
+            if (toolTip == null) {
+                toolTip = label;
+            }
+        }
+
+        /**
+         * Function to perform initialization before displaying the component.
+         * This method is called when UxViewEvent.INITIALIZE_DATA is dispatched on the component.
+         */
+        protected function initializeData():void {
+            if (!_dataInitialized) {
+
+                applyUserSettings();
+                invalidateDisplayList();
+                // The columns_panel contains the UxDashboardColumns which contain the UxDynamicViewBlocks
+                for (var nCount:int = 0; nCount < columns_panel.getChildren().
+                    length; nCount++) {
+                    columns_panel.getChildAt(nCount).
+                        dispatchEvent(new UxViewEvent(UxViewEvent.
+                        INITIALIZE_DATA));
+                }
+                _dataInitialized = true;
+                    // TODO - Initialize/Uninitialize controls_panel contents?
+            }
+        }
+
+        /**
+         * Function to perform unInitialization before moving away from the component.
+         * This method is called when UxViewEvent.UNINITIALIZE_DATA is dispatched on the component.
+         */
+        protected function unInitializeData():void {
+            if (_dataInitialized) {
+                _persistenceEvaluated = false;
+                // The columns_panel contains the UxDashboardColumns which contain the UxDynamicViewBlocks
+                for (var nCount:int = 0; nCount < columns_panel.getChildren().
+                    length; nCount++) {
+                    columns_panel.getChildAt(nCount).
+                        dispatchEvent(new UxViewEvent(UxViewEvent.
+                        UNINITIALIZE_DATA));
+                }
+                saveUserSettings();
+                _dataInitialized = false;
+
+            }
+        }
+
+        override public function set contentListProvider(list:XML):void {
+            _listProvider = list;
+            super.contentListProvider = list;
+            validateNow();
+        }
+
+        /**
+         * This method adds a new <code>DashboardColumn</code> on the
+         * buttom of the <code>Dashboard</code>.
+         */
+        override public function addRow():DashboardColumn {
+            var dashCol:UxDashboardColumn = new UxDashboardColumn();
+            dashCol.id = "dashCol_" + numRows;
+            dashCol.automationName = dashCol.id;
+            dashCol.percentWidth = 100;
+            dashCol.percentHeight = 100;
+            dashCol.parentDashboard = this;
+            dashCol.height = unitHeight;
+
+            // add column to columns panel
+            columns_panel.addChild(dashCol);
+            return dashCol;
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function addViewBlock(dvb:DynamicViewBlock, colNum:int,
+            toTop:Boolean=false):void {
+
+            // addViewBlock can be called in two mode. 
+            // 1. in normal mode. This happens when the DB is first displayed. All the dvbs are constructed from xml and added
+            // into the DB. What we can do here? Check the visiblity of the dvb.
+            // 2. in the editting mode. This method doesn't get called. This happens when a user clicks on "add" button of the thumbnail. In this case, even though
+            // the dvb's display handler told us it is invisible, we still gonna display it.
+            // 
+            // in addition, when back to normal mode, the invisible dvbs should be removed. They are not maintained. So next time, 
+            // you are back to editting mode, they would NOT be displayed.
+
+            // I want to track the one that is invisible by nature.
+            var uxdvb:UxDynamicViewBlock;
+
+            if (dvb is UxDynamicViewBlock) {
+                uxdvb = dvb as UxDynamicViewBlock;
+                // only if the display handler
+                if (uxdvb.displayHandler != null) {
+                    (uxdvb.displayHandler as UxDVBDisplayHandler).
+                        setDisplayParameters(uxdvb, colNum, toTop);
+                    uxdvb.displayHandler.addEventListener(UxDisplayHandlerEvent.
+                        HANDLER_VALIDATED, addDVB);
+                    uxdvb.displayHandler.
+                        dispatchEvent(new UxViewEvent(UxViewEvent.
+                        INITIALIZE_DATA));
+                }
+                // if display handler is null, there is no rules applicable. Add it directly.
+                else {
+                    super.addViewBlock(dvb, colNum, toTop);
+                }
+            } else {
+                super.addViewBlock(dvb, colNum, toTop);
+            }
+        }
+
+        /**
+         * Helper method
+         */
+        protected function addDVB(event:UxDVBDisplayHandlerEvent):void {
+            var uxdvb:UxDynamicViewBlock = event.dvb;
+            // if thunmnail is on, show the uxdvb anyway.
+            if (isContentListShown()) {
+                // set visibility to true anyway
+                uxdvb.visible = true;
+                if (uxdvb.displayPlaceHolder == null) {
+                    uxdvb.displayPlaceHolder = new UxDVBPlaceHolder();
+                    uxdvb.displayPlaceHolder.percentWidth = 100;
+                    uxdvb.displayPlaceHolder.height = 190;
+                }
+                // [artf56760]
+                // let the display holder's id be the original dvb's id so that
+                // replacement would be operated the same way as the original dvb.  
+                uxdvb.displayPlaceHolder.id = uxdvb.id;
+                super.addViewBlock(uxdvb.displayPlaceHolder, event.colNum,
+                    event.toTop);
+                InvalidDVBs.push(uxdvb);
+            } else {
+                super.addViewBlock(uxdvb, event.colNum, event.toTop);
+            }
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function handleAddContentLink(event:Event):void {
+            for each (var uxdvb:UxDynamicViewBlock in InvalidDVBs) {
+                uxdvb.displayPlaceHolder.visible = false;
+                removeViewBlock(uxdvb.displayPlaceHolder.id);
+            }
+
+            for each (var uxdvbRemove:UxDynamicViewBlock in InvalidDVBs) {
+                InvalidDVBs.pop();
+            }
+            super.handleAddContentLink(event);
+
+        }
+
+        /**
+         * This method creates a dynamic viewblock from the passed in
+         * className.  If successfully created, the new viewblock's id
+         * is set to the passed in id.
+         * @param className String representing the package and classname
+         * of the dynamic viewblock to create.
+         * @param id String The <code>id</code> of the dyanmic viewblock.
+         * @return The newly created DynamicViewBlock or null if there was
+         * an error during creation.
+         */
+        override public function createViewBlock(className:String,
+            id:String):DynamicViewBlock {
+            var objClass:Class = null;
+            var dynVB:UxDynamicViewBlock;
+            try {
+                objClass = getDefinitionByName(className) as Class;
+            } catch (e:ReferenceError) {
+                // The screen could not be instantiated (class not found)
+                throw new Error("There was a problem adding to Dashboard.  The class '" +
+                    className + "' could not be found.");
+                return dynVB;
+            }
+            dynVB = UxDynamicViewBlock(new objClass());
+            dynVB.id = id;
+            dynVB.parentDashboard = this;
+            dynVB.staticLayout = this.useStaticLayout;
+            return dynVB;
+        }
+
+        /**
+         * Automation name settings.
+         * override function to format automation name.
+         */
+        override public function set automationName(value:String):void {
+            super.automationName =
+                UxAutomationUtils.getFormattedAutomationName(this.className,
+                value, "_DBD");
+        }
+
+
+        /**
+         * A unique key that defines this instance of the control's persistence information
+         * @param persistKey:String
+         */
+        public function set persistenceKey(persistKey:String):void {
+            _persistenceKey = persistKey;
+        }
+
+        /**
+         * Method to get a unique key that defines this instance of the control's persistence information
+         * @return String
+         */
+        public function get persistenceKey():String {
+            if (useStaticLayout) {
+                _persistenceKey = null;
+            }
+            return _persistenceKey;
+        }
+
+        /**
+         * Method to save persistence settings
+         */
+        public function saveUserSettings():void {
+            if (persistenceKey && !useStaticLayout) {
+                var persistenceService:IUxPersistenceService =
+                    UxExtensionManager.getInstance().getService(UxConstants.
+                    PERSISTENCE_SERVICE) as IUxPersistenceService;
+
+                persistenceService.writeData(persistenceKey, getLayoutXML());
+            }
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function updateLayout():void {
+            // When widget is added via drag-drop, updateLayout() method is called.
+            super.updateLayout();
+            saveUserSettings();
+        }
+
+        /**
+         * Method to apply persistence settings
+         */
+        public function applyUserSettings():void {
+            _persistenceEvaluated = true;
+            if (persistenceKey && !useStaticLayout) {
+                var persistenceData:XML = getUserSettings();
+                if (persistenceData == null) {
+                    persistenceData = _dashboardLayoutContent;
+                }
+                if (persistenceData != null) {
+                    removeAllViewBlocks();
+                    setLayoutProvider(persistenceData, true);
+                }
+            }
+        }
+
+        /**
+         * Method to reset persistence settings
+         */
+        public function resetUserSettings():void {
+            layoutProvider = _dashboardLayoutContent;
+            invalidateDisplayList();
+        }
+
+        /**
+         * Method to get persistence settings from persistence service.
+         */
+        public function getUserSettings():XML {
+            var persistenceData:XML
+            if (persistenceKey) {
+                var persistenceService:IUxPersistenceService =
+                    UxExtensionManager.getInstance().getService(UxConstants.
+                    PERSISTENCE_SERVICE) as IUxPersistenceService;
+
+                persistenceData =
+                    persistenceService.readData(persistenceKey) as XML;
+            }
+            return persistenceData;
+        }
+
+        /**
+         * Helper method to save dashboardLayoutContent if it is set externally.
+         * Internally(in this call), this method is called with parameter 'true'.
+         * Externally, this would be called via layoutProvider.
+         * This value would be used when resetUserSettings() is called.
+         * If called internally
+         */
+        protected function setLayoutProvider(list:XML,
+            calledInternally:Boolean=false):void {
+            if (!calledInternally) {
+                _dashboardLayoutContent = list;
+            }
+            if (persistenceKey == null || _persistenceEvaluated ||
+                useStaticLayout) {
+                // Once super.layoutProvider is set, then viewblocks are added.
+                // If persistenceKey exists, then this if condition ensures that super.layoutProvider 
+                // is not set twice (once when layoutProvider is set and second time when persistedData is applied)
+                // If persistenceKey is set, then call super.layoutProvider only when applyUserSettings() is called.
+                // applyUserSettings() will set the layoutProvider to be the original xml in case no persistedData is present.
+                super.layoutProvider = list;
+                callLater(validateNow);
+            }
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function set layoutProvider(list:XML):void {
+            if (list is XML) {
+                var finalXML:XML = new XML("<root></root>");
+                var valueXML:XML = new XML(list);
+                var dpXMLList:XMLList = valueXML.dynamicviewblock;
+
+                // cylce through layout provider, call createViewBlock function to
+                // create new viewblocks, then apply properties defined in layout
+                // XML
+                var nCount:int = 0;
+                for each (var viewblock:XML in dpXMLList) {
+                    if (viewblock.dashboard_column == 0 &&
+                        viewblock.dashboard_row == 0 && _numCols != 0) {
+                        viewblock.dashboard_row = (int)(nCount / _numCols) + 1;
+                        viewblock.dashboard_column =
+                            (int)((nCount % _numCols) + 1);
+                    }
+                    finalXML.appendChild(viewblock);
+                    nCount++;
+                }
+            }
+            setLayoutProvider(finalXML);
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function set numCols(cols:int):void {
+            _numCols = cols;
+            super.numCols = cols;
+        }
+
+        /**
+         * Method to add viewblock.
+         *
+         */
+        public function addToUxCustomizableDashboard(dvb:DynamicViewBlock,
+            bundle:String, key:String, displayedByDefault:Boolean=true):void {
+            if (dvb.id == null) {
+                throw new IllegalOperationError("DynamicViewBlock id must not be null");
+            }
+            // Do not add if already present
+            if (getViewBlock(dvb.id) == null) {
+                UxResourceManager.getInstance().addApplicationBundle(bundle);
+                //TODO - artf55880 Remove this. Have separate key for each dynamic viewblock.
+                _resourceKey = key;
+
+                var newListContent:XML = new XML(_dynamicviewblockTemplate);
+                newListContent.short_title = dvb.title;
+                newListContent.@id = dvb.id;
+                newListContent.displayedByDefault = displayedByDefault;
+                newListContent.image = _resourceKey;
+                if (getViewBlockByIdFunction == null) {
+                    newListContent.className = getQualifiedClassName(dvb);
+                }
+                var dashboardListContent:XML = new XML("<root></root>");
+
+                // If listProvider is null and it is useStaticLayout, then dataProviders are not used for adding viewblocks.
+                // In that case, the viewblocks have been added via addchild/mxml and not via contentListProvider/layoutProvider
+                if (_listProvider != null || !useStaticLayout) {
+                    if (_listProvider) {
+                        dashboardListContent = _listProvider;
+                    }
+                    var dynVBXML:XMLList =
+                        dashboardListContent.dynamicviewblock.(@id == dvb.id);
+                    // Do not add if already present
+                    if (dynVBXML.length() == 0) {
+                        // update the list of add content things 
+                        dashboardListContent.appendChild(newListContent);
+                        contentListProvider = dashboardListContent;
+                    }
+                    if (displayedByDefault) {
+                        var newLayoutContent:XML =
+                            new XML(_dashboardLayoutContentTemplate);
+                        newLayoutContent.@id = dvb.id;
+                        newLayoutContent.dashboard_column = 0;
+                        newLayoutContent.dashboard_row = 0;
+                        var dashboardLayoutContent:XML =
+                            new XML("<root></root>");
+                        if (layoutProvider != null) {
+                            dashboardLayoutContent = layoutProvider;
+                        }
+                        dashboardLayoutContent.appendChild(newLayoutContent);
+                        layoutProvider = dashboardLayoutContent;
+                    }
+                } else {
+                    addViewBlock(dvb, 1);
+                }
+            }
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function callViewBlockByIdFunction(id:String):DynamicViewBlock {
+            var dynVB:DynamicViewBlock;
+            // Overriding to set unique Id for the viewblock instance.
+            if (getViewBlockByIdFunction != null) {
+                var newId:String = null;
+                var uniqueId:String;
+                var strArray:Array = id.split(delimiter);
+                if (strArray.length == 2) {
+                    newId = id;
+                    uniqueId = strArray[1];
+                    id = strArray[0];
+                } else {
+                    var currentDate:Date = new Date();
+                    var unixTime:Number =
+                        Math.round(currentDate.getTime() / 1000);
+                    uniqueId = unixTime.toString();
+                    newId = id + delimiter + uniqueId;
+                }
+                dynVB =
+                    getViewBlockByIdFunction.call(getViewBlockByIdFunction, id);
+                if (dynVB != null) {
+                    dynVB.ux_internal::setInstanceId(uniqueId);
+                    dynVB.id = newId;
+                    dynVB.parentDashboard = this;
+                    dynVB.staticLayout = this.useStaticLayout;
+                    dynVB.initializeFromDashboardContentXML(null);
+                }
+
+            }
+            return dynVB;
+        }
+
+        /**
+         * @inheritDoc
+         */
+        override public function removeViewBlock(id:String,
+            add2ContentList:Boolean=true):void {
+            super.removeViewBlock(id, add2ContentList);
+            var event:UxDashboardEvent =
+                new UxDashboardEvent(UxDashboardEvent.VIEWBLOCK_REMOVED);
+            event.id = id;
+            var strArray:Array = id.split(delimiter);
+            if (strArray.length == 2) {
+                event.uniqueId = strArray[1];
+                event.id = strArray[0];
+            }
+            dispatchEvent(event);
+
+            if (_dataInitialized) {
+                saveUserSettings();
+            }
+        }
+    }
+}

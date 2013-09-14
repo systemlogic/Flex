@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<d:ECUITDialog xmlns:mx="http://www.adobe.com/2006/mxml" 
+	xmlns:v="com.emc.ecuit.flex.components.views.*"
+	xmlns:d="com.emc.ecuit.flex.components.dialogs.*"
+	xmlns:l="com.emc.ecuit.flex.components.lists.*"
+	xmlns:components="com.emc.ui.components.*"
+	height="300"
+	title="{ECUITResourceManager.getInstance().getString('BASE_TABLE_CUST_DIALOG_TITLE')}"
+	allowClose="true"
+	allowMinimize="false"
+	allowMaximize="false"
+    initialize="init()" >
+	
+	<mx:Metadata>
+    /**
+     * Dispatched when the TableCustomizationDialog is closed. 
+     * 
+ 	 * @eventType ECUITEvent.CLOSE_WINDOW
+ 	 **/
+	[Event(name="closeWindow", type="com.emc.ecuit.flex.events.ECUITEvent")]
+
+	</mx:Metadata>
+	
+	<mx:Script>
+		<![CDATA[
+		import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+		import com.emc.ecuit.flex.events.ECUITEvent;
+		import com.emc.ecuit.flex.managers.ECUITResourceManager;
+		
+		import mx.controls.AdvancedDataGrid;
+		import mx.controls.Button;
+		import mx.controls.DataGrid;
+		import mx.managers.PopUpManager;		
+		import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+		
+		
+		[Bindable]
+		private var _allColumnObjects:Array;
+			
+		private var _gridObject:Object;
+		
+		// Application specific default column Array.
+		private var _defaultColumnsArray:Array;	
+		
+		private var _dataGrid:Object;
+		
+		[Bindable]
+		private var _sourceArray:Array =  new Array();
+		[Bindable]
+		private var _targetArray:Array =  new Array();
+		[Bindable]		
+		private var _defaultTargetArray:Array = new Array();
+		[Bindable]
+		private var _defaultSourceArray:Array = new Array();	
+			
+							
+		/**
+		 * retrun all the columns of the grid with visible propety set for user selected target columns.
+		 */
+		public function getTargetColumns():Array
+		{				
+			var targetColumns:Array =	this.listMoverControl.getTargetItems();
+			var sourceColumns:Array = this.listMoverControl.getSourceItems();
+			var allColumns:Array = new Array();
+			
+			// At least one column should be left in the table because when all columns are removed 
+			// Flex AdvancedDataFrid removes all headers and does not add them back when columns are added to the table
+			if (targetColumns.length == 0)
+				return allColumns;
+				
+			for(var count:int =0; count< targetColumns.length;count++){
+												
+				for(var i:int = 0; i < _allColumnObjects.length;i++)				
+				{				
+					if(targetColumns[count].label == _allColumnObjects[i].headerText){
+						_allColumnObjects[i].visible =true;
+						allColumns.push(_allColumnObjects[i]);	
+						break;
+					}								
+				}							
+			}
+			
+			for(var countNumber:int =0; countNumber< sourceColumns.length;countNumber++){
+												
+				for(var k:int = 0; k < _allColumnObjects.length;k++)				
+				{				
+					if(sourceColumns[countNumber].label == _allColumnObjects[k].headerText){
+						_allColumnObjects[k].visible =false;
+						allColumns.push(_allColumnObjects[k]);
+						break;	
+					}								
+				}							
+			}	
+							
+			_allColumnObjects = allColumns;
+			return allColumns;			
+		}
+		
+		/**
+		 * initialize the target columns and source columns.
+		 */
+		private function initializeColumns():void
+		{
+			// Reset the initial arrays
+			_sourceArray =  new Array();
+			_targetArray =  new Array();
+			_defaultTargetArray = new Array();
+			_defaultSourceArray = new Array();
+
+			if(_allColumnObjects!= null)
+			{
+				for(var count:int=0;count< _allColumnObjects.length;count++)
+				{
+					var obj:Object = new Object;
+					obj.label = _allColumnObjects[count].headerText;
+					obj.dataTipField = _allColumnObjects[count].dataTipField;
+					obj.dataField = _allColumnObjects[count].dataField;
+					
+					// seperate the visible and invisible column objects							
+					if(_allColumnObjects[count].visible)
+					{
+						this._targetArray.push(obj);							
+					}
+					else
+					{
+						this._sourceArray.push(obj);							
+					}
+				}			
+							
+			}	
+
+			if(_defaultColumnsArray != null)
+			{
+				for(var countColumn:int=0;countColumn< _defaultColumnsArray.length;countColumn++)
+				{
+					var object:Object = new Object();
+					object.label = _defaultColumnsArray[countColumn].headerText;
+					object.dataTipField = _defaultColumnsArray[countColumn].dataTipField;
+					object.gridColumnObject = _defaultColumnsArray[countColumn];
+					// seperate the visible and invisible column objects							
+					if(_defaultColumnsArray[countColumn].visible)
+					{
+						this._defaultTargetArray.push(object);							
+					}
+					else
+					{
+						this._defaultSourceArray.push(object);							
+					}
+				}
+			}	
+			
+		}							
+
+		/**
+		 * initialize the window
+		 */
+		private function init():void
+		{			
+			// Setup the initial columns
+			initializeColumns();
+
+			// Setup the tooltips
+			if (_dataGrid.hasOwnProperty("dataTipField"))
+			{
+				listMoverControl.sourceDataTipField = _dataGrid.dataTipField;
+				listMoverControl.targetDataTipField = _dataGrid.dataTipField;
+			}
+			if (_dataGrid.hasOwnProperty("dataTipFunction"))
+			{
+				listMoverControl.sourceDataTipFunction = _dataGrid.dataTipFunction;
+				listMoverControl.targetDataTipFunction = _dataGrid.dataTipFunction;
+			}
+
+			// Add  the OK button
+			var okButton:Button = new Button();
+			okButton.automationName = "okButton";
+			okButton.label = ECUITResourceManager.getInstance().getString('BASE_OK');
+			okButton.addEventListener(MouseEvent.CLICK, submitTargetColumnData, false, 0, true);
+			addButtonBarButton(okButton);
+
+			// Add  the Cancel button
+			var cancelButton:Button = new Button();
+			cancelButton.automationName = "canceButton";
+			cancelButton.label = ECUITResourceManager.getInstance().getString('BASE_CANCEL');
+			cancelButton.addEventListener(MouseEvent.CLICK, cancelChanges, false, 0, true);
+			addButtonBarButton(cancelButton);
+
+			// Add a listerner for the window control close button
+			this.addEventListener(ECUITEvent.CLOSE_WINDOW, handleClose);
+		}		
+		
+		/**
+		 *  This eventHandler submits the current settings and closes the dialog
+		 */
+		private function submitTargetColumnData(event:Event):void
+		{				
+			var targetColumns:Array = getTargetColumns();
+			// At least one column should be left in the table because when all columns are removed 
+			// Flex AdvancedDataFrid removes all headers and does not add them back when columns are added to the table
+			if (targetColumns.length == 0) {
+				ECUITPopupDialog.showMessageDialog(this, 
+							ECUITResourceManager.getInstance().getString('BASE_TABLE_CUST_DIALOG_ERROR'), 
+     						ECUITResourceManager.getInstance().getString('BASE_TABLE_CUST_DIALOG_ERROR_TITLE'), 
+     						ECUITPopupDialog.ERROR_MESSAGE);			
+				return;
+			}		
+
+			// make sure we're not scrolled past the last column
+			if (_targetArray.length <= _dataGrid.horizontalScrollPosition)
+				_dataGrid.horizontalScrollPosition = _targetArray.length - 1;
+
+			//Change the columns in the table to the modified order
+			_gridObject.columns = _allColumnObjects;
+
+			// Dispatch a close window event to bring the window down	
+			dispatchEvent (new ECUITEvent(ECUITEvent.CLOSE_WINDOW, "", true));
+		}
+	
+		/**
+		 *  This eventHandler reverts the current settings and closes the dialog
+		 */
+		private function cancelChanges (event:Event):void
+		{
+			// Re-initialize to revert any changes
+			this.initializeColumns();
+			
+			// Dispatch a close window event to bring the window down			
+			dispatchEvent(new ECUITEvent(ECUITEvent.CLOSE_WINDOW, "", true));
+		}
+
+		/**
+		 * Handle the close event from the close button or close window control
+		 **/
+		private function handleClose(event:Event):void
+		{
+			this.close();
+		}
+
+		/**
+		 * Show the TableCustomization dialog
+		 * @Param parent - Parent dialog calling the show method.
+		 * @Param girdObject - Data Grid or Advanced Data Grid.
+		 * @Param defaultGridArray - Application specific default colums for the Grid.
+		 */
+		public function showDialog (parent:DisplayObject, 
+									gridObject:Object,
+									defaultGridArray:Array):void
+		{
+			if(gridObject as DataGrid || gridObject as AdvancedDataGrid)
+			{
+				_dataGrid = gridObject;
+				_allColumnObjects = gridObject.columns;
+				_defaultColumnsArray = defaultGridArray;			
+
+				_gridObject = gridObject;
+				//show the table customization dialog			
+				show (parent);
+			}
+			else
+				return;
+		}
+		
+		]]>
+	</mx:Script>
+	<l:ListMoverControl backgroundColor="#F0F6FF" id="listMoverControl" automationName="listMoverControl" defaultSourceArray="{_defaultSourceArray}"
+		 defaultTargetArray="{_defaultTargetArray}" sourceArray="{_sourceArray}" targetArray="{_targetArray}"
+		 borderStyle="none" width="100%" height="100%" allowMultipleSelectionForSourceList="true"
+		 sourceListTitle="{ECUITResourceManager.getInstance().getString('BASE_TABLE_CUST_DIALOG_AVAILABLE_COLUMN_TITLE')}"
+		 targetListTitle="{ECUITResourceManager.getInstance().getString('BASE_TABLE_CUST_DIALOG_SELECT_COLUMN_TITLE')}"
+		 addButtonTooltip="{ECUITResourceManager.getInstance().getString('BASE_TABLE_CUST_DIALOG_ADD_TOOLTIP')}"
+		 removeButtonTooltip="{ECUITResourceManager.getInstance().getString('BASE_TABLE_CUST_DIALOG_REMOVE_TOOLTIP')}"
+		 allowMultipleSelectionForTargetList="true"/>
+</d:ECUITDialog>

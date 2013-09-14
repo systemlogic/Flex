@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wizards:UxWizardStep xmlns:fx="http://ns.adobe.com/mxml/2009"
+            xmlns:s="library://ns.adobe.com/flex/spark"
+            xmlns:mx="library://ns.adobe.com/flex/mx"
+            xmlns:wizards="com.emc.efx.guitoolkit.components.wizards.*"
+            width="500" height="250">
+  <fx:Script source="AtmosWebService.mxml.as" />
+  <fx:Declarations>
+    <!-- Place non-visual elements (e.g., services, value objects) here -->
+  </fx:Declarations>
+  <mx:Form>
+    <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_DNS')}" >
+      <mx:TextInput id="dnsName"  change="updateButtons()" restrict="[0-9a-zA-Z_\-\.]" />
+    </mx:FormItem>
+    <mx:FormItem label="{ResourceManager.getInstance().getString('fma','FIL_SER_PRT')}" >
+      <mx:HBox>
+      <mx:TextInput id="port" text="{yesButton.selected ? 10080:80}" restrict="0-9" width="40" maxChars="5" change="updateButtons()"/>
+      <mx:RadioButtonGroup id="protocol" itemClick="handleChange(event)"/>
+      <mx:RadioButton id="yesButton" label="HTTPS" groupName="protocol" selected="true" />
+      <mx:RadioButton id="noButton" label="HTTP" groupName="protocol" />
+      </mx:HBox>
+    </mx:FormItem>
+    <mx:FormItem  required="false" label="{ResourceManager.getInstance().getString('fma','FIL_SER_USER')}">
+      <mx:TextInput  id="userName" change="updateButtons()" restrict="{UtilityFunctionClass.UsernameRestrict}"/>
+    </mx:FormItem>
+    <mx:FormItem  required="false" label="{ResourceManager.getInstance().getString('fma','FIL_SER_PASS')}">
+      <mx:TextInput  id="password" displayAsPassword="true" change="updateButtons()" restrict="{UtilityFunctionClass.PasswordRestrict}"/>
+    </mx:FormItem>
+  </mx:Form>
+</wizards:UxWizardStep>

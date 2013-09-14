@@ -1,0 +1,24 @@
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.efx.net.UxURL;
+import com.emc.efx.net.http.UxHttpClient;
+
+
+import mx.collections.ArrayCollection;
+import mx.controls.Alert;
+import mx.controls.Image;
+import mx.core.BitmapAsset;
+import mx.managers.PopUpManager;
+private var _client:UxHttpClient ;
+
+/* [MessageDispatcher]
+public var sendMessage:Function; */
+
+protected function downHandler(event:MouseEvent):void
+{
+  (this.parentDocument as PolicyProperties).changeOrder(false);
+}
+protected function _upHandler(event:MouseEvent):void
+{
+  (this.parentDocument as PolicyProperties).changeOrder(true);
+}
+

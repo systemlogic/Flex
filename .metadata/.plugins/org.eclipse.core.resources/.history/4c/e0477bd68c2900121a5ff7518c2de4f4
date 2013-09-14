@@ -1,0 +1,234 @@
+package com.emc.ecuit.flex.components.containers
+{	
+	import flash.display.DisplayObject;
+	import flash.display.DisplayObjectContainer;
+	import flash.events.MouseEvent;
+	import flash.geom.Point;
+	import flash.events.TimerEvent;
+	import flash.utils.Timer;
+	
+	import mx.core.UIComponent;
+	import mx.containers.Canvas;
+
+	import com.emc.ecuit.flex.utils.UITrace;
+	
+   /**
+    * 
+    * ECUITInfotip is the mouse listener for the ECUITInfotipPanel.
+    * It waits for the mouse to stop moving before instantiating ECUITInfotipPanel.
+    * When the mouse is moved outside the component, functionality of the class
+    * is terminated until the <code>ECUITInfotip.show()</code> method is called again.
+    * This class is a singleton. It has to be instantiated by calling <code>ECUITInfotip.getInstance()</code>.
+    */
+	public class ECUITInfotip 
+	{ 
+		/** This class is a singleton to keep instance */
+		private static var _ecuitInfoTip:ECUITInfotip = new ECUITInfotip();
+		/** This variable keeps panel used as a popup to show info tip canvas. */
+		private var _infoTipPanel:ECUITInfotipPanel;
+		/** This variable keeps canvas supplied by the application. */		
+		private var _infoTipcanvas:Canvas;
+		/** This variable keeps the component for the info tip panel. Used in desicion making to remove or not info tip. */
+		private var _component:DisplayObject;		
+		/** This variable keeps the parent of the component. Used to calculate position of the info tip. */
+		private var _parent:DisplayObjectContainer;
+		/** This variable keeps mouse point in the global coordinates. */
+		private var _point:Point;
+		/** This variable defines cursor position threshold. Used in calculating coordinates for dismissing info tip panel.  */				
+		private static var THRESHOLD:int = 5;
+		/** Timer used to check whether mouse stoped moving. */ 
+		private var myTimer:Timer = new Timer(250, 1);	
+		/**  Current mouse coordinates. */
+		private var _currentX:int = -1;
+		private var _currentY:int = -1;		
+        
+        /** This method returns an instance of ECUITInfotip class. */ 
+        public static function getInstance():ECUITInfotip {
+        	if (_ecuitInfoTip == null) {
+        		_ecuitInfoTip = new ECUITInfotip();
+        	}
+        	return _ecuitInfoTip;
+        }   
+        
+		/** This method waits for the mouse to stop moving before instantiating ECUITInfotipPanel.
+		 * @param infoTipcanvas - info tip canvas.
+		 * @param component - component for which info tip is displayed.
+		 * @param parent - parent of the component.
+  		 * @param point - mouse point in global coordinates.
+		 */
+		public function show(infoTipcanvas:Canvas, component:DisplayObject, parent:DisplayObjectContainer, point:Point):void
+		{ 
+			// save passed parameters.
+	  		_infoTipcanvas = infoTipcanvas; 
+	  		_component = component;
+	  		_parent = parent;	  		
+			_point = point;
+			
+			// listen for mouse move and mouse out events	
+			if (_component != null) {
+				_component.addEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler);
+				_component.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+			}
+			// start timer
+			myTimer.start(); 					
+			myTimer.addEventListener(TimerEvent.TIMER_COMPLETE, completeHandler);		
+		}
+
+		/** This method is called when timer expires.
+		 * It instantiates ECUITInfotipPanel when the conditions are right.
+		 */
+		private function completeHandler(e:TimerEvent):void {
+			// if user already moved mouse inside of component
+			if (_currentX != -1 && _currentY != -1) {
+				// if user continue moving mouse, no op/
+				if (Math.abs(_currentX - _point.x) < THRESHOLD && Math.abs(_currentY - _point.y) < THRESHOLD) {
+
+					if (_parent != null && !inParent)
+					{
+						// if we are not even inside the parent, cancel the tip and timer
+						cancelTip();
+						return;
+					}
+
+					// if previous info panel visible, no op
+					if (inComponent && (_infoTipPanel == null || !_infoTipPanel.infoTipPanelVisible)) {
+						// finally, pop up panel
+						_infoTipPanel = new ECUITInfotipPanel(_infoTipcanvas, _parent,
+										 new Point(_currentX, _currentY), this);
+					}
+				}
+				// update mouse coordinates
+				_point.x = _currentX;
+				_point.y = _currentY;
+			}
+									
+			// re-start timer
+			myTimer.start();	
+		}
+
+		/*********************************************************************
+		 * @private
+		 * 
+		 * Check to see if the current mouse position is within the component
+		 * we are managing the tooltip for.
+		 */
+		protected function get inComponent():Boolean
+		{
+			return compHitTest(_component as UIComponent);
+		}		
+
+		/*********************************************************************
+		 * @private
+		 * 
+		 * Check to see if the current mouse position is within the parent
+		 * component we are managing the tooltip for.
+		 */
+		protected function get inParent():Boolean
+		{
+			return compHitTest(_parent as UIComponent);
+		}		
+
+		/*********************************************************************
+		 * @private
+		 * 
+		 * Utility function to check to see if the current mouse position is 
+		 * within the component passed in.
+		 */
+		protected function compHitTest(comp:UIComponent):Boolean
+		{
+			if (comp == null)
+			{
+				UITrace.doTrace(this, "Component is NULL", UITrace.LEVEL_DEBUG);
+				return false;
+			}
+
+			var p1:Point = new Point(0, 0);
+			var p2:Point = new Point(comp.width, comp.height);
+
+			var x:int = comp.contentMouseX;
+			var y:int = comp.contentMouseY;
+			
+			if (x < p1.x || x > p2.x)
+				return false;
+			if (y < p1.y || y > p2.y)
+				return false;
+
+			return true;
+		}		
+
+		/** This method is called when the user moves the mouse outside of the component.
+		 * @param - event - mouse event.
+		 */
+        private function mouseOutHandler(event:MouseEvent):void {
+
+			// check for a mouseOut caused by inner components
+			//	don't cancel the tooltip for innner components.
+			//		Should this be configurable?
+        	if (inComponent)
+        		return;
+
+			cancelTip();
+        }
+
+		/*********************************************************************
+		 * @private
+		 * 
+		 * Resets the current mouse point to make sure that the infotip is
+		 * not created until a legal mouse move occurs.
+		 */
+		internal function reset():void
+		{
+        	_currentX = -1;
+			_currentY = -1;
+		}
+
+		/*********************************************************************
+		 * @private
+		 * 
+		 * Cancel the current tooltip and timer.
+		 */
+        internal function cancelTip(remove:Boolean=true):void
+        {
+        	if (_component == null)
+        		return;
+
+        	if (_component.hasEventListener(MouseEvent.MOUSE_OUT))
+        		_component.removeEventListener(MouseEvent.MOUSE_OUT, mouseOutHandler);
+        	if (_component.hasEventListener(MouseEvent.MOUSE_MOVE))
+				_component.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler);
+        	myTimer.stop();
+        	myTimer.removeEventListener(TimerEvent.TIMER_COMPLETE, completeHandler);
+        	_currentX = -1;
+			_currentY = -1;
+
+			if (remove && _infoTipPanel != null)
+			{
+				_infoTipPanel.removeInfoTip();
+				_infoTipPanel = null;
+			}	
+        } 		
+        
+        /** This method removes info tip panel. */		
+		public function removeInfoTip():void {
+			// delegates to info tip panel
+			if (_infoTipPanel != null)
+				_infoTipPanel.removeInfoTip(false);
+		}
+		
+ 		/** This method returns a flag to indicate whether the mouse is over the panel or not. */
+		public function get isMouseOverPanel():Boolean {
+			// delegates to info tip panel
+			if (_infoTipPanel == null)
+				return false;
+			return _infoTipPanel.isMouseOverPanel;
+		} 
+		      
+        /** This method is called when user moves the mouse.
+		 * @param - event - mouse event.
+		 */
+        internal function mouseMoveHandler(event:MouseEvent):void {
+        	_currentX = event.stageX;
+			_currentY = event.stageY;
+        } 
+ 	}                   
+}

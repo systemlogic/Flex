@@ -1,0 +1,22 @@
+/**
+ *
+ * Copyright: Copyright (c) 2011
+ *
+ * Company: EMC
+ *
+ */
+
+package com.emc.efx.utilities.pool {
+	
+	/**
+	 * Interface for a poolable object factory  
+	 */	
+    public interface IUxPoolableObjectFactory {
+		
+		/**
+		 * Creates a new poolable object 
+		 * @return the new poolable object
+		 */		
+		function createObject():IUxPoolable;
+    }
+}

@@ -1,0 +1,30 @@
+import com.emc.ecuit.flex.components.dashboards.Dashboard;
+import com.emc.ecuit.flex.components.dialogs.ECUITPopupDialog;
+import com.emc.ecuit.flex.components.views.ViewBlock;
+import com.emc.ecuit.flex.components.views.ViewTitleBarButtonEvent;
+import com.emc.ecuit.flex.events.ECUITEvent;
+import com.emc.ecuit.flex.managers.ECUITResourceManager;
+import com.emc.fma.views.Dashboard.ConfigurationWizard.ConfigurationWizard;
+import com.emc.fma.views.Dashboard.Dashboard;
+
+/**
+ *  This method is called after viewblock is created from the Dashboard's Add Content Panel
+ **/
+override public function initializeFromDashboardContentXML(data:XML):void
+{
+  this.title = data.long_title;
+  super.initializeFromDashboardContentXML(data);
+}
+
+private function doViewShowMore(event:ECUITEvent):void
+{
+  ECUITPopupDialog.showMessageDialog(this,
+  "caught ViewShowMoreEvent event from " + event.message);
+}
+
+protected function createSchedule_clickHandler(event:MouseEvent):void
+{
+  var wizard:ConfigurationWizard = new ConfigurationWizard();
+  wizard.show(null);
+
+}

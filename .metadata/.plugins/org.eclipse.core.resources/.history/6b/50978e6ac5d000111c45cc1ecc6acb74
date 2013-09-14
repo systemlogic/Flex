@@ -1,0 +1,26 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+
+</head>
+
+<body bgcolor="#869ca7">
+<p> Installing Java ... </p>
+
+<script src="deployJava.js"></script>
+<script language="JavaScript" type="text/javascript">
+
+	function getMinVersion() {
+		var urlVars = window.location.search;
+		var result = urlVars.substring(urlVars.lastIndexOf("=")+1, urlVars.length);
+		return result;
+    } 
+	
+	minVersion = getMinVersion();
+	if(deployJava.installJRE(minVersion + '+')){
+		window.history.back();
+	}
+</script>
+</body>
+
+</html>
