@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project basedir="." name="flex" default="default">
+  <property environment="env" />
+	
+	<property name="FLEX_HOME"          location="/media/Harsh/uem/sdk4.6" />
+	<property name="PROJECT.home"          location="./" />
+	<property name="PROJECT.tomcat"        value="tomcat" />
+	<property name="PROJECT.tomcat_patch"  value="tomcat_patch" />
+	<property name="PROJECT.tomcat_ver"    value="7.0.32" />
+	<property name="PROJECT.tomcat_name"   value="apache-tomcat-${PROJECT.tomcat_ver}" />
+	<property name="PROJECT.target"        value="rstomcat.tar.gz" />
+	<property name="PROJECT.war"           value="war" />
+	<property name="PROJECT.war_target"    value="ROOT.war" />
+	<property name="PROJECT.web_inf"       value="WEB-INF" />
+	<property name="PROJECT.webroot"       value="webapp" />
+	<property name="PROJECT.java_src"      value="java" />
+	<property name="PROJECT.java_classes"  value="./${PROJECT.war}/${PROJECT.web_inf}/classes" />
+	<property name="PROJECT.java_lib"      value="./${PROJECT.war}/${PROJECT.web_inf}/lib" />
+	<property name="PROJECT.xmlrpc_lib"    value="${PROJECT.sdk}/xmlrpc-j/1.1/lib" />
+	<property name="PROJECT.struts_lib"    value="${PROJECT.sdk}/jakarta-struts/1.2.9/lib" />
+	<property name="PROJECT.jaas_pam_lib"  value="${PROJECT.sdk}/jaas_pam/0.2/lib" />
+	<property name="PROJECT.spring"        value="${PROJECT.sdk}/spring-source/spring-framework-3.0.0/lib" />
+	<property name="PROJECT.jstl"          value="${PROJECT.sdk}/jstl/jstl_1.2" />
+	<property name="PROJECT.javamail"      value="${PROJECT.sdk}/javamail" />
+	<property name="PROJECT.uem"           value="${PROJECT.sdk}/UEM" />
+
+	<property name="major.version" value="1" />
+	<property name="minor.version" value="0" />
+	<property name="maintenance.release" value="0" />
+	<property name="extension.key" value="fma" />
+	<property name="root.dir" value="${PROJECT.uem}" />
+	<property name="ux.dir" value="${PROJECT.uem}/ux" />
+	<property name="buildtasks.dir" value="${ux.dir}/build" />
+	<property name="thirdparty.dir" value="${PROJECT.uem}/depends" />
+	
+
+	<target name="war">
+	 	<echo message="Delete ${PROJECT.war}" />
+	 	<delete dir="${PROJECT.war}" />
+		<echo message="Construct ${PROJECT.war} based on ${PROJECT.webroot}" />
+		<mkdir  dir="${PROJECT.war}"/>
+		<copy todir="${PROJECT.war}" >
+			<fileset dir="${PROJECT.webroot}" >
+				<exclude name="CVS/" />
+				<exclude name="**/CVS/" />
+			</fileset>
+		</copy>
+	</target>
+
+	<target name="javac" depends="war" >
+		<echo message="Compiling Java source code ${PROJECT.java_src}" />
+		<mkdir  dir="${PROJECT.java_classes}"/>
+		<javac destdir="${PROJECT.java_classes}" 
+					 nowarn="true" 
+					 debug="true" 
+					 optimize="false" 
+					 deprecation="true" 
+					 target="1.7" 
+					 verbose="fase" 
+					 fork="false" 
+					 source="1.7">
+			<src>
+				<pathelement location="${PROJECT.java_src}" />
+			</src>
+			<compilerarg value="-Xlint:unchecked"/>
+		</javac>
+
+	</target>
+
+	<taskdef resource="flexTasks.tasks"    classpath="${FLEX_HOME}/ant/lib/flexTasks.jar" />
+	<target name="flex" depends="war">
+		<copy todir="${PROJECT.war}" >
+		      <fileset dir="${PROJECT.home}/bin-debug" >
+		      </fileset>
+		    </copy>
+	</target>
+
+	<target name="war_target" depends="javac,flex">
+		<jar destfile="${PROJECT.war_target}" basedir="${PROJECT.war}" />
+	</target>
+
+	<target name="tar" depends="war_target"> 
+		<delete dir="${PROJECT.war}" />
+	  <delete dir="${PROJECT.tomcat}" />
+		<delete dir="${PROJECT.home}/out" />
+	</target>
+
+	<target name="clean">
+		<delete dir="bin"/>
+		<delete dir="lib"/>
+	</target>
+
+	<target name="realclean" depends="clean">
+	 	<echo message="Delete ${PROJECT.tomcat}" />
+	 	<delete dir="${PROJECT.tomcat}"/>
+	 	<delete file="${PROJECT.target}" />
+	 	<echo message="Delete ${PROJECT.war}" />
+	 	<delete dir="${PROJECT.war}" />
+	 	<delete file="${PROJECT.target}" />
+	 	<delete dir="${dest.dir}"/>
+	 	<delete file="./src/${extension.key}Classes.as" />
+	</target>
+
+	 <target name="default" depends="tar"> 
+	 	<!-- <target name="default" depends="java,tar"> -->
+        </target>
+
+</project>

@@ -1,4 +1,2 @@
-*.swf
-*.js
-*.html
-
+/din-debug/
+ROOT.war
