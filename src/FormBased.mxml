@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
                xmlns:s="library://ns.adobe.com/flex/spark" creationComplete="_creationCompleteHandler(event)"
+		initialize="trackEvent(event)"
                xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600">
   <fx:Script>
     <![CDATA[
@@ -11,7 +12,7 @@
       import mx.rpc.events.ResultEvent;
       import mx.utils.ObjectProxy;
       //var URL:String = "http://localhost:8090";
-      var URL:String = "http://restapp.systemlogic.cloudbees.net";
+      var URL:String = "http://106.51.112.77/RestApp";
       
       protected function service_resultHandler(event:ResultEvent):void
       {
@@ -27,7 +28,12 @@
         empservice.url = URL + "/empList/" + deptList.selectedItem.department;
         empservice.send();
       }
-      
+       private function trackEvent(event:FlexEvent):void
+
+      {
+
+	Security.allowDomain( "*" );
+      }
       protected function _creationCompleteHandler(event:FlexEvent):void
       {
         // TODO Auto-generated method stub

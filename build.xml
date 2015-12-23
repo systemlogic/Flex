@@ -2,10 +2,10 @@
 <project basedir="." name="flex" default="default">
   <property environment="env" />
 	
-	<property name="FLEX_HOME"          location="/media/Harsh/uem/sdk4.6" />
+	<property name="FLEX_HOME"          location="/etc/flex" />
 	<property name="PROJECT.home"          location="./" />
 	<property name="PROJECT.war"           value="war" />
-	<property name="PROJECT.war_target"    value="ROOT.war" />
+	<property name="PROJECT.war_target"    value="Flex.war" />
 	<property name="PROJECT.web_inf"       value="WEB-INF" />
 	<property name="PROJECT.webroot"       value="webapp" />
 	<property name="PROJECT.java_src"      value="java" />
@@ -48,8 +48,32 @@
 
 	</target>
 
+	<!-- HTML Wrapper -->
+
+	<target name="wrapper">
+
+       <html-wrapper title="Flex Rest Application"
+	          file="index.html"
+	          height="500"
+	          width="500"
+	          bgcolor="#000000"
+	          application="FormBased.mxml"
+	          swf="FormBased"
+	          version-major="9"
+	          version-minor="0"
+	          version-revision="0"
+               	history="true"
+
+        	  output="${PROJECT.war}"/>
+	</target> 
+
+
 	<taskdef resource="flexTasks.tasks"    classpath="${FLEX_HOME}/ant/lib/flexTasks.jar" />
-	<target name="flex" depends="war">
+	<target name="flex" depends="wrapper">
+		<mxmlc file="${PROJECT.home}/src/FormBased.mxml" keep-generated-actionscript="true" output="${PROJECT.war}/FormBased.swf"> 
+            <load-config filename="${FLEX_HOME}/frameworks/flex-config.xml"/> 
+            <source-path path-element="${FLEX_HOME}/frameworks"/> 
+        </mxmlc> 
 		<copy todir="${PROJECT.war}" >
 		      <fileset dir="${PROJECT.home}/bin-debug" >
 		      </fileset>
